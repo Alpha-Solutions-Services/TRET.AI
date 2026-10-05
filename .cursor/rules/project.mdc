@@ -1,0 +1,16 @@
+---
+description: TRET.AI project rules (foundation and all later modules)
+alwaysApply: true
+---
+
+# TRET.AI project rules
+
+- Build ONLY what the current version prompt lists. Do not start any later module. No placeholder pages, no unused code, no speculative features.
+- If something is unclear, do NOT guess. Write it as OPEN in docs/decisions.md and continue with the rest. Ask only if completely blocked.
+- TypeScript strict. Money is never a float. (No money code exists yet; keep this rule for later.)
+- Secrets never go in the repo. Provide .env.example with variable names only.
+- Every table has Row Level Security. Dev data only: no real Legacy data in this database until the owner says so.
+- All LLM calls, when added later, go through one module called llm-gateway. Do not create it until that module is in scope.
+- Every change ends with: updated docs, updated CHANGELOG.md, VERSION bumped only when the owner says, a short commit message in the form "v0.0.0.1: <what changed>" (adjust the version prefix to match VERSION when bumped).
+- Work on branch build/v0.0.0.1 (or the matching build branch) and open a pull request into main. Do not push directly to main.
+- App version source of truth is the VERSION file only. package.json version stays 0.0.0 because npm cannot hold 4-part versions.
