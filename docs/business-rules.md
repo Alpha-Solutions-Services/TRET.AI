@@ -19,3 +19,5 @@
 - Quicken version (Windows confirmed; QIF export planned).
 - Vektor long-lived access for scheduled server jobs.
 - Bestpass API keys (tolls may stay via Vektor).
+- Two-factor login (MFA).
+- Password reset process.

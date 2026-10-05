@@ -35,6 +35,10 @@ yarn-error.log*
 .env.*
 !.env.example
 
+# never commit the Alpha secrets vault if this folder is nested nearby
+SECRETS/
+**/SECRETS/
+
 # vercel
 .vercel
 

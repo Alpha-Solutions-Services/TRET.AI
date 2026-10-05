@@ -23,7 +23,7 @@ The **database** is always the source of truth. If a sheet disagrees with the da
 ## What this version includes (v0.0.0.1)
 
 - Project skeleton, tests, and CI
-- Google sign-in with an allowlist
+- Email + password sign-in with an allowlist
 - Empty Overview page
 - Health page (version + database check)
 - Documentation of business rules and the roadmap

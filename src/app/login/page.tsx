@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { GoogleSignInButton } from "@/components/google-sign-in-button";
+import { LoginForm } from "@/components/login-form";
 import { checkAccess } from "@/lib/auth/access";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,10 +24,10 @@ export default async function LoginPage() {
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">TRET.AI</h1>
           <p className="text-sm text-[var(--color-fg-muted)]">
-            Sign in with your allowed Google account.
+            Sign in with your email and password.
           </p>
         </div>
-        <GoogleSignInButton />
+        <LoginForm />
       </div>
     </div>
   );

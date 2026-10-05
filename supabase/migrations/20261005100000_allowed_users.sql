@@ -1,5 +1,5 @@
 -- TRET.AI v0.0.0.1
--- allowed_users: who may sign in with Google Auth
+-- allowed_users: who may sign in with email + password Auth
 -- RLS on. Dev / bootstrap data only. No real Legacy business data.
 
 create table if not exists public.allowed_users (
@@ -11,7 +11,7 @@ create table if not exists public.allowed_users (
 );
 
 comment on table public.allowed_users is
-  'Emails allowed to use TRET.AI. Access is denied for any other Google account.';
+  'Emails allowed to use TRET.AI. Access is denied for any other Auth account.';
 
 comment on column public.allowed_users.email is
   'Lowercase email matching Supabase Auth user email.';

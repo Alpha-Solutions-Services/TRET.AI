@@ -18,7 +18,7 @@ npm install
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000). Sign in with Google using an email listed in `allowed_users`.
+5. Open [http://localhost:3000](http://localhost:3000). Sign in with email and password for an account listed in `allowed_users` (create the owner once with `npm run create-owner`).
 
 Useful checks:
 
@@ -27,6 +27,7 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npm run create-owner
 ```
 
 ## Where the docs are
