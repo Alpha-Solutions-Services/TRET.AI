@@ -44,3 +44,6 @@ SECRETS/
 
 # typescript
 *.tsbuildinfo
+
+.start-out.txt
+.start-err.txt
