@@ -5,17 +5,23 @@ Do these once (or when credentials change). The app cannot finish login or healt
 ## 1. GitHub
 
 1. Confirm you have access to `https://github.com/Alpha-Solutions-Services/TRET.AI`.
-2. Work on branch `build/v0.0.0.1` and merge to `main` via pull request (do not push straight to `main`).
+2. Work on a feature branch and merge to `main` via pull request (do not push straight to `main`).
 
 ## 2. Supabase project
 
 1. Create or pick a Supabase project for TRET.AI (dev only for now — no real Legacy data until you say so).
 2. In SQL Editor (or CLI), run the migration file: `supabase/migrations/20261005100000_allowed_users.sql`.
 3. Confirm table `allowed_users` exists with one row: `alphaassistant.alpha@gmail.com` / role `owner`.
-4. Copy **Project URL**, **anon public** key, and **service_role** key from Settings → API (service_role stays on your laptop only).
+4. Find the Project URL and anon key (exact clicks):
+   1. Open your project in the Supabase dashboard.
+   2. Click **Project Settings** (gear) in the left sidebar.
+   3. Click **API**.
+   4. Copy **Project URL** → this is `NEXT_PUBLIC_SUPABASE_URL`.
+   5. Under **Project API keys**, copy the **anon** **public** key → this is `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+   6. Copy **service_role** only for your laptop (create-owner). Never put it in Vercel.
 5. In Authentication → Providers: leave Email enabled. Turn **Google off** if it was on.
 6. In Authentication → Settings (or Providers): **disable public sign-ups** so strangers cannot create accounts.
-7. Set Site URL to your app URL (local: `http://localhost:3000`, production: `https://tretai.alphasolutions.software`).
+7. Set **Site URL** to `https://tret.ai.alphasolutions.software` (local testing can use `http://localhost:3000` while developing).
 
 ## 3. Environment variables (local)
 
@@ -36,33 +42,40 @@ Do these once (or when credentials change). The app cannot finish login or healt
 2. You should see only: `Owner ready`
 3. The script creates the Supabase Auth user (email confirmed) or updates the password if the user already exists.
 
-## 5. Vercel
+## 5. Vercel project settings and env vars
 
-1. Import the `TRET.AI` GitHub repo into the Alpha Vercel team.
-2. In Project → Settings → General / Build & Development Settings:
-   - **Framework Preset:** Next.js (required — do not leave as Other/static)
-   - **Root Directory:** empty for this dedicated repo
-   - **Output Directory:** leave blank / override OFF (Next.js manages output; do not set `public`)
-   - **Build Command:** leave default (`next build`) or blank for auto-detect
-3. In Vercel → Environment Variables, set **only**:
+1. Import the `TRET.AI` GitHub repo into the Alpha Vercel team (project name may be `tretai`).
+2. Framework and directories (exact):
+   1. Open the project → **Settings** → **General** (or **Build and Deployment**).
+   2. **Framework Preset** = **Next.js**.
+   3. **Output Directory** override = **OFF** (do not set `public`).
+   4. **Root Directory**: leave **empty** when `package.json` is at the repo root (this dedicated `TRET.AI` repo). Set a subfolder only if the app is nested in a monorepo.
+3. Environment variables to add in Vercel (exact names from `.env.example`):
+   1. Open **Settings** → **Environment Variables**.
+   2. Add `NEXT_PUBLIC_SUPABASE_URL` = your Supabase Project URL (all environments you use: Production, Preview).
+   3. Add `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase anon public key.
+   4. Do **not** add `SUPABASE_SERVICE_ROLE_KEY` or `ADMIN_PASSWORD`.
+4. Redeploy after saving env vars so the new values apply.
+5. Keep an eye on Vercel free Fluid Active CPU — avoid extra always-on serverless work.
 
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+## 6. Production domain and DNS
 
-4. Do **not** add `SUPABASE_SERVICE_ROLE_KEY` or `ADMIN_PASSWORD` to Vercel.
-5. Deploy from `main` after the PR is merged (or use a preview from the PR branch for testing).
-6. Keep an eye on Vercel free Fluid Active CPU — avoid extra always-on serverless work.
+1. App domain is `tret.ai.alphasolutions.software` (not `tretai.alphasolutions.software` — that name is reserved for Resend email and must not point at this app).
+2. In Vercel → project → **Settings** → **Domains** → **Add** → enter `tret.ai.alphasolutions.software`.
+3. Create the DNS record Vercel shows for the host **`tret.ai`** under the parent domain `alphasolutions.software` (usually a **CNAME** to `cname.vercel-dns.com`, or whatever Vercel displays on that Domains page).
+4. Wait until the domain shows as Valid / HTTPS ready in Vercel.
 
-## 6. DNS (production)
+## 7. Supabase Auth Site URL (production)
 
-1. Point `tretai.alphasolutions.software` to the Vercel project (CNAME or as Vercel instructs).
-2. Wait for HTTPS to become ready in Vercel → Domains.
-3. Update the Supabase Site URL to the production domain if you have not already.
+1. In Supabase → **Authentication** → **URL Configuration**.
+2. Set **Site URL** = `https://tret.ai.alphasolutions.software`.
+3. Save.
 
-## 7. First login test
+## 8. First login test
 
-1. Open the app → Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` → should reach Overview.
+1. Open `https://tret.ai.alphasolutions.software` → Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` → should reach Overview.
 2. Sign in with a wrong password → must show **Email or password is incorrect.**
 3. In Supabase, create a temporary Auth user that is **not** in `allowed_users`, try to sign in → **Access denied**, then delete that temporary user.
 4. While signed in as the owner, open `/health` → database connection should show **OK**.
 5. Confirm the footer shows `TRET.AI v0.0.0.1` and that **Sign out** works.
+6. If env vars are missing, the site must show **Setup incomplete** (not a 500).
