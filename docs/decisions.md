@@ -14,3 +14,4 @@
 | 2026-10-05 | OPEN: Bestpass API keys (tolls may stay via Vektor) | Not decided; do not guess |
 | 2026-10-05 | OPEN: two-factor login (MFA) | Not decided; do not build yet |
 | 2026-10-05 | OPEN: password reset process | Not decided; do not build yet |
+| 2026-10-05 | App domain = `tret.ai.alphasolutions.software`; `tretai.alphasolutions.software` is reserved for Resend email and must not host the app | Clear split between app traffic and email sending |

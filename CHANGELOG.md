@@ -11,3 +11,5 @@
 - Automated test that fails if `SECRETS/` or non-example `.env*` files are tracked by git.
 - Documentation for overview, business rules, decisions, architecture, data sources, setup, modules, and versioning.
 - Fix: refresh `package-lock.json` so GitHub Actions `npm ci` succeeds; document Vercel Framework Preset = Next.js (not static/`public` output).
+- Fix: missing required env vars show a plain **Setup incomplete** page instead of a 500; missing names are logged server-side only.
+- Production app domain set to `tret.ai.alphasolutions.software` (`tretai.alphasolutions.software` reserved for Resend).

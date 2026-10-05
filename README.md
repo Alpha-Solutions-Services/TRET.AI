@@ -44,4 +44,6 @@ npm run create-owner
 | [docs/versioning.md](docs/versioning.md) | How versions work |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version |
 
-Production domain (planned): `tretai.alphasolutions.software`
+Production domain: `tret.ai.alphasolutions.software`  
+(`tretai.alphasolutions.software` is reserved for Resend email — do not use it for the app.)
+
