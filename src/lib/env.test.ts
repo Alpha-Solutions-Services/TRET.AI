@@ -21,6 +21,24 @@ describe("required app env", () => {
     expect(missing).toEqual(["NEXT_PUBLIC_SUPABASE_ANON_KEY"]);
   });
 
+  it("returns public supabase config only when both values are present", async () => {
+    const { getSupabasePublicConfig } = await import("./env");
+    expect(
+      getSupabasePublicConfig({
+        NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key",
+      }),
+    ).toEqual({
+      url: "https://example.supabase.co",
+      anonKey: "anon-key",
+    });
+    expect(
+      getSupabasePublicConfig({
+        NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+      }),
+    ).toBeNull();
+  });
+
   it("treats the app as configured only when both required names are set", () => {
     expect(
       isAppConfigured({

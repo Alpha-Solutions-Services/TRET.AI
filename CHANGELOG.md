@@ -13,3 +13,4 @@
 - Fix: refresh `package-lock.json` so GitHub Actions `npm ci` succeeds; document Vercel Framework Preset = Next.js (not static/`public` output).
 - Fix: missing required env vars show a plain **Setup incomplete** page instead of a 500; missing names are logged server-side only.
 - Production app domain set to `tret.ai.alphasolutions.software` (`tretai.alphasolutions.software` reserved for Resend).
+- Fix: read Supabase public env via shared helper (avoids empty build-time inlining) and set cookieEncoding base64url.
