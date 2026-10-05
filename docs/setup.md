@@ -39,7 +39,11 @@ Do these once (or when credentials change). The app cannot finish login or healt
 ## 5. Vercel
 
 1. Import the `TRET.AI` GitHub repo into the Alpha Vercel team.
-2. If this app lives in a monorepo sub-folder on another deploy, set **Root Directory** to that folder. For the dedicated `TRET.AI` repo, Root Directory can stay empty (repo root).
+2. In Project → Settings → General / Build & Development Settings:
+   - **Framework Preset:** Next.js (required — do not leave as Other/static)
+   - **Root Directory:** empty for this dedicated repo
+   - **Output Directory:** leave blank / override OFF (Next.js manages output; do not set `public`)
+   - **Build Command:** leave default (`next build`) or blank for auto-detect
 3. In Vercel → Environment Variables, set **only**:
 
    - `NEXT_PUBLIC_SUPABASE_URL`
