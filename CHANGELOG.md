@@ -14,3 +14,4 @@
 - Fix: missing required env vars show a plain **Setup incomplete** page instead of a 500; missing names are logged server-side only.
 - Production app domain set to `tret.ai.alphasolutions.software` (`tretai.alphasolutions.software` reserved for Resend).
 - Fix: read Supabase public env via shared helper (avoids empty build-time inlining) and set cookieEncoding base64url.
+- Fix: bake `VERSION` into `TRET_AI_VERSION` at build so Vercel serverless does not 500 on missing VERSION file; soft-fail middleware and show Setup incomplete on unexpected errors.

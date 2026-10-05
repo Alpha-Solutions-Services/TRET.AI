@@ -12,28 +12,34 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  const supabase = createServerClient(config.url, config.anonKey, {
-    cookieEncoding: "base64url",
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
+  try {
+    const supabase = createServerClient(config.url, config.anonKey, {
+      cookieEncoding: "base64url",
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
+          supabaseResponse = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach(({ name, value, options }) => {
+            supabaseResponse.cookies.set(name, value, options);
+          });
+        },
       },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => {
-          request.cookies.set(name, value);
-        });
-        supabaseResponse = NextResponse.next({
-          request,
-        });
-        cookiesToSet.forEach(({ name, value, options }) => {
-          supabaseResponse.cookies.set(name, value, options);
-        });
-      },
-    },
-  });
+    });
 
-  // Refresh session; do not remove getUser().
-  await supabase.auth.getUser();
+    await supabase.auth.getUser();
+  } catch (error) {
+    console.error(
+      "TRET.AI middleware session refresh failed:",
+      error instanceof Error ? error.message : "unknown error",
+    );
+  }
 
   return supabaseResponse;
 }
