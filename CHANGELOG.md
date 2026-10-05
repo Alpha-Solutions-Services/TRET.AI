@@ -10,3 +10,4 @@
 - Database migration: `allowed_users` with Row Level Security.
 - Automated test that fails if `SECRETS/` or non-example `.env*` files are tracked by git.
 - Documentation for overview, business rules, decisions, architecture, data sources, setup, modules, and versioning.
+- Fix: refresh `package-lock.json` so GitHub Actions `npm ci` succeeds; document Vercel Framework Preset = Next.js (not static/`public` output).
