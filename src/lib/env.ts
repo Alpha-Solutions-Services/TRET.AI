@@ -1,6 +1,6 @@
 /**
  * Env vars required for the web app to run (Vercel + local).
- * Local-only script vars (SUPABASE_SERVICE_ROLE_KEY, ADMIN_*) are not listed here.
+ * Local-only create-owner script vars are not listed here.
  */
 export const REQUIRED_APP_ENV_NAMES = [
   "NEXT_PUBLIC_SUPABASE_URL",
