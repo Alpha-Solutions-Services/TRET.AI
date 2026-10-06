@@ -19,3 +19,5 @@
 | 2026-10-06 | Module 2: trucks / fee_contracts / fee_rules migration (not applied until go) + pure TypeScript fee engine with integer cents and half-up rounding | Fee model needed before imports and weekly close |
 | 2026-10-06 | OPEN: who receives the dispatch fee | Not decided; do not guess |
 | 2026-10-06 | OPEN: factoring-based fee bases unsupported until confirmed | Engine only supports explicit `base_pct_bp` on each rule |
+| 2026-10-06 | Module 2b: Trucks and fee rules screens; `change_log`; `create_fee_rate_version` / `delete_latest_fee_rate_version` RPCs (apply migration on go) | Staff can manage trucks and rates without editing old versions |
+| 2026-10-06 | Old rate versions are never edited; fix mistakes by deleting the latest version only while no weekly statements exist | Keeps history stable; weekly close not built yet |

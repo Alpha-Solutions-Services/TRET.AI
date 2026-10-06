@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.0.3 — 2026-10-06
+
+- Left nav: Overview and Trucks (button-style, current page highlighted).
+- Trucks list: search, activate/deactivate (never delete), empty state, current fee summary, Add truck side panel.
+- Truck detail: rate version history, New rate version form (rate % and calculated-on % of gross, no base default), test calculator using the pure fee engine, last-changed from `change_log`.
+- Migration (not applied until go): `change_log` + `create_fee_rate_version` / `delete_latest_fee_rate_version` (single transaction, `allowed_users` check).
+- Vitest: percent ↔ basis points (5.5 → 550, 2.65 → 265) and form data through the fee engine.
+- Docs: data model, user guide, Module 2b marked done.
+
 ## v0.0.0.2 — 2026-10-06
 
 - Database migration (not applied until go): `trucks`, `fee_contracts`, `fee_rules` with RLS for `allowed_users`; exclusion constraint blocks overlapping contracts for the same truck.

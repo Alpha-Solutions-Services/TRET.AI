@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { SetupIncomplete } from "@/components/setup-incomplete";
+import { ConfirmProvider } from "@/components/ui/confirm";
 import { ToastProvider } from "@/components/ui/toast";
 import {
   getMissingRequiredEnvNames,
@@ -44,7 +45,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
         <ToastProvider>
-          <div data-app-version={version}>{children}</div>
+          <ConfirmProvider>
+            <div data-app-version={version}>{children}</div>
+          </ConfirmProvider>
         </ToastProvider>
       </body>
     </html>

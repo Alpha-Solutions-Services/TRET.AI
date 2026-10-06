@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppFooter } from "@/components/app-footer";
+import { AppNav } from "@/components/app-nav";
 import { SignOutButton } from "@/components/sign-out-button";
 import { checkAccess } from "@/lib/auth/access";
 import { createClient } from "@/lib/supabase/server";
@@ -32,7 +33,12 @@ export async function SignedInShell({
         </div>
         <SignOutButton />
       </header>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">{children}</main>
+      <div className="mx-auto flex w-full max-w-6xl flex-1 gap-8 px-6 py-8">
+        <aside className="w-44 shrink-0">
+          <AppNav />
+        </aside>
+        <main className="min-w-0 flex-1">{children}</main>
+      </div>
       <AppFooter />
     </div>
   );
