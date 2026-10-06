@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.0.2 — 2026-10-06
+
+- Database migration (not applied until go): `trucks`, `fee_contracts`, `fee_rules` with RLS for `allowed_users`; exclusion constraint blocks overlapping contracts for the same truck.
+- Pure TypeScript fee engine: integer cents, basis points, half-up rounding in one function; contract date lookup; Monday–Sunday week helper.
+- Vitest coverage for sample weeks, dispatch bases, rounding, date lookup, invalid inputs, and week bounds.
+- Guard test: files outside `scripts/` must not reference privileged local script env names (docs and `.env.example` exempt).
+- Docs: `data-model.md`, fee model and OPEN items in business rules, Module 2 marked done.
+
 ## v0.0.0.1 — 2026-10-05
 
 - Project skeleton: Next.js App Router, TypeScript strict, Tailwind, lint, typecheck, Vitest, GitHub Actions CI.
