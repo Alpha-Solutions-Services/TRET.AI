@@ -6,7 +6,7 @@ import { getSupabasePublicConfig } from "@/lib/env";
 export async function createClient() {
   const config = getSupabasePublicConfig();
   if (!config) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    throw new Error("CONFIG_MISSING");
   }
 
   const cookieStore = await cookies();
