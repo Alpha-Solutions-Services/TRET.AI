@@ -1,0 +1,70 @@
+{
+  "_comment": "Sample B — real anonymized delivered split-chain member; no completion timestamps; FIXED appointment fallback for delivery date.",
+  "manifestId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb1101",
+  "friendlyId": "1101",
+  "status": "STATUS_DELIVERED",
+  "loadedDistance": "0.00",
+  "emptyDistance": "40.00",
+  "totalDistance": "40.00",
+  "autoLoadedDistance": "1460.00",
+  "autoEmptyDistance": "0.00",
+  "grossAmount": "150.00",
+  "grossType": "GROSS_TYPE_AUTO",
+  "ratePerDistance": "3.75",
+  "primaryDriverId": "dddddddd-dddd-dddd-dddd-dddddddd0002",
+  "totalDriverNetAmount": { "amount": 30 },
+  "truck": { "unitNumber": "02", "truckId": "tttttttt-tttt-tttt-tttt-tttttttt0002" },
+  "tour": {},
+  "lineage": {
+    "rootManifestId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb1101",
+    "parentManifestId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb1099",
+    "relation": "MANIFEST_LINEAGE_RELATION_UNMERGED_FROM",
+    "relatedManifestId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb1099"
+  },
+  "stops": [
+    {
+      "kind": "KIND_ORDER_STOP",
+      "orderFriendlyId": "TBH--1101",
+      "orderId": "oooooooo-oooo-oooo-oooo-oooooooo1101",
+      "sequence": "1",
+      "orderStopType": "pickup",
+      "orderStopStatus": "STATUS_COMPLETED",
+      "appointmentStartAtLocal": "2026-09-09 07:00:00",
+      "appointmentEndAtLocal": "2026-09-09 16:00:00",
+      "appointmentType": "APPOINTMENT_TYPE_RANGE",
+      "orderReferenceId": "DDL-94103",
+      "orderBrokerId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0002",
+      "location": { "city": "Ben Franklin", "state": "TX" }
+    },
+    {
+      "kind": "KIND_ORDER_STOP",
+      "orderFriendlyId": "TBH--1101",
+      "orderId": "oooooooo-oooo-oooo-oooo-oooooooo1101",
+      "sequence": "2",
+      "orderStopType": "dropoff",
+      "orderStopStatus": "STATUS_COMPLETED",
+      "appointmentStartAtLocal": "2026-09-11 08:00:00",
+      "appointmentType": "APPOINTMENT_TYPE_FIXED",
+      "orderReferenceId": "DDL-94103",
+      "orderBrokerId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0002",
+      "location": { "city": "Morrisville", "state": "PA" }
+    }
+  ],
+  "orders": [
+    {
+      "orderId": "oooooooo-oooo-oooo-oooo-oooooooo1101",
+      "friendlyId": "TBH--1101",
+      "grossAmount": "0.00",
+      "brokerId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0002",
+      "customerId": null
+    }
+  ],
+  "_lookups": {
+    "drivers": {
+      "dddddddd-dddd-dddd-dddd-dddddddd0002": "Test Driver B"
+    },
+    "brokers": {
+      "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0002": "Test Broker B"
+    }
+  }
+}

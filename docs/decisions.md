@@ -21,3 +21,9 @@
 | 2026-10-06 | OPEN: factoring-based fee bases unsupported until confirmed | Engine only supports explicit `base_pct_bp` on each rule |
 | 2026-10-06 | Module 2b: Trucks and fee rules screens; `change_log`; `create_fee_rate_version` / `delete_latest_fee_rate_version` RPCs (apply migration on go) | Staff can manage trucks and rates without editing old versions |
 | 2026-10-06 | Old rate versions are never edited; fix mistakes by deleting the latest version only while no weekly statements exist | Keeps history stable; weekly close not built yet |
+| 2026-10-06 | Load ID = order friendlyId as-is; also store manifest friendlyId; idempotency = manifestId UUID | From real Vektor samples |
+| 2026-10-06 | Deadhead = emptyDistance; always store autoLoadedDistance and autoEmptyDistance | From real Vektor samples |
+| 2026-10-06 | Import only STATUS_DELIVERED; never STATUS_DELETED; never MERGED_INTO | Avoid double-counting deleted merges |
+| 2026-10-06 | Trip Group / Primary Load not built; store lineage raw; tour is empty in real data | OPEN |
+| 2026-10-06 | OPEN: other statuses (CANCELED, TONU, …); multi-order Load ID; Vektor REST list path/shape | Do not guess |
+| 2026-10-06 | Module 3: Vektor loads import (manual only, no Sheets, no cron) | Staging → validate → loads |

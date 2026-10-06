@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.0.4 — 2026-10-06
+
+- Vektor loads import (manual only): staging → validate → `loads`; idempotent on `manifestId`.
+- Tables (migration not applied until go): `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues` with RLS.
+- Mapping per owner decisions: order friendlyId as Load ID, manifest grossAmount → cents, delivery-date fallback chain, deadhead = emptyDistance, lineage stored, Trip Group not built.
+- Imports page (Import now, default last 14 days) and read-only Loads page (week + truck filters, totals).
+- Fixtures Sample A/B/C + Vitest for exclude deleted/merged, appointment fallback, completion timestamps, truck unit match.
+- No Google Sheets. No scheduler.
+
 ## v0.0.0.3 — 2026-10-06
 
 - Left nav: Overview and Trucks (button-style, current page highlighted).

@@ -1,0 +1,20 @@
+{
+  "_comment": "Sample C — real anonymized; MUST be excluded (STATUS_DELETED + MERGED_INTO). Still carries gross — importing would double-count.",
+  "manifestId": "cccccccc-cccc-cccc-cccc-cccccccc1146",
+  "friendlyId": "1146",
+  "status": "STATUS_DELETED",
+  "customStatusId": "manifest_deleted",
+  "grossAmount": "2600.00",
+  "loadedDistance": "0.00",
+  "emptyDistance": "0.00",
+  "autoLoadedDistance": "0.00",
+  "autoEmptyDistance": "0.00",
+  "tour": {},
+  "lineage": {
+    "rootManifestId": "cccccccc-cccc-cccc-cccc-cccccccc1146",
+    "relation": "MANIFEST_LINEAGE_RELATION_MERGED_INTO",
+    "relatedManifestId": "cccccccc-cccc-cccc-cccc-cccccccc9999"
+  },
+  "stops": [],
+  "orders": []
+}

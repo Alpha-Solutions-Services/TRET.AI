@@ -34,3 +34,17 @@ Old versions are not edited. To undo a mistake on the newest version (only while
 ## Test calculator
 
 On the truck page, enter a gross amount in dollars and a date. The table shows fee lines from the same engine the rest of the app uses. For Third-party trucks, Management fee is shown as the owner-facing line; Tolson payable and Legacy retained are marked as the internal split.
+
+## Import loads from Vektor
+
+1. Make sure trucks exist with unit numbers that match Vektor exactly (for example `02`, not `2`).
+2. Open **Imports**.
+3. Set the date range (defaults to the last 14 days) and click **Import now**.
+4. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts and any plain-language error.
+5. Open **Loads** to review promoted rows. Filter by week (Monday–Sunday) and truck. Totals are at the bottom.
+
+Notes:
+
+- Only delivered loads are imported. Deleted or merged-into duplicates are skipped.
+- If a truck unit does not match, the row stays in staging and a Warn issue is recorded.
+- This version has no automatic schedule and does not write to Google Sheets.

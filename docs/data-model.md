@@ -65,6 +65,14 @@ Audit trail. Every truck create / activate / deactivate and every rate-version c
 - `delete_latest_fee_rate_version` — removes the newest version (and reopens the previous one if it was closed for that version). Refuses if weekly statements exist for the truck (none yet).
 - `truck_has_weekly_statements` — returns false until a `weekly_statements` table exists.
 
+## import_settings / import_runs / vektor_loads_staging / loads / issues (v0.0.0.4)
+
+- **import_settings** — thresholds (for example row-count drop %) so rules are not hardcoded.
+- **import_runs** — each manual Import now: time, status, fetched/promoted/rejected/updated counts, plain-language errors.
+- **vektor_loads_staging** — raw manifests, unique on `manifest_id` (idempotency). Unmatched trucks stay here.
+- **loads** — promoted delivered loads. Money in integer cents. `load_id` = order friendlyId; `manifest_friendly_id` separate. Deadhead = `emptyDistance`. Trip Group / Primary Load columns exist but stay empty (OPEN). Lineage fields stored raw.
+- **issues** — Block / Warn / Info with rule, message, ref, status.
+
 ## Access (RLS)
 
-`trucks`, `fee_contracts`, `fee_rules`, and `change_log` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read (and write where policies allow). Rate-version RPCs are security definer and still check `allowed_users`.
+`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, and `issues` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read (and write where policies allow). Rate-version RPCs are security definer and still check `allowed_users`.

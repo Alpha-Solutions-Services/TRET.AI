@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/", label: "Overview" },
   { href: "/trucks", label: "Trucks" },
+  { href: "/loads", label: "Loads" },
+  { href: "/imports", label: "Imports" },
 ] as const;
 
 export function AppNav() {
