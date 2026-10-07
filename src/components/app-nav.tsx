@@ -8,7 +8,7 @@ const NAV = [
   { href: "/", label: "Overview" },
   { href: "/ins-outs", label: "Ins and Outs" },
   { href: "/trucks", label: "Trucks" },
-  { href: "/operating-expenses", label: "Operating expenses" },
+  { href: "/operating-expenses", label: "Legacy expenses" },
   { href: "/loads", label: "Loads" },
   { href: "/fuel", label: "Fuel" },
   { href: "/tolls", label: "Tolls" },

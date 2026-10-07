@@ -888,6 +888,90 @@ export type Database = {
         };
         Relationships: [];
       };
+      legacy_org_settings: {
+        Row: {
+          id: string;
+          management_fee_bp: number;
+          singleton: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          management_fee_bp?: number;
+          singleton?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          management_fee_bp?: number;
+          singleton?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      legacy_truck_week_fees: {
+        Row: {
+          id: string;
+          unit_number: string;
+          unit_key: string;
+          week_start: string;
+          fee_bp: number;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          unit_number: string;
+          unit_key: string;
+          week_start: string;
+          fee_bp: number;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          unit_number?: string;
+          unit_key?: string;
+          week_start?: string;
+          fee_bp?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      legacy_load_fees: {
+        Row: {
+          id: string;
+          unit_number: string;
+          unit_key: string;
+          load_id: string;
+          load_key: string;
+          week_start: string;
+          fee_cents: number | null;
+          fee_bp: number | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          unit_number: string;
+          unit_key: string;
+          load_id: string;
+          load_key: string;
+          week_start: string;
+          fee_cents?: number | null;
+          fee_bp?: number | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          unit_number?: string;
+          unit_key?: string;
+          load_id?: string;
+          load_key?: string;
+          week_start?: string;
+          fee_cents?: number | null;
+          fee_bp?: number | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -950,6 +1034,53 @@ export type Database = {
       delete_mgmt_operating_expense: {
         Args: { p_id: string };
         Returns: string;
+      };
+      update_mgmt_operating_expense: {
+        Args: {
+          p_id: string;
+          p_expense_date: string;
+          p_category: string;
+          p_amount_cents: number;
+          p_note: string | null;
+        };
+        Returns: string;
+      };
+      set_legacy_management_fee_bp: {
+        Args: { p_fee_bp: number };
+        Returns: string;
+      };
+      upsert_legacy_truck_week_fee: {
+        Args: {
+          p_unit_number: string;
+          p_unit_key: string;
+          p_week_start: string;
+          p_fee_bp: number;
+        };
+        Returns: string;
+      };
+      delete_legacy_truck_week_fee: {
+        Args: { p_unit_key: string; p_week_start: string };
+        Returns: string;
+      };
+      upsert_legacy_load_fee: {
+        Args: {
+          p_unit_number: string;
+          p_unit_key: string;
+          p_load_id: string;
+          p_load_key: string;
+          p_week_start: string;
+          p_fee_cents: number | null;
+          p_fee_bp: number | null;
+        };
+        Returns: string;
+      };
+      delete_legacy_load_fee: {
+        Args: { p_unit_key: string; p_load_key: string; p_week_start: string };
+        Returns: string;
+      };
+      seed_legacy_load_fees: {
+        Args: { p_week_start: string; p_rows: Json };
+        Returns: number;
       };
       lock_week: {
         Args: { p_week_start: string; p_payload: Json };

@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import {
   disconnectVektorAction,
   setImportSourceAction,
+  setLegacyManagementFeeAction,
   testVektorConnectionAction,
   type getImportSourceSettings,
 } from "@/app/settings/actions";
@@ -13,6 +14,7 @@ import { useConfirm } from "@/components/ui/confirm";
 import { useToast } from "@/components/ui/toast";
 import { CopyableError } from "@/components/copyable-error";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
+import { bpToPercentString } from "@/lib/fees/percent";
 import type { ImportSourceId } from "@/lib/vektor/adapters";
 
 type Settings = Awaited<ReturnType<typeof getImportSourceSettings>>;
@@ -35,20 +37,35 @@ export function SettingsClient({
   sheetEnvMissing,
   sheetHealthSummary,
   sheetHealthDetail,
+  managementFee,
 }: {
   initial: Settings;
   notice?: string | null;
   sheetEnvMissing: string[];
   sheetHealthSummary: string;
   sheetHealthDetail: string | null;
+  managementFee: { ready: boolean; feeBp: number; error: string | null };
 }) {
   const { toast } = useToast();
   const { confirm } = useConfirm();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<ImportSourceId | "">(initial.selected ?? "");
+  const [feePercent, setFeePercent] = useState(bpToPercentString(managementFee.feeBp));
   const noticeText = notice ? NOTICES[notice] : null;
   const connected = initial.vektor.status === "connected";
+
+  function onSaveFee() {
+    startTransition(async () => {
+      const result = await setLegacyManagementFeeAction(feePercent);
+      if (!result.ok) {
+        toast(result.error, "error");
+        return;
+      }
+      toast("Management fee saved", "success");
+      router.refresh();
+    });
+  }
 
   function onSave() {
     startTransition(async () => {
@@ -199,13 +216,41 @@ export function SettingsClient({
         ))}
       </fieldset>
 
+      <section className="material space-y-3 rounded-xl border border-[var(--color-border)] p-4">
+        <h2 className="text-sm font-medium">Management fee</h2>
+        <p className="text-sm text-[var(--color-fg-muted)]">
+          Default percent Legacy keeps on each load. 10 is 10 percent. A truck week or a single load on Ins
+          and Outs can use a different percent or a dollar amount. This does not change truck sheet outs.
+        </p>
+        {!managementFee.ready ? (
+          <p className="text-sm text-[var(--color-fg-muted)]">
+            {managementFee.error ??
+              "Saving the default needs the v0.0.0.20 migration. Until then, loads use 10 percent and are not stored."}
+          </p>
+        ) : null}
+        <label className="block max-w-xs text-sm">
+          <span className="mb-1 block text-[var(--color-fg-muted)]">Default percent</span>
+          <input
+            value={feePercent}
+            onChange={(event) => setFeePercent(event.target.value)}
+            inputMode="decimal"
+            disabled={!managementFee.ready || pending}
+            className="h-10 w-full rounded-md border border-[var(--color-border)] bg-white px-3"
+          />
+        </label>
+        <Button type="button" variant="secondary" disabled={!managementFee.ready || pending} onClick={onSaveFee}>
+          Save management fee
+        </Button>
+      </section>
+
       <section className="material space-y-2 rounded-xl border border-[var(--color-border)] p-4">
         <h2 className="text-sm font-medium">Truck Google Sheets</h2>
         <p className="text-sm text-[var(--color-fg-muted)]">
           Paste each truck link on Trucks. Overview reads that sheet for the selected week. Ins are the load
-          ledger Rate. Outs are Mgmt Expenses: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary,
-          MVR, Drug Test, and Spare Expense 1 through 5. Share the sheet so anyone with the link can view, or
-          share it with the Google service account from the setup guide. The import does not write to the sheet.
+          ledger Rate. Outs are the sheet expense rows for that week. Monthly Legacy company expenses are
+          entered on Legacy expenses and are not added into those outs. Share the sheet so anyone with the
+          link can view, or share it with the Google service account from the setup guide. The import does
+          not write to the sheet.
         </p>
       </section>
 

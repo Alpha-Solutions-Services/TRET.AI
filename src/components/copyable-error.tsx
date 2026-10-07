@@ -6,9 +6,11 @@ import { copyableErrorText, presentCopyableError } from "@/lib/sheets/present-er
 export function CopyableError({
   headline,
   detail,
+  showDetail = true,
 }: {
   headline: string;
   detail?: string | null;
+  showDetail?: boolean;
 }) {
   const presented = presentCopyableError(headline, detail);
   const [copied, setCopied] = useState(false);
@@ -33,7 +35,7 @@ export function CopyableError({
       >
         {presented.headline}
       </button>
-      {presented.detail !== presented.headline ? (
+      {showDetail && presented.detail !== presented.headline ? (
         <span className="text-xs text-[var(--color-fg-muted)]">{presented.detail}</span>
       ) : null}
       <button type="button" onClick={onCopy} className="pressable text-xs font-medium text-[var(--color-accent)]">

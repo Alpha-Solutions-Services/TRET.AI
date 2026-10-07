@@ -55,15 +55,24 @@ Old versions are not edited. To undo a mistake on the newest version (only while
 
 Amounts are stored as cents. `20.00` is 2000 cents.
 
-## Operating expenses
+## Legacy expenses
 
-1. Open **Operating expenses** in the left navigation.
-2. Click **Add expense**.
-3. Enter a date, a category, an amount in dollars, and an optional note.
-4. Click **Save expense**.
-5. Delete asks you to confirm.
+1. Open **Legacy expenses** in the left navigation.
+2. Pick the month. The list and the total are that month only.
+3. Click **Add expense**.
+4. Enter a date, choose a category, enter an amount in dollars, and an optional note. Categories are Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5.
+5. Click **Save expense**. **Edit** changes a saved row. Delete asks you to confirm.
 
-These rows are the management company’s own costs. They are not the truck’s weekly fixed expenses. The week’s profit and loss is on Overview.
+These rows are Legacy Inc Global’s monthly costs. They are not truck sheet outs and they are not the management fee on a load. The week’s profit and loss on Overview still includes operating expenses whose date falls in the selected week.
+
+## Management fee
+
+1. Open **Settings**.
+2. Under **Management fee**, enter the default percent. 10 is 10 percent.
+3. Click **Save management fee**.
+4. Open **Ins and Outs** for a week. **Legacy earnings** lists each load. Save a percent or a dollar amount on one load, or a percent for one truck for that week. **Save these default fees** stores the current default on loads that do not already have a saved fee.
+
+A saved dollar amount does not move when the sheet rate changes. A saved percent is applied to the current sheet rate.
 
 ## Test calculator
 
@@ -132,20 +141,21 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 4. Close status says Open or Locked.
 5. **Open issues** shows the count and opens Issues for that week.
 6. Management P&L is under the snapshot. Income is Legacy retained on managed trucks and the dispatch fee. Expenses are fixed costs charged to management and operating expenses dated in that week. Tolson payable is listed and is not in the net.
-7. **Ins and Outs** is one row per active truck. Ins are load earnings from that truck’s Google Sheet load ledger (the Rate column, loads whose delivery date is in the week). Outs are the Mgmt Expenses rows dated in the week: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5.
+7. **Ins and Outs** is one row per active truck. Ins are load earnings from that truck’s Google Sheet load ledger (the Rate column, loads whose delivery date is in the week). Outs add the sheet Mgmt Expenses rows dated in the week. Portal monthly Legacy expenses are not added into those outs.
 8. If a truck cannot be read, the Loads cell shows a short reason (missing link, missing service account, a bad private key, share, or a missing header). Ins, Outs, and Net stay blank for that row. Click the reason, or **Copy**, to copy the real cause. A blank expense amount is not counted. The dashboard read does not write these sheets.
 9. **Open the Ins and Outs page** for the same week with one column per expense. **Sheet mismatches** links to Issues when a sheet Load ID is missing from loads or the rate differs.
-10. The footer at the bottom tells you what to do on this page, whether the Google service account is set, and the app version. It does not show secrets.
+10. The footer is one short line under the page: whether the Google service account is set, and the app version. It does not show secrets and it does not cover the page.
 
 ## Ins and Outs
 
 1. Open **Ins and Outs** in the left navigation.
 2. Pick the week. The date snaps to the Monday.
-3. Each active truck is one row. **Ins** are the Google Sheet load ledger Rate for deliveries in that week. **Outs** are Mgmt Expenses dated in that week.
-4. The expense columns are Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5.
-5. The **Fleet** row adds the readable sheets. A truck that was not read is left out of that total. The note on the row says why. Click it, or **Copy**, to copy the real cause. The footer repeats that note for this week.
-6. **Download report** saves a Weekly Asset Management Report PDF for that truck and week. It uses the Load Ledger, Weekly Expenses, Fuel Log, and Fleet Directory on the sheet, plus fuel and toll rows in the database when the sheet fuel or toll cells are blank.
-7. This page does not change statements or the sheet. Promoting loads is a separate Import step.
+3. Each active truck is one row. **Ins** are the Google Sheet load ledger Rate for deliveries in that week. **Outs** add the sheet Mgmt Expenses rows dated in that week.
+4. The expense columns are Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5. Portal monthly Legacy expenses are a separate list and are not added into Outs.
+5. The **Fleet** row adds the readable sheets. A truck that was not read is left out of that total. The note on the row says why. Click it, or **Copy**, to copy the real cause.
+6. **Legacy earnings** is the management fee on each load for that week, per truck and for the fleet.
+7. **Download report** saves a Weekly Asset Management Report PDF for that truck and week. It uses the Load Ledger, Weekly Expenses, Fuel Log, and Fleet Directory on the sheet, plus fuel and toll rows in the database when the sheet fuel or toll cells are blank.
+8. This page does not change statements or the sheet. Promoting loads is a separate Import step.
 
 ## Issues
 
@@ -154,6 +164,7 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 3. Import rows come from loads, fuel, and tolls imports whose dates overlap the week. Sheet mismatch rows are only the week named in the issue.
 4. Close checks are listed for that week. They are not stored. They disappear when the check passes. They have no **Mark resolved** button.
 5. **Mark resolved** asks you to confirm. It changes only that issue’s status. Imported rows stay, and a locked week stays locked.
+6. The Issue column is a short sentence. Click it, or **Copy**, to copy the full cause. A long Vektor error is not printed in the cell.
 
 ## Week of 21–27 Sep 2026
 

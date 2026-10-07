@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { CopyableError } from "@/components/copyable-error";
-import { PageGuidance } from "@/components/page-guidance";
+import { LegacyEarningsPanel } from "@/components/ins-outs/legacy-earnings";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import { weekBoundsForDate } from "@/lib/fee-engine";
-import { sheetPageGuidance } from "@/lib/footer-copy";
+import type { LegacyEarnings } from "@/lib/legacy/fees";
 import { centsToDollarString } from "@/lib/money/cents";
 import {
   MGMT_EXPENSE_CATEGORIES,
@@ -36,6 +36,7 @@ export function InsOutsClient({
   sheetEnvMissing,
   mismatchCount,
   mismatchError,
+  legacy,
 }: {
   weekStart: string;
   weekEnd: string;
@@ -44,6 +45,12 @@ export function InsOutsClient({
   sheetEnvMissing: string[];
   mismatchCount: number | null;
   mismatchError: string | null;
+  legacy?: {
+    earnings: LegacyEarnings;
+    ready: boolean;
+    error: string | null;
+    orgFeeBp: number;
+  } | null;
 }) {
   const router = useRouter();
   const fleet = fleetInsOutsTotals(rows);
@@ -55,15 +62,13 @@ export function InsOutsClient({
 
   return (
     <div className="space-y-6">
-      <PageGuidance text={sheetPageGuidance(rows, error)} />
       <div>
         <h1 className="text-2xl font-semibold">Legacy Inc income and outgoing</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
-          Ins and outs for each active truck in the selected Monday to Sunday week. Ins are load earnings
-          from that truck&apos;s Google Sheet load ledger (the Rate column, by delivery date). Outs are Mgmt
-          Expenses dated in the week: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR,
-          Drug Test, and Spare Expense 1 through 5. Fleet totals include readable sheets only. Use the
-          sheet for these figures. Use CSV or the Google Sheet load import until Vektor REST keys arrive.
+          Ins are load rates from each truck Google Sheet (the Rate column, by delivery date). The category
+          columns are that sheet&apos;s Mgmt Expenses rows for the week, and Outs adds those sheet rows.
+          Monthly Legacy company expenses are entered on Legacy expenses. Those portal rows are not added
+          into truck outs. Legacy earnings below are the management fee on each load.
         </p>
       </div>
 
@@ -201,6 +206,16 @@ export function InsOutsClient({
           </tbody>
         </table>
       </div>
+
+      {legacy ? (
+        <LegacyEarningsPanel
+          weekStart={weekStart}
+          earnings={legacy.earnings}
+          ready={legacy.ready}
+          error={legacy.error}
+          orgFeeBp={legacy.orgFeeBp}
+        />
+      ) : null}
     </div>
   );
 }

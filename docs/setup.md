@@ -154,3 +154,10 @@ Do these once (or when credentials change). The app cannot finish login or healt
 4. Share each truck sheet with that service account as a viewer.
 5. The footer shows whether JSON, the email, and the private key are set, and whether the key format is ok. It does not show the key. The same check is on Health and Settings.
 6. If the key format is wrong, the row says so in plain language. Click the error, or Copy, to copy the real cause.
+
+## 19. Legacy fees and monthly expenses (v0.0.0.20)
+
+1. In the Supabase SQL editor, run `supabase/migrations/20261007180000_legacy_management_fees.sql`. Do this only when you are ready (say go). Run it after the earlier scripts.
+2. It adds `legacy_org_settings` (default management fee, 10 percent), `legacy_truck_week_fees`, and `legacy_load_fees`. All three have Row Level Security. Signed-in allowed users can read. Writes go through functions. It also adds `update_mgmt_operating_expense`.
+3. Until that script has run, Ins and Outs still shows a 10 percent fee and does not store edits. Settings says the migration has not been applied. Legacy expenses still list rows from the v0.0.0.6 table.
+4. No new environment variables. The footer is one short line under the page. It is not fixed to the screen.

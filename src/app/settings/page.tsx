@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { getImportSourceSettings } from "@/app/settings/actions";
+import { loadLegacyOrgFee } from "@/lib/legacy/queries";
 import { missingGoogleServiceAccountEnv } from "@/lib/sheets/read";
 import { sheetsAccountHealth } from "@/lib/sheets/private-key";
 import { SettingsClient } from "@/components/settings/settings-client";
@@ -9,7 +10,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const dynamic = "force-dynamic";
 
 async function SettingsContent({ notice }: { notice?: string | null }) {
-  const initial = await getImportSourceSettings();
+  const [initial, managementFee] = await Promise.all([
+    getImportSourceSettings(),
+    loadLegacyOrgFee(),
+  ]);
   const health = sheetsAccountHealth();
   return (
     <SettingsClient
@@ -18,6 +22,7 @@ async function SettingsContent({ notice }: { notice?: string | null }) {
       sheetEnvMissing={missingGoogleServiceAccountEnv()}
       sheetHealthSummary={health.summary}
       sheetHealthDetail={health.keyReadable ? null : health.formatDetail}
+      managementFee={managementFee}
     />
   );
 }
