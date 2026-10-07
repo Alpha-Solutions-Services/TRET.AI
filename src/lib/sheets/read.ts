@@ -1,6 +1,7 @@
 import { createSign } from "node:crypto";
 import { parseCsv } from "@/lib/fuel-tolls/csv";
 import { readEnv } from "@/lib/env";
+import type { TruckClass } from "@/lib/fee-engine";
 import {
   buildTruckWeekInsOuts,
   loadLedgerCandidates,
@@ -9,6 +10,7 @@ import {
   type SheetGrid,
   type TruckWeekInsOuts,
 } from "@/lib/sheets/ins-outs";
+import { weeklyExpensesCandidates } from "@/lib/sheets/weekly-expenses";
 import {
   authFailureFromError,
   missingGoogleServiceAccountEnv,
@@ -39,6 +41,7 @@ type TruckSheetInput = {
   unitNumber: string;
   truckName: string;
   googleSheetUrl: string | null;
+  truckClass?: TruckClass;
 };
 
 function spreadsheetIdFromUrl(url: string): string | null {
@@ -124,13 +127,20 @@ function valuesToGrid(values: unknown): SheetGrid {
   );
 }
 
+type TabGrids = {
+  loadLedger: SheetGrid | null;
+  mgmtExpenses: SheetGrid | null;
+  weeklyExpenses: SheetGrid | null;
+  note: string | null;
+};
+
 async function readWithToken(
   spreadsheetId: string,
   unitNumber: string,
   accessToken: string,
   apiKey: string,
   fetchImpl: FetchLike,
-): Promise<{ loadLedger: SheetGrid | null; mgmtExpenses: SheetGrid | null; note: string | null }> {
+): Promise<TabGrids> {
   const metaUrl = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`);
   metaUrl.searchParams.set("fields", "sheets.properties.title");
   if (!accessToken && apiKey) metaUrl.searchParams.set("key", apiKey);
@@ -141,6 +151,7 @@ async function readWithToken(
     return {
       loadLedger: null,
       mgmtExpenses: null,
+      weeklyExpenses: null,
       note: await googleErrorNote(metaResponse, "This Google Sheet is not readable"),
     };
   }
@@ -152,11 +163,13 @@ async function readWithToken(
     .filter((title) => title.trim() !== "");
   const ledgerTitle = pickLoadLedgerTitle(titles, unitNumber);
   const expenseTitle = pickMgmtExpensesTitle(titles);
-  const wanted = [ledgerTitle, expenseTitle].filter((title): title is string => Boolean(title));
+  const weeklyTitle = pickTitled(titles, /weekly expenses/i, unitNumber);
+  const wanted = [ledgerTitle, expenseTitle, weeklyTitle].filter((title): title is string => Boolean(title));
   if (wanted.length === 0) {
     return {
       loadLedger: null,
       mgmtExpenses: null,
+      weeklyExpenses: null,
       note: "The sheet has no Load Ledger tab and no Mgmt Expenses tab.",
     };
   }
@@ -176,6 +189,7 @@ async function readWithToken(
     return {
       loadLedger: null,
       mgmtExpenses: null,
+      weeklyExpenses: null,
       note: await googleErrorNote(batchResponse, "This Google Sheet is not readable"),
     };
   }
@@ -192,6 +206,7 @@ async function readWithToken(
   return {
     loadLedger: ledgerTitle ? (grids.get(ledgerTitle) ?? null) : null,
     mgmtExpenses: expenseTitle ? (grids.get(expenseTitle) ?? null) : null,
+    weeklyExpenses: weeklyTitle ? (grids.get(weeklyTitle) ?? null) : null,
     note: notes.length ? notes.join(" ") : null,
   };
 }
@@ -223,12 +238,12 @@ async function readPublicTabs(
   unitNumber: string,
   fetchImpl: FetchLike,
   env: Record<string, string | undefined>,
-): Promise<{ loadLedger: SheetGrid | null; mgmtExpenses: SheetGrid | null; note: string | null }> {
+): Promise<TabGrids> {
   let loadLedger: SheetGrid | null = null;
   for (const title of loadLedgerCandidates(unitNumber)) {
     const result = await readPublicCsv(spreadsheetId, title, fetchImpl);
     if (result.privateSheet) {
-      return { loadLedger: null, mgmtExpenses: null, note: privateSheetNote(env) };
+      return { loadLedger: null, mgmtExpenses: null, weeklyExpenses: null, note: privateSheetNote(env) };
     }
     if (result.grid && result.grid.some((row) => row.some((cell) => /delivery date/i.test(cell)))) {
       loadLedger = result.grid;
@@ -237,23 +252,33 @@ async function readPublicTabs(
   }
   const expenses = await readPublicCsv(spreadsheetId, "Mgmt Expenses", fetchImpl);
   if (expenses.privateSheet) {
-    return { loadLedger: null, mgmtExpenses: null, note: privateSheetNote(env) };
+    return { loadLedger: null, mgmtExpenses: null, weeklyExpenses: null, note: privateSheetNote(env) };
   }
   const mgmtExpenses =
     expenses.grid && expenses.grid.some((row) => row.some((cell) => cell.trim().toLowerCase() === "category"))
       ? expenses.grid
       : null;
-  if (!loadLedger && !mgmtExpenses) {
+  let weeklyExpenses: SheetGrid | null = null;
+  for (const title of weeklyExpensesCandidates(unitNumber)) {
+    const result = await readPublicCsv(spreadsheetId, title, fetchImpl);
+    if (result.privateSheet) break;
+    if (result.grid && result.grid.some((row) => row.some((cell) => /driver compensation/i.test(cell)))) {
+      weeklyExpenses = result.grid;
+      break;
+    }
+  }
+  if (!loadLedger && !mgmtExpenses && !weeklyExpenses) {
     return {
       loadLedger: null,
       mgmtExpenses: null,
+      weeklyExpenses: null,
       note: "The sheet has no Load Ledger tab and no Mgmt Expenses tab.",
     };
   }
   const notes: string[] = [];
   if (!loadLedger) notes.push("Load Ledger tab was not found.");
   if (!mgmtExpenses) notes.push("Mgmt Expenses tab was not found.");
-  return { loadLedger, mgmtExpenses, note: notes.length ? notes.join(" ") : null };
+  return { loadLedger, mgmtExpenses, weeklyExpenses, note: notes.length ? notes.join(" ") : null };
 }
 
 export async function loadTruckWeekInsOuts(
@@ -285,10 +310,12 @@ export async function loadTruckWeekInsOuts(
         return buildTruckWeekInsOuts({
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
+          truckClass: truck.truckClass,
           weekStart,
           weekEnd,
           loadLedger: null,
           mgmtExpenses: null,
+          weeklyExpenses: null,
           note: "No Google Sheet link. Paste it on Trucks.",
         });
       }
@@ -297,10 +324,12 @@ export async function loadTruckWeekInsOuts(
         return buildTruckWeekInsOuts({
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
+          truckClass: truck.truckClass,
           weekStart,
           weekEnd,
           loadLedger: null,
           mgmtExpenses: null,
+          weeklyExpenses: null,
           note: "Google Sheet link must be a docs.google.com spreadsheet URL.",
         });
       }
@@ -308,10 +337,12 @@ export async function loadTruckWeekInsOuts(
         return buildTruckWeekInsOuts({
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
+          truckClass: truck.truckClass,
           weekStart,
           weekEnd,
           loadLedger: null,
           mgmtExpenses: null,
+          weeklyExpenses: null,
           note: authFailure.note,
           noteDetail: authFailure.noteDetail,
         });
@@ -324,10 +355,12 @@ export async function loadTruckWeekInsOuts(
         return buildTruckWeekInsOuts({
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
+          truckClass: truck.truckClass,
           weekStart,
           weekEnd,
           loadLedger: tabs.loadLedger,
           mgmtExpenses: tabs.mgmtExpenses,
+          weeklyExpenses: tabs.weeklyExpenses,
           note: tabs.note,
         });
       } catch (err) {
@@ -336,10 +369,12 @@ export async function loadTruckWeekInsOuts(
         return buildTruckWeekInsOuts({
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
+          truckClass: truck.truckClass,
           weekStart,
           weekEnd,
           loadLedger: null,
           mgmtExpenses: null,
+          weeklyExpenses: null,
           note: decoder
             ? failure.note
             : "This Google Sheet is not readable. The read failed before a tab could be opened.",

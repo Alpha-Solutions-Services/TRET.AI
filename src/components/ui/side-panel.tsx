@@ -34,7 +34,7 @@ export function SidePanel({ open, title, onClose, children }: SidePanelProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="side-panel-title"
-        className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-[var(--color-border)] bg-white shadow-xl"
+        className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-[var(--color-border)] bg-[var(--color-field)] shadow-xl"
       >
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
           <h2 id="side-panel-title" className="text-lg font-semibold">

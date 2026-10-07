@@ -138,7 +138,7 @@ export function SettingsClient({
       </section>
 
       {noticeText ? (
-        <p className="rounded-md border border-[var(--color-border)] bg-white px-4 py-3 text-sm" role="status">
+        <p className="rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-4 py-3 text-sm" role="status">
           {noticeText}
         </p>
       ) : null}
@@ -155,7 +155,7 @@ export function SettingsClient({
           <div className="flex flex-wrap gap-2">
             <a
               href="/api/vektor/oauth/start"
-              className="inline-flex h-10 items-center justify-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-medium text-white no-underline hover:bg-[var(--color-accent-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              className="inline-flex h-10 items-center justify-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-medium text-[var(--color-on-accent)] no-underline hover:bg-[var(--color-accent-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
             >
               Connect Vektor
             </a>
@@ -235,7 +235,7 @@ export function SettingsClient({
             onChange={(event) => setFeePercent(event.target.value)}
             inputMode="decimal"
             disabled={!managementFee.ready || pending}
-            className="h-10 w-full rounded-md border border-[var(--color-border)] bg-white px-3"
+            className="h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3"
           />
         </label>
         <Button type="button" variant="secondary" disabled={!managementFee.ready || pending} onClick={onSaveFee}>

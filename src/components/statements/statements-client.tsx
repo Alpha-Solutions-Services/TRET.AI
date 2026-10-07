@@ -100,7 +100,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
         <button
           type="button"
           onClick={() => openWeek(shiftWeek(data.weekStart, -1))}
-          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Previous week
         </button>
@@ -123,7 +123,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
         <button
           type="button"
           onClick={() => openWeek(shiftWeek(data.weekStart, 1))}
-          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Next week
         </button>
@@ -146,19 +146,19 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
       ) : null}
 
       {data.error ? (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-sm text-[var(--color-danger)]" role="alert">
           {data.error}
         </p>
       ) : null}
 
       {data.locked ? (
-        <p className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm">
+        <p className="rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 py-2 text-sm">
           Locked{data.closedAt ? ` ${data.closedAt.slice(0, 10)}` : ""}. This snapshot does not change.
         </p>
       ) : null}
 
       {data.liveDiffers ? (
-        <p className="text-sm text-red-700" role="status">
+        <p className="text-sm text-[var(--color-danger)]" role="status">
           Live loads, fuel, or tolls no longer match this locked snapshot. Download is refused when those totals do not match it.
         </p>
       ) : null}
@@ -170,7 +170,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
       ) : null}
 
       {data.blockers.length > 0 ? (
-        <div role="alert" aria-labelledby="statement-blockers" className="rounded-md border border-red-200 bg-white px-3 py-3">
+        <div role="alert" aria-labelledby="statement-blockers" className="rounded-md border border-[var(--color-danger)] bg-[var(--color-field)] px-3 py-3">
           <h2 id="statement-blockers" className="text-sm font-medium text-red-800">
             Close is blocked
           </h2>
@@ -194,12 +194,12 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
       ) : null}
 
       {data.units.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-white px-6 py-12 text-center text-[var(--color-fg-muted)]">
+        <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-field)] px-6 py-12 text-center text-[var(--color-fg-muted)]">
           Nothing to show for this week.
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+          <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
             <table className="min-w-full text-left text-sm">
               <caption className="px-3 py-3 text-left font-medium">
                 Fleet ({data.fleet.unitCount} units)
@@ -269,7 +269,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
           </p>
 
           {selected ? (
-            <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+            <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
               <table className="min-w-full text-left text-sm">
                 <caption className="px-3 py-3 text-left font-medium">
                   Unit {selected.unitNumber} lines

@@ -22,7 +22,7 @@ function money(cents: number): string {
   return `$${centsToDollarString(cents)}`;
 }
 
-const fieldClass = "h-9 w-24 rounded-md border border-[var(--color-border)] bg-white px-2 text-sm";
+const fieldClass = "h-9 w-24 rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-2 text-sm";
 
 export function LegacyEarningsPanel({
   weekStart,

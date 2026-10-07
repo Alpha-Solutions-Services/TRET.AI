@@ -13,6 +13,22 @@ describe("legacy company expenses", () => {
   it("accepts the sheet category names", () => {
     expect(canonicalLegacyCategory("vektor fee")).toBe("Vektor Fee");
     expect(canonicalLegacyCategory("Spare Expense 5")).toBe("Spare Expense 5");
+    for (const name of [
+      "Vektor Fee",
+      "Sintra AI",
+      "Quickbooks",
+      "Job Post",
+      "Accountant Salary",
+      "MVR",
+      "Drug Test",
+      "Spare Expense 1",
+      "Spare Expense 2",
+      "Spare Expense 3",
+      "Spare Expense 4",
+      "Spare Expense 5",
+    ]) {
+      expect(canonicalLegacyCategory(name.toLowerCase())).toBe(name);
+    }
     expect(canonicalLegacyCategory("Office rent")).toBeNull();
   });
 

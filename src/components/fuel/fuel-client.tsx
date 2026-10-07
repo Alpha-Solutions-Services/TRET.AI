@@ -78,7 +78,7 @@ export function FuelClient({
         <button
           type="button"
           onClick={() => shiftWeek(-1)}
-          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Previous week
         </button>
@@ -94,7 +94,7 @@ export function FuelClient({
         <button
           type="button"
           onClick={() => shiftWeek(1)}
-          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Next week
         </button>
@@ -103,7 +103,7 @@ export function FuelClient({
           <select
             value={truck}
             onChange={(e) => setTruck(e.target.value)}
-            className="h-10 rounded-md border border-[var(--color-border)] bg-white px-3"
+            className="h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3"
           >
             <option value="">All trucks</option>
             {truckUnits.map((unit) => (
@@ -119,14 +119,14 @@ export function FuelClient({
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-white px-6 py-12 text-center text-[var(--color-fg-muted)]">
+        <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-field)] px-6 py-12 text-center text-[var(--color-fg-muted)]">
           No fuel yet. Use Import fuel and tolls on the Imports page.
         </div>
       ) : filtered.length === 0 ? (
         <p className="text-sm text-[var(--color-fg-muted)]">No fuel in this week.</p>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+          <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
             <table className="min-w-full text-left text-sm">
               <caption className="px-3 py-3 text-left font-medium">Per-unit week totals</caption>
               <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
@@ -154,7 +154,7 @@ export function FuelClient({
             </table>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+          <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
                 <tr>

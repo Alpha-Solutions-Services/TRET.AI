@@ -334,8 +334,8 @@ export function TruckDetailClient({
           aria-controls="truck-panel-rates"
           className={
             tab === "rates"
-              ? "inline-flex h-10 items-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              : "inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              ? "inline-flex h-10 items-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-medium text-[var(--color-on-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-on-accent)]"
+              : "inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           }
           onClick={() => setTab("rates")}
         >
@@ -349,8 +349,8 @@ export function TruckDetailClient({
           aria-controls="truck-panel-expenses"
           className={
             tab === "expenses"
-              ? "inline-flex h-10 items-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              : "inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              ? "inline-flex h-10 items-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-medium text-[var(--color-on-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-on-accent)]"
+              : "inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           }
           onClick={() => setTab("expenses")}
         >
@@ -379,7 +379,7 @@ export function TruckDetailClient({
             {contracts.map((c) => (
               <li
                 key={c.id}
-                className="rounded-lg border border-[var(--color-border)] bg-white px-4 py-3"
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-4 py-3"
               >
                 <p className="font-medium">
                   {c.effective_from}
@@ -403,7 +403,7 @@ export function TruckDetailClient({
         )}
       </section>
 
-      <section className="space-y-3 rounded-lg border border-[var(--color-border)] bg-white p-4">
+      <section className="space-y-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] p-4">
         <h2 className="text-lg font-semibold">Test calculator</h2>
         <p className="text-sm text-[var(--color-fg-muted)]">
           Uses the same fee engine as the rest of the app. Does not save anything.
@@ -428,7 +428,7 @@ export function TruckDetailClient({
           </label>
         </div>
         {"error" in calcLines && calcLines.error ? (
-          <p className="text-sm text-red-700" role="alert">
+          <p className="text-sm text-[var(--color-danger)]" role="alert">
             {calcLines.error}
           </p>
         ) : "lines" in calcLines && calcLines.lines ? (
@@ -553,7 +553,7 @@ export function TruckDetailClient({
           </div>
 
           {formError ? (
-            <p className="text-sm text-red-700" role="alert">
+            <p className="text-sm text-[var(--color-danger)]" role="alert">
               {formError}
             </p>
           ) : null}

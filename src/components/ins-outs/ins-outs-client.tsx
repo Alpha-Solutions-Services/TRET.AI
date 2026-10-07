@@ -8,7 +8,7 @@ import { weekBoundsForDate } from "@/lib/fee-engine";
 import type { LegacyEarnings } from "@/lib/legacy/fees";
 import { centsToDollarString } from "@/lib/money/cents";
 import {
-  MGMT_EXPENSE_CATEGORIES,
+  displayExpenseColumns,
   fleetInsOutsTotals,
   type TruckWeekInsOuts,
 } from "@/lib/sheets/ins-outs";
@@ -54,7 +54,8 @@ export function InsOutsClient({
 }) {
   const router = useRouter();
   const fleet = fleetInsOutsTotals(rows);
-  const columnCount = 6 + MGMT_EXPENSE_CATEGORIES.length;
+  const columns = displayExpenseColumns(rows);
+  const columnCount = 6 + columns.length;
 
   function openWeek(next: string) {
     router.push(`/ins-outs?week=${next}`);
@@ -65,10 +66,11 @@ export function InsOutsClient({
       <div>
         <h1 className="text-2xl font-semibold">Legacy Inc income and outgoing</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
-          Ins are load rates from each truck Google Sheet (the Rate column, by delivery date). The category
-          columns are that sheet&apos;s Mgmt Expenses rows for the week, and Outs adds those sheet rows.
-          Monthly Legacy company expenses are entered on Legacy expenses. Those portal rows are not added
-          into truck outs. Legacy earnings below are the management fee on each load.
+          Ins are load rates from each truck Google Sheet (the Rate column, by delivery date). Outs are the
+          Weekly Expenses row for that week: driver pay, management fee, dispatch, factoring, fuel, insurance,
+          and the other weekly lines. If that tab is missing, Outs use the Mgmt Expenses rows instead.
+          Monthly Legacy company expenses are entered on Management. Those portal rows are not added into
+          truck outs. Legacy earnings below are the management fee on each load.
         </p>
       </div>
 
@@ -76,10 +78,10 @@ export function InsOutsClient({
 
       {mismatchCount != null ? (
         <a
-          href={`/issues?week=${weekStart}`}
+          href={`/sheet-compare?week=${weekStart}`}
           className="pressable material inline-flex rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline"
         >
-          Sheet mismatches: {mismatchCount}
+          Sheet vs Vektor: {mismatchCount} open rate or missing-load checks
         </a>
       ) : mismatchError ? (
         <div role="status">
@@ -91,7 +93,7 @@ export function InsOutsClient({
         <button
           type="button"
           onClick={() => openWeek(shiftWeek(weekStart, -1))}
-          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Previous week
         </button>
@@ -108,13 +110,13 @@ export function InsOutsClient({
                 return;
               }
             }}
-            className="h-10 rounded-lg border border-[var(--color-border)] bg-white/80 px-3"
+            className="h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3"
           />
         </label>
         <button
           type="button"
           onClick={() => openWeek(shiftWeek(weekStart, 1))}
-          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Next week
         </button>
@@ -131,7 +133,7 @@ export function InsOutsClient({
               <th className="px-3 py-3 font-medium">Unit</th>
               <th className="px-3 py-3 font-medium">Loads</th>
               <th className="px-3 py-3 font-medium">Ins</th>
-              {MGMT_EXPENSE_CATEGORIES.map((category) => (
+              {columns.map((category) => (
                 <th key={category} className="px-3 py-3 font-medium whitespace-nowrap">
                   {category}
                 </th>
@@ -169,7 +171,7 @@ export function InsOutsClient({
                     )}
                   </td>
                   <td className="px-3 py-2">{row.readable ? money(row.insCents) : ""}</td>
-                  {MGMT_EXPENSE_CATEGORIES.map((category) => (
+                  {columns.map((category) => (
                     <td key={category} className="px-3 py-2 whitespace-nowrap">
                       {row.readable ? money(categoryCents(row, category)) : ""}
                     </td>
@@ -193,7 +195,7 @@ export function InsOutsClient({
                 <td className="px-3 py-2">Fleet</td>
                 <td className="px-3 py-2">{fleet.loadCount}</td>
                 <td className="px-3 py-2">{money(fleet.insCents)}</td>
-                {MGMT_EXPENSE_CATEGORIES.map((category) => (
+                {columns.map((category) => (
                   <td key={category} className="px-3 py-2 whitespace-nowrap">
                     {money(fleet.categories.find((item) => item.category === category)?.cents ?? 0)}
                   </td>

@@ -19,7 +19,7 @@ export function LoginForm() {
           type="email"
           autoComplete="username"
           required
-          className="h-10 w-full rounded-md border border-[var(--color-border)] bg-white px-3 text-sm outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
+          className="h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
         />
       </div>
       <div className="space-y-2">
@@ -32,11 +32,11 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          className="h-10 w-full rounded-md border border-[var(--color-border)] bg-white px-3 text-sm outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
+          className="h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
         />
       </div>
       {error ? (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-sm text-[var(--color-danger)]" role="alert">
           {error}
         </p>
       ) : null}

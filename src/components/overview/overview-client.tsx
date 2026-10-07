@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { centsToDollarString } from "@/lib/money/cents";
+import { ManagementSummaryTable } from "@/components/dashboard/management-summary";
+import type { ManagementCardSummary } from "@/lib/legacy/summary";
 import type { OverviewPageData } from "@/lib/overview/queries";
-import type { ManagementPnl } from "@/lib/overview/pnl";
 import type { SnapshotRow } from "@/lib/overview/snapshot";
 import { CopyableError } from "@/components/copyable-error";
 import { FleetCharts } from "@/components/dashboard/fleet-charts";
@@ -32,7 +33,13 @@ function shiftWeek(weekStart: string, delta: number): string {
   return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
 }
 
-export function OverviewClient({ data }: { data: OverviewPageData }) {
+export function OverviewClient({
+  data,
+  cards,
+}: {
+  data: OverviewPageData;
+  cards: ManagementCardSummary;
+}) {
   const router = useRouter();
 
   function openWeek(next: string) {
@@ -67,7 +74,7 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
         <button
           type="button"
           onClick={() => openWeek(shiftWeek(data.weekStart, -1))}
-          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Previous week
         </button>
@@ -84,13 +91,13 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
                 return;
               }
             }}
-            className="h-10 rounded-lg border border-[var(--color-border)] bg-white/80 px-3"
+            className="h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3"
           />
         </label>
         <button
           type="button"
           onClick={() => openWeek(shiftWeek(data.weekStart, 1))}
-          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Next week
         </button>
@@ -126,10 +133,10 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
 
       {data.mismatchCount != null ? (
         <Link
-          href={`/issues?week=${data.weekStart}`}
+          href={`/sheet-compare?week=${data.weekStart}`}
           className="pressable material inline-flex rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline"
         >
-          Sheet mismatches: {data.mismatchCount}
+          Sheet vs Vektor: {data.mismatchCount} open rate or missing-load checks
         </Link>
       ) : data.mismatchError ? (
         <div role="status">
@@ -145,9 +152,7 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
 
       {data.snapshot ? <SnapshotTable snapshot={data.snapshot} /> : null}
       <InsOutsTable rows={data.insOuts} error={data.insOutsError} weekStart={data.weekStart} />
-      {data.pnl ? (
-        <PnlTable pnl={data.pnl} operatingExpensesReady={data.operatingExpensesReady} />
-      ) : null}
+      <ManagementSummaryTable summary={cards} />
     </div>
   );
 }
@@ -241,8 +246,10 @@ function InsOutsTable({
         </table>
       </div>
       <p className="max-w-3xl text-sm text-[var(--color-fg-muted)]">
-        Ins are load rates from each truck Google Sheet. Outs are that sheet&apos;s expense rows for the week.
-        Monthly Legacy company expenses are on Legacy expenses and are not added into these outs.{" "}
+        Ins are load rates from each truck Google Sheet. Outs are that truck&apos;s Weekly Expenses row for the
+        week (driver pay, management fee, fuel, and the other weekly lines). If that tab is missing, Outs use
+        the Mgmt Expenses rows instead. Monthly Legacy company expenses stay on Management and are not added
+        into these outs.{" "}
         <Link
           href={`/ins-outs?week=${weekStart}`}
           className="font-medium text-[var(--color-accent)] no-underline hover:underline"
@@ -296,63 +303,3 @@ function SnapshotLine({ row, fleet }: { row: SnapshotRow; fleet: boolean }) {
   );
 }
 
-function PnlTable({
-  pnl,
-  operatingExpensesReady,
-}: {
-  pnl: ManagementPnl;
-  operatingExpensesReady: boolean;
-}) {
-  const lines: Array<{ label: string; cents: number; strong?: boolean }> = [
-    { label: "Legacy retained (managed trucks)", cents: pnl.legacyRetainedCents },
-    { label: "Dispatch fee", cents: pnl.dispatchFeeCents },
-    { label: "Income", cents: pnl.incomeCents, strong: true },
-    { label: "Fixed expenses charged to management", cents: pnl.fixedManagementCents },
-    { label: "Operating expenses", cents: pnl.operatingExpenseCents },
-    { label: "Expenses", cents: pnl.expenseCents, strong: true },
-    { label: "Net", cents: pnl.netCents, strong: true },
-  ];
-
-  return (
-    <section className="space-y-2">
-      <div className="material overflow-x-auto rounded-xl border border-[var(--color-border)]">
-        <table className="min-w-full text-left text-sm">
-          <caption className="px-3 py-3 text-left font-medium">Management P&L</caption>
-          <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
-            <tr>
-              <th className="px-3 py-3 font-medium">Line</th>
-              <th className="px-3 py-3 font-medium">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line) => (
-              <tr
-                key={line.label}
-                className={
-                  line.strong
-                    ? "border-b border-[var(--color-border)] bg-[var(--color-muted)] font-medium"
-                    : "border-b border-[var(--color-border)]"
-                }
-              >
-                <td className="px-3 py-2">{line.label}</td>
-                <td className="px-3 py-2">{money(line.cents)}</td>
-              </tr>
-            ))}
-            <tr>
-              <td className="px-3 py-2 text-[var(--color-fg-muted)]">Tolson payable (not in net)</td>
-              <td className="px-3 py-2 text-[var(--color-fg-muted)]">{money(pnl.tolsonPayableCents)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p className="max-w-3xl text-sm text-[var(--color-fg-muted)]">
-        Income uses the statement for this week. Legacy retained is the managed-truck amount already calculated.
-        Dispatch is the fee Legacy keeps. A lock keeps those statement figures. Operating expenses are the rows
-        dated this week and are not frozen by the lock.
-        {operatingExpensesReady
-          ? ""
-          : " Operating expenses stay at zero until the v0.0.0.6 migration is applied."}
-      </p>
-    </section>
-  );
-}

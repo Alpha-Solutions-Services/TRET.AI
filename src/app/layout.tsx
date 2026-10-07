@@ -17,6 +17,17 @@ const inter = Inter({
 
 const version = readAppVersion();
 
+function ThemeBoot() {
+  return (
+    <script
+      dangerouslySetInnerHTML={{
+        __html:
+          '(function(){try{var t=localStorage.getItem("tret.theme");var ok={glass:1,midnight:1,graphite:1,ocean:1,sand:1};if(t&&ok[t])document.documentElement.setAttribute("data-theme",t);}catch(e){}})();',
+      }}
+    />
+  );
+}
+
 export const metadata: Metadata = {
   title: "TRET.AI",
   description: "Accounting and reporting for Legacy Inc Global freight operations.",
@@ -31,8 +42,9 @@ export default function RootLayout({
   if (missing.length > 0) {
     logMissingRequiredEnvNames(missing);
     return (
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <body className={`${inter.variable} antialiased`}>
+          <ThemeBoot />
           <div data-app-version={version}>
             <SetupIncomplete />
           </div>
@@ -42,8 +54,9 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`}>
+        <ThemeBoot />
         <ToastProvider>
           <ConfirmProvider>
             <div data-app-version={version}>{children}</div>

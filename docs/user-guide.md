@@ -137,20 +137,21 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 
 1. Open **Dashboard**.
 2. The top row shows the version, the sheet account check, open issues, and how many loads the readable sheets have this week.
-3. Charts show Ins and Outs by truck, the last eight weeks from those same sheets, and the sheet expense mix.
-4. The tables below are the statement snapshot, the management profit and loss, and the sheet Ins and Outs.
+3. Charts show Ins and Outs by truck, the last eight weeks from those same sheets, and the sheet expense mix. Outs and the mix come from each truck's Weekly Expenses row.
+4. The tables below are the statement snapshot, the management profit and loss, and the sheet Ins and Outs. The profit and loss income is the management fee on this week's sheet loads. Expenses are the portal costs for that week's month.
 
 ## Management
 
 1. Open **Management**.
-2. The cards are income, expenses, net, and Tolson payable for the selected week.
+2. The cards are income, expenses, net, and Tolson payable. Income is the management fee on this week's sheet loads. Expenses are the portal costs for the whole expense month named next to the week. Net is income minus that month. Tolson payable sits beside net. An own truck sends the whole fee to Tolson. A third-party truck sends ten fifteenths of the fee to Tolson, and Legacy keeps five fifteenths.
 3. Charts show the Legacy fee by truck, portal expenses by month, and this month's category mix.
-4. **Legacy earnings** on this page is where you edit a load fee or a truck week percent.
-5. **Add or edit Legacy expenses** opens the monthly list.
+4. **Portal expenses** on this page adds, edits, and deletes a cost for the month. Pick a category, including Spare Expense 1 through 5.
+5. **Legacy earnings** on this page is where you edit a load fee or a truck week percent.
+6. The header **Theme** list saves Glass Light, Midnight Navy and Gold, Graphite Dark, Ocean Blue, or Warm Sand in this browser.
 
 On the Dashboard, pick the week. The date snaps to the Monday. The statement table shows each unit and a fleet row: gross, fees, fuel, tolls, fixed expenses charged to the owner, and net. Close status says Open or Locked. **Open issues** opens Issues for that week. Management profit and loss is under the snapshot. Income is Legacy retained on managed trucks and the dispatch fee. Expenses are fixed costs charged to management and operating expenses dated in that week. Tolson payable is listed and is not in the net.
 
-**Ins and Outs** on the Dashboard is one row per active truck. Ins are load earnings from that truck’s Google Sheet load ledger. Outs add the sheet Mgmt Expenses rows dated in the week. Portal monthly Legacy expenses are not added into those outs. If a truck cannot be read, the Loads cell shows a short reason. Click it, or **Copy**, to copy the real cause. **Sheet mismatches** links to Issues when a sheet Load ID is missing from loads or the rate differs.
+**Ins and Outs** on the Dashboard is one row per active truck. Ins are load earnings from that truck's Google Sheet load ledger. Outs are the Weekly Expenses row for that week. If that tab has no header, Outs use the Mgmt Expenses rows instead. Portal monthly Legacy expenses are not added into those outs. If a truck cannot be read, the Loads cell shows a short reason. Click it, or **Copy**, to copy the real cause. **Sheet vs Vektor** opens the side by side load list for that week.
 
 The footer is one short line under the page: whether the Google service account is set, and the app version. It does not show secrets and it does not cover the page.
 
@@ -158,12 +159,20 @@ The footer is one short line under the page: whether the Google service account 
 
 1. Open **Ins and Outs** in the left navigation.
 2. Pick the week. The date snaps to the Monday.
-3. Each active truck is one row. **Ins** are the Google Sheet load ledger Rate for deliveries in that week. **Outs** add the sheet Mgmt Expenses rows dated in that week.
-4. The expense columns are Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5. Portal monthly Legacy expenses are a separate list and are not added into Outs.
+3. Each active truck is one row. **Ins** are the Google Sheet load ledger Rate for deliveries in that week. **Outs** are the Weekly Expenses row for that week.
+4. The expense columns are the weekly lines: driver compensation, management fee, truck and trailer payments, dispatch, factoring, fuel, insurance, escrow, ELD, yard, GPS, toll pass, toll fees, and permits. If the Weekly Expenses header is missing, the columns switch to the Mgmt Expenses list (Vektor Fee through Spare Expense 5). Portal monthly Legacy expenses are a separate list and are not added into Outs.
 5. The **Fleet** row adds the readable sheets. A truck that was not read is left out of that total. The note on the row says why. Click it, or **Copy**, to copy the real cause.
 6. **Legacy earnings** is the management fee on each load for that week, per truck and for the fleet.
 7. **Download report** saves a Weekly Asset Management Report PDF for that truck and week. It uses the Load Ledger, Weekly Expenses, Fuel Log, and Fleet Directory on the sheet, plus fuel and toll rows in the database when the sheet fuel or toll cells are blank.
 8. This page does not change statements or the sheet. Promoting loads is a separate Import step.
+
+## Sheet vs Vektor
+
+1. Open **Sheet vs Vektor**.
+2. Pick the week and, if you want, one truck. All trucks is the default.
+3. The top table is the sheet load ledger for deliveries in that week. The bottom table is the Vektor `loads` rows for the same load numbers.
+4. A highlighted cell means the load is missing on one side, or the rate, delivery date, or miles differ. The Check column says which one in plain words.
+5. A missing sheet load or a different rate still opens the same Warn issue as before. Date and miles are shown here and are not stored as issues.
 
 ## Issues
 

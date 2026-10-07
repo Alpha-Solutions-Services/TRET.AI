@@ -20,7 +20,7 @@ export default async function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--color-bg)] px-6">
-      <div className="w-full max-w-sm space-y-6 rounded-lg border border-[var(--color-border)] bg-white p-8">
+      <div className="w-full max-w-sm space-y-6 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] p-8">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">TRET.AI</h1>
           <p className="text-sm text-[var(--color-fg-muted)]">

@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-:root {
+:root,
+[data-theme="glass"] {
+  color-scheme: light;
   --color-bg: #f7f8fa;
   --color-fg: #0f172a;
   --color-fg-muted: #64748b;
@@ -8,13 +10,112 @@
   --color-muted: #f1f5f9;
   --color-accent: #1e3a5f;
   --color-accent-hover: #16304f;
+  --color-on-accent: #ffffff;
   --color-surface: rgba(255, 255, 255, 0.78);
+  --color-field: #ffffff;
   --color-chart-1: #1e3a5f;
   --color-chart-2: #7d93a8;
   --color-chart-3: #c4a35a;
   --color-chart-4: #3d5a40;
+  --color-glow: rgba(30, 58, 95, 0.06);
+  --color-danger: #b91c1c;
+  --color-warn-bg: #fef3c7;
+  --color-warn-fg: #78350f;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 32px rgba(15, 23, 42, 0.05);
   --background: var(--color-bg);
   --foreground: var(--color-fg);
+}
+
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --color-bg: #0b1220;
+  --color-fg: #f6f1e4;
+  --color-fg-muted: #d4c7a5;
+  --color-border: #314056;
+  --color-muted: #162033;
+  --color-accent: #d4b36a;
+  --color-accent-hover: #e3c98a;
+  --color-on-accent: #1a1408;
+  --color-surface: rgba(16, 26, 44, 0.88);
+  --color-field: #121c30;
+  --color-chart-1: #f0d48a;
+  --color-chart-2: #8ea0b8;
+  --color-chart-3: #d4b36a;
+  --color-chart-4: #7dcea0;
+  --color-glow: rgba(212, 179, 106, 0.14);
+  --color-danger: #fecaca;
+  --color-warn-bg: #4a3410;
+  --color-warn-fg: #fde68a;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="graphite"] {
+  color-scheme: dark;
+  --color-bg: #161616;
+  --color-fg: #f4f4f5;
+  --color-fg-muted: #c4c4c8;
+  --color-border: #3a3a3e;
+  --color-muted: #242428;
+  --color-accent: #e7e5e4;
+  --color-accent-hover: #fafaf9;
+  --color-on-accent: #1c1917;
+  --color-surface: rgba(32, 32, 34, 0.92);
+  --color-field: #222226;
+  --color-chart-1: #e7e5e4;
+  --color-chart-2: #a1a1aa;
+  --color-chart-3: #93c5fd;
+  --color-chart-4: #86efac;
+  --color-glow: rgba(255, 255, 255, 0.05);
+  --color-danger: #fecaca;
+  --color-warn-bg: #3f3f46;
+  --color-warn-fg: #fef3c7;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="ocean"] {
+  color-scheme: light;
+  --color-bg: #f2f8fb;
+  --color-fg: #0c2430;
+  --color-fg-muted: #3d6274;
+  --color-border: #c9dde6;
+  --color-muted: #e4f0f5;
+  --color-accent: #0e7490;
+  --color-accent-hover: #155e75;
+  --color-on-accent: #ffffff;
+  --color-surface: rgba(255, 255, 255, 0.82);
+  --color-field: #ffffff;
+  --color-chart-1: #0e7490;
+  --color-chart-2: #38bdf8;
+  --color-chart-3: #0369a1;
+  --color-chart-4: #0f766e;
+  --color-glow: rgba(14, 116, 144, 0.1);
+  --color-danger: #b91c1c;
+  --color-warn-bg: #fef3c7;
+  --color-warn-fg: #78350f;
+  --shadow-card: 0 1px 2px rgba(12, 36, 48, 0.05), 0 12px 32px rgba(12, 36, 48, 0.06);
+}
+
+[data-theme="sand"] {
+  color-scheme: light;
+  --color-bg: #f6f1e7;
+  --color-fg: #3f2e22;
+  --color-fg-muted: #6b5344;
+  --color-border: #e4d3c0;
+  --color-muted: #efe4d4;
+  --color-accent: #9a3412;
+  --color-accent-hover: #7c2d12;
+  --color-on-accent: #fff7ed;
+  --color-surface: rgba(255, 250, 243, 0.88);
+  --color-field: #fffaf3;
+  --color-chart-1: #9a3412;
+  --color-chart-2: #c2410c;
+  --color-chart-3: #a16207;
+  --color-chart-4: #3f6212;
+  --color-glow: rgba(154, 52, 18, 0.08);
+  --color-danger: #9f1239;
+  --color-warn-bg: #ffedd5;
+  --color-warn-fg: #7c2d12;
+  --shadow-card: 0 1px 2px rgba(63, 46, 34, 0.05), 0 12px 32px rgba(63, 46, 34, 0.06);
 }
 
 @theme inline {
@@ -25,7 +126,7 @@
 
 body {
   background:
-    radial-gradient(900px 420px at 0% -10%, rgba(30, 58, 95, 0.06), transparent 55%),
+    radial-gradient(900px 420px at 0% -10%, var(--color-glow), transparent 55%),
     var(--color-bg);
   color: var(--color-fg);
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -43,9 +144,7 @@ main h2 {
   background: var(--color-surface);
   -webkit-backdrop-filter: blur(18px) saturate(1.35);
   backdrop-filter: blur(18px) saturate(1.35);
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 12px 32px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-card);
 }
 
 .pressable {

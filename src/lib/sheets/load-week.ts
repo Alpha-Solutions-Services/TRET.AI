@@ -16,6 +16,7 @@ export async function loadActiveTruckInsOuts(
         unitNumber: truck.unit_number,
         truckName: truck.name,
         googleSheetUrl: truck.google_sheet_url,
+        truckClass: truck.truck_class,
       })),
       weekStart,
       weekEnd,

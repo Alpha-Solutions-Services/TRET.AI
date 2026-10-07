@@ -1,7 +1,10 @@
 import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
-import { DEFAULT_MANAGEMENT_FEE_BP } from "@/lib/legacy/fees";
+import { buildLegacyEarnings, DEFAULT_MANAGEMENT_FEE_BP } from "@/lib/legacy/fees";
 import { expenseTotalCents, monthBounds } from "@/lib/legacy/expenses";
+import { buildManagementCards, type ManagementCardSummary } from "@/lib/legacy/summary";
+import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
+import { unitKey } from "@/lib/sheets/mismatch";
 
 export type LegacyFeeState = {
   ready: boolean;
@@ -95,6 +98,29 @@ export async function loadLegacyFeeState(weekStart: string): Promise<LegacyFeeSt
 }
 
 export { expenseTotalCents, monthBounds };
+
+export async function loadManagementCardSummary(
+  weekStart: string,
+  trucks: TruckWeekInsOuts[],
+  operatingExpenses: Array<{ expenseDate: string; amountCents: number }>,
+): Promise<ManagementCardSummary> {
+  const fees = await loadLegacyFeeState(weekStart);
+  const earnings = buildLegacyEarnings({
+    trucks,
+    orgFeeBp: fees.orgFeeBp,
+    truckWeeks: fees.truckWeeks,
+    loadFees: fees.loadFees,
+  });
+  const classByUnit = new Map(trucks.map((truck) => [unitKey(truck.unitNumber), truck.truckClass]));
+  return buildManagementCards({
+    fees: earnings.trucks.map((truck) => ({
+      feeCents: truck.feeCents,
+      truckClass: classByUnit.get(truck.unitKey) ?? "legacy_owned",
+    })),
+    operatingExpenses,
+    expenseMonth: weekStart.slice(0, 7),
+  });
+}
 
 function asFeeBp(value: number | null | undefined): number {
   if (typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 10000) {
