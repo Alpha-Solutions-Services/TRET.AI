@@ -88,6 +88,17 @@ If Connect Vektor reports that the database migration or `VEKTOR_TOKEN_ENCRYPTIO
 
 Importing the same Vektor transaction again updates that row. It does not add a second one. A truck that does not match stays in staging and opens a Warn issue.
 
+## Weekly statements
+
+1. Open **Statements**.
+2. Pick the week. The date snaps to the Monday. For 21–27 Sep 2026 choose `2026-09-21`.
+3. The fleet table lists each unit. Click a unit number to see its lines.
+4. Legacy-owned units show Tolson payable. Managed units show one management fee. Lines marked internal are the Tolson and Legacy split and are not subtracted again.
+5. If Close is blocked, the reasons are listed above the button. Fix those, then come back.
+6. **Close week** asks you to confirm. After that the week is locked. The numbers on the page are the snapshot. There is no reopen on this screen.
+
+A fixed-expense override cannot be saved for a unit and week that is already locked.
+
 Notes:
 
 - Only delivered loads are imported. Deleted or merged-into duplicates are skipped.

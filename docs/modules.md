@@ -8,7 +8,8 @@
 | 3 | Vektor loads import (v0.0.0.4) plus live MCP connect (v0.0.0.5) | Done |
 | 3b | Fixed weekly expenses and operating expenses (v0.0.0.6) | Done |
 | 4 | Fuel and tolls from Vektor (v0.0.0.7) | Done |
-| 5 | Weekly Close and PDF report | Not started |
+| 5 | Weekly statements and Close (v0.0.0.8) | Done |
+| 5b | Weekly owner PDF | Not started |
 | 6 | Validation, Issues inbox and AI (LLM gateway) | Not started |
 | 7 | Management company P&L, Tolson payable, recurring charges, Quicken export | Not started |
 | 8 | Google Sheets sync | Not started |

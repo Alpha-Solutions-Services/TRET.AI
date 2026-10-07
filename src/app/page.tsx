@@ -9,8 +9,7 @@ function OverviewContent() {
     <section className="space-y-3">
       <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
       <p className="max-w-prose text-[var(--color-fg-muted)]">
-        Nothing to show yet. Weekly reports and accounting tools will appear here
-        in later versions.
+        Nothing to show on this page yet. Open Statements for the weekly figures.
       </p>
     </section>
   );

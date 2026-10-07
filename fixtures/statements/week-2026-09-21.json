@@ -1,0 +1,136 @@
+{
+  "weekStart": "2026-09-21",
+  "weekEnd": "2026-09-27",
+  "note": "Hand-calculated reference for 21–27 Sep 2026. The uploaded handoff does not include the owner PDF dollar table. These inputs are the reference until a live compare.",
+  "trucks": [
+    { "id": "11111111-1111-4111-8111-111111111102", "unitNumber": "02", "truckClass": "legacy_owned" },
+    { "id": "22222222-2222-4222-8222-222222222203", "unitNumber": "03", "truckClass": "third_party" }
+  ],
+  "contracts": [
+    {
+      "id": "c1111111-1111-4111-8111-111111111102",
+      "truckId": "11111111-1111-4111-8111-111111111102",
+      "effectiveFrom": "2026-09-21",
+      "effectiveTo": null,
+      "rules": [
+        { "kind": "DRIVER_PAY", "rateBp": 2000, "basePctBp": 10000 },
+        { "kind": "TOLSON_PAYABLE", "rateBp": 1000, "basePctBp": 10000 },
+        { "kind": "DISPATCH_FEE", "rateBp": 550, "basePctBp": 10000 },
+        { "kind": "FACTORING_FEE", "rateBp": 265, "basePctBp": 10000 }
+      ]
+    },
+    {
+      "id": "c2222222-2222-4222-8222-222222222203",
+      "truckId": "22222222-2222-4222-8222-222222222203",
+      "effectiveFrom": "2026-09-21",
+      "effectiveTo": null,
+      "rules": [
+        { "kind": "DRIVER_PAY", "rateBp": 2000, "basePctBp": 10000 },
+        { "kind": "MANAGEMENT_FEE", "rateBp": 1500, "basePctBp": 10000 },
+        { "kind": "TOLSON_PAYABLE", "rateBp": 1000, "basePctBp": 10000 },
+        { "kind": "LEGACY_RETAINED", "rateBp": 500, "basePctBp": 10000 },
+        { "kind": "DISPATCH_FEE", "rateBp": 500, "basePctBp": 10000 },
+        { "kind": "FACTORING_FEE", "rateBp": 265, "basePctBp": 10000 }
+      ]
+    }
+  ],
+  "loads": [
+    {
+      "id": "load-02-a",
+      "truckId": "11111111-1111-4111-8111-111111111102",
+      "unitNumber": "02",
+      "deliveryDate": "2026-09-26",
+      "storedWeekStart": "2026-09-21",
+      "grossCents": 220000,
+      "loadedMilesHundredths": 33200,
+      "deadheadMilesHundredths": 1400
+    },
+    {
+      "id": "load-02-b",
+      "truckId": "11111111-1111-4111-8111-111111111102",
+      "unitNumber": "02",
+      "deliveryDate": "2026-09-22",
+      "storedWeekStart": "2026-09-21",
+      "grossCents": 100000,
+      "loadedMilesHundredths": 10000,
+      "deadheadMilesHundredths": 0
+    },
+    {
+      "id": "load-02-previous-sunday",
+      "truckId": "11111111-1111-4111-8111-111111111102",
+      "unitNumber": "02",
+      "deliveryDate": "2026-09-20",
+      "storedWeekStart": "2026-09-14",
+      "grossCents": 999999,
+      "loadedMilesHundredths": 100,
+      "deadheadMilesHundredths": 0
+    },
+    {
+      "id": "load-02-next-week",
+      "truckId": "11111111-1111-4111-8111-111111111102",
+      "unitNumber": "02",
+      "deliveryDate": "2026-09-28",
+      "storedWeekStart": "2026-09-28",
+      "pickupInThisWeek": true,
+      "grossCents": 888888,
+      "loadedMilesHundredths": 100,
+      "deadheadMilesHundredths": 0
+    },
+    {
+      "id": "load-03",
+      "truckId": "22222222-2222-4222-8222-222222222203",
+      "unitNumber": "03",
+      "deliveryDate": "2026-09-25",
+      "storedWeekStart": "2026-09-21",
+      "grossCents": 580000,
+      "loadedMilesHundredths": 10000,
+      "deadheadMilesHundredths": 0
+    }
+  ],
+  "fuel": [
+    { "unitNumber": "02", "weekStart": "2026-09-21", "amountCents": 50000 },
+    { "unitNumber": "03", "weekStart": "2026-09-21", "amountCents": 25000 }
+  ],
+  "tolls": [
+    { "unitNumber": "02", "weekStart": "2026-09-21", "amountCents": 1234 },
+    { "unitNumber": "03", "weekStart": "2026-09-21", "amountCents": 500 }
+  ],
+  "fixedVersions": [
+    {
+      "id": "exp-02-escrow",
+      "truckId": "11111111-1111-4111-8111-111111111102",
+      "kind": "MAINTENANCE_ESCROW_WEEKLY",
+      "weeklyAmountCents": 10000,
+      "chargedTo": "owner",
+      "effectiveFrom": "2026-09-21",
+      "effectiveTo": null
+    },
+    {
+      "id": "exp-02-eld",
+      "truckId": "11111111-1111-4111-8111-111111111102",
+      "kind": "ELD_FEE",
+      "weeklyAmountCents": 2000,
+      "chargedTo": "owner",
+      "effectiveFrom": "2026-09-21",
+      "effectiveTo": null
+    },
+    {
+      "id": "exp-02-yard",
+      "truckId": "11111111-1111-4111-8111-111111111102",
+      "kind": "YARD_FEE",
+      "weeklyAmountCents": 500,
+      "chargedTo": "management",
+      "effectiveFrom": "2026-09-21",
+      "effectiveTo": null
+    },
+    {
+      "id": "exp-03-permits",
+      "truckId": "22222222-2222-4222-8222-222222222203",
+      "kind": "PERMITS",
+      "weeklyAmountCents": 1500,
+      "chargedTo": "owner",
+      "effectiveFrom": "2026-09-21",
+      "effectiveTo": null
+    }
+  ]
+}

@@ -368,8 +368,8 @@ export function validateTollRowCountDrop(
 }
 
 /**
- * Week close is not built in this version. Call this when a week is closed.
  * Block when promoted fuel in that Monday week has no load delivered that week.
+ * Weekly close calls this before it locks the week.
  */
 export function validateUnlinkedFuelAtWeekClose(
   fuel: Array<{ unitNumber: string | null; weekStart: string | null }>,

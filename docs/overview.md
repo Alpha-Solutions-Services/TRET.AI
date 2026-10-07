@@ -22,7 +22,7 @@ The **database** is always the source of truth. If a sheet disagrees with the da
 
 ## Current version
 
-`VERSION` is the source of truth. v0.0.0.7 imports fuel and tolls from Vektor (MCP, with CSV as the fallback) into staging, then into `fuel_transactions` and `toll_transactions`. See [modules.md](modules.md).
+`VERSION` is the source of truth. v0.0.0.8 computes Monday–Sunday statements by delivery date and can lock a week. See [modules.md](modules.md).
 
 ## What v0.0.0.1 included
 
