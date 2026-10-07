@@ -13,8 +13,26 @@ import {
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
-export const SHEET_UNREADABLE =
-  "This Google Sheet is not readable. On Trucks, confirm the link. Then either share the sheet so anyone with the link can view, or share it with the Google service account and set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.";
+export const SHEET_ENV_EMAIL = "GOOGLE_SERVICE_ACCOUNT_EMAIL";
+export const SHEET_ENV_KEY = "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY";
+
+export function missingGoogleServiceAccountEnv(
+  env: Record<string, string | undefined> = process.env,
+): string[] {
+  const missing: string[] = [];
+  if (!readEnv(SHEET_ENV_EMAIL, env)) missing.push(SHEET_ENV_EMAIL);
+  if (!readEnv(SHEET_ENV_KEY, env)) missing.push(SHEET_ENV_KEY);
+  return missing;
+}
+
+export function privateSheetNote(env: Record<string, string | undefined>): string {
+  const missing = missingGoogleServiceAccountEnv(env);
+  if (missing.length === 0) {
+    return "This Google Sheet is not readable. The service account was rejected. Share the sheet with that account as a viewer.";
+  }
+  const verb = missing.length === 1 ? "is" : "are";
+  return `This Google Sheet is not readable. ${missing.join(" and ")} ${verb} not set. Share the sheet with the service account after those variables are set, or share it so anyone with the link can view.`;
+}
 
 type FetchLike = typeof fetch;
 
@@ -81,6 +99,34 @@ async function serviceAccountToken(
   return body.access_token;
 }
 
+function sheetRange(title: string): string {
+  const escaped = title.replace(/'/g, "''");
+  return `'${escaped}'!A1:AZ`;
+}
+
+async function googleErrorNote(response: Response, fallback: string): Promise<string> {
+  let detail = "";
+  try {
+    const body = (await response.clone().json()) as { error?: { message?: string } };
+    detail = body.error?.message ?? "";
+  } catch {
+    detail = "";
+  }
+  const clean = detail.replace(/\s+/g, " ").slice(0, 180);
+  if (response.status === 401 || response.status === 403) {
+    const share = "Share the sheet with the service account as a viewer.";
+    return clean
+      ? `This Google Sheet is not readable (HTTP ${response.status}: ${clean}). ${share}`
+      : `This Google Sheet is not readable (HTTP ${response.status}). ${share}`;
+  }
+  if (response.status === 404) {
+    return "This Google Sheet was not found. Check the link on Trucks.";
+  }
+  return clean
+    ? `${fallback} (HTTP ${response.status}: ${clean}).`
+    : `${fallback} (HTTP ${response.status}).`;
+}
+
 function valuesToGrid(values: unknown): SheetGrid {
   if (!Array.isArray(values)) return [];
   return values.map((row) =>
@@ -101,11 +147,12 @@ async function readWithToken(
   const metaResponse = await fetchImpl(metaUrl, {
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   });
-  if (metaResponse.status === 401 || metaResponse.status === 403 || metaResponse.status === 404) {
-    return { loadLedger: null, mgmtExpenses: null, note: SHEET_UNREADABLE };
-  }
   if (!metaResponse.ok) {
-    return { loadLedger: null, mgmtExpenses: null, note: SHEET_UNREADABLE };
+    return {
+      loadLedger: null,
+      mgmtExpenses: null,
+      note: await googleErrorNote(metaResponse, "This Google Sheet is not readable"),
+    };
   }
   const meta = (await metaResponse.json()) as {
     sheets?: Array<{ properties?: { title?: string } }>;
@@ -127,15 +174,20 @@ async function readWithToken(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet`,
   );
   for (const title of wanted) {
-    batchUrl.searchParams.append("ranges", `'${title.replace(/'/g, "''")}'`);
+    batchUrl.searchParams.append("ranges", sheetRange(title));
   }
   batchUrl.searchParams.set("valueRenderOption", "FORMATTED_VALUE");
+  batchUrl.searchParams.set("dateTimeRenderOption", "FORMATTED_STRING");
   if (!accessToken && apiKey) batchUrl.searchParams.set("key", apiKey);
   const batchResponse = await fetchImpl(batchUrl, {
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   });
   if (!batchResponse.ok) {
-    return { loadLedger: null, mgmtExpenses: null, note: SHEET_UNREADABLE };
+    return {
+      loadLedger: null,
+      mgmtExpenses: null,
+      note: await googleErrorNote(batchResponse, "This Google Sheet is not readable"),
+    };
   }
   const batch = (await batchResponse.json()) as {
     valueRanges?: Array<{ values?: unknown }>;
@@ -180,12 +232,13 @@ async function readPublicTabs(
   spreadsheetId: string,
   unitNumber: string,
   fetchImpl: FetchLike,
+  env: Record<string, string | undefined>,
 ): Promise<{ loadLedger: SheetGrid | null; mgmtExpenses: SheetGrid | null; note: string | null }> {
   let loadLedger: SheetGrid | null = null;
   for (const title of loadLedgerCandidates(unitNumber)) {
     const result = await readPublicCsv(spreadsheetId, title, fetchImpl);
     if (result.privateSheet) {
-      return { loadLedger: null, mgmtExpenses: null, note: SHEET_UNREADABLE };
+      return { loadLedger: null, mgmtExpenses: null, note: privateSheetNote(env) };
     }
     if (result.grid && result.grid.some((row) => row.some((cell) => /delivery date/i.test(cell)))) {
       loadLedger = result.grid;
@@ -194,7 +247,7 @@ async function readPublicTabs(
   }
   const expenses = await readPublicCsv(spreadsheetId, "Mgmt Expenses", fetchImpl);
   if (expenses.privateSheet) {
-    return { loadLedger: null, mgmtExpenses: null, note: SHEET_UNREADABLE };
+    return { loadLedger: null, mgmtExpenses: null, note: privateSheetNote(env) };
   }
   const mgmtExpenses =
     expenses.grid && expenses.grid.some((row) => row.some((cell) => cell.trim().toLowerCase() === "category"))
@@ -276,7 +329,7 @@ export async function loadTruckWeekInsOuts(
         const tabs =
           accessToken || apiKey
             ? await readWithToken(spreadsheetId, truck.unitNumber, accessToken, apiKey, fetchImpl)
-            : await readPublicTabs(spreadsheetId, truck.unitNumber, fetchImpl);
+            : await readPublicTabs(spreadsheetId, truck.unitNumber, fetchImpl, env);
         return buildTruckWeekInsOuts({
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
@@ -294,9 +347,180 @@ export async function loadTruckWeekInsOuts(
           weekEnd,
           loadLedger: null,
           mgmtExpenses: null,
-          note: SHEET_UNREADABLE,
+          note: "This Google Sheet is not readable. The read failed before a tab could be opened.",
         });
       }
     }),
   );
+}
+
+export type TruckWorkbook = {
+  loadLedger: SheetGrid | null;
+  mgmtExpenses: SheetGrid | null;
+  weeklyExpenses: SheetGrid | null;
+  fuelLog: SheetGrid | null;
+  fleetDirectory: SheetGrid | null;
+  note: string | null;
+};
+
+function pickTitled(titles: string[], pattern: RegExp, unitNumber: string | null): string | null {
+  const matches = titles.filter((title) => pattern.test(title));
+  if (matches.length === 0) return null;
+  if (!unitNumber) return matches[0] ?? null;
+  const digits = unitNumber.replace(/\D/g, "");
+  const bare = digits.replace(/^0+/, "") || digits || unitNumber.trim();
+  const padded = bare.padStart(2, "0");
+  const bits = [`#${padded}`, `#${bare}`, ` ${padded} `, ` ${bare} `].map((bit) => bit.toLowerCase());
+  return (
+    matches.find((title) => {
+      const lower = ` ${title.toLowerCase()} `;
+      return bits.some((bit) => lower.includes(bit));
+    }) ??
+    matches[0] ??
+    null
+  );
+}
+
+async function readWorkbookWithToken(
+  spreadsheetId: string,
+  unitNumber: string,
+  accessToken: string,
+  apiKey: string,
+  fetchImpl: FetchLike,
+): Promise<TruckWorkbook> {
+  const metaUrl = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`);
+  metaUrl.searchParams.set("fields", "sheets.properties.title");
+  if (!accessToken && apiKey) metaUrl.searchParams.set("key", apiKey);
+  const metaResponse = await fetchImpl(metaUrl, {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  });
+  if (!metaResponse.ok) {
+    return emptyWorkbook(await googleErrorNote(metaResponse, "This Google Sheet is not readable"));
+  }
+  const meta = (await metaResponse.json()) as {
+    sheets?: Array<{ properties?: { title?: string } }>;
+  };
+  const titles = (meta.sheets ?? [])
+    .map((sheet) => sheet.properties?.title ?? "")
+    .filter((title) => title.trim() !== "");
+  const named = {
+    loadLedger: pickLoadLedgerTitle(titles, unitNumber),
+    mgmtExpenses: pickMgmtExpensesTitle(titles),
+    weeklyExpenses: pickTitled(titles, /weekly expenses/i, unitNumber),
+    fuelLog: pickTitled(titles, /fuel log/i, unitNumber),
+    fleetDirectory: pickTitled(titles, /fleet directory/i, null),
+  };
+  const wanted = [...new Set(Object.values(named).filter((title): title is string => Boolean(title)))];
+  if (wanted.length === 0) {
+    return emptyWorkbook("The sheet has no Load Ledger tab and no Mgmt Expenses tab.");
+  }
+  const batchUrl = new URL(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet`,
+  );
+  for (const title of wanted) batchUrl.searchParams.append("ranges", sheetRange(title));
+  batchUrl.searchParams.set("valueRenderOption", "FORMATTED_VALUE");
+  batchUrl.searchParams.set("dateTimeRenderOption", "FORMATTED_STRING");
+  if (!accessToken && apiKey) batchUrl.searchParams.set("key", apiKey);
+  const batchResponse = await fetchImpl(batchUrl, {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  });
+  if (!batchResponse.ok) {
+    return emptyWorkbook(await googleErrorNote(batchResponse, "This Google Sheet is not readable"));
+  }
+  const batch = (await batchResponse.json()) as { valueRanges?: Array<{ values?: unknown }> };
+  const grids = new Map<string, SheetGrid>();
+  wanted.forEach((title, index) => {
+    grids.set(title, valuesToGrid(batch.valueRanges?.[index]?.values));
+  });
+  const notes: string[] = [];
+  if (!named.loadLedger) notes.push("Load Ledger tab was not found.");
+  if (!named.mgmtExpenses) notes.push("Mgmt Expenses tab was not found.");
+  return {
+    loadLedger: named.loadLedger ? (grids.get(named.loadLedger) ?? null) : null,
+    mgmtExpenses: named.mgmtExpenses ? (grids.get(named.mgmtExpenses) ?? null) : null,
+    weeklyExpenses: named.weeklyExpenses ? (grids.get(named.weeklyExpenses) ?? null) : null,
+    fuelLog: named.fuelLog ? (grids.get(named.fuelLog) ?? null) : null,
+    fleetDirectory: named.fleetDirectory ? (grids.get(named.fleetDirectory) ?? null) : null,
+    note: notes.length ? notes.join(" ") : null,
+  };
+}
+
+function emptyWorkbook(note: string): TruckWorkbook {
+  return {
+    loadLedger: null,
+    mgmtExpenses: null,
+    weeklyExpenses: null,
+    fuelLog: null,
+    fleetDirectory: null,
+    note,
+  };
+}
+
+async function readPublicWorkbook(
+  spreadsheetId: string,
+  unitNumber: string,
+  fetchImpl: FetchLike,
+  env: Record<string, string | undefined>,
+): Promise<TruckWorkbook> {
+  const ledgerTitles = loadLedgerCandidates(unitNumber);
+  let loadLedger: SheetGrid | null = null;
+  for (const title of ledgerTitles) {
+    const result = await readPublicCsv(spreadsheetId, title, fetchImpl);
+    if (result.privateSheet) return emptyWorkbook(privateSheetNote(env));
+    if (result.grid && result.grid.some((row) => row.some((cell) => /delivery date/i.test(cell)))) {
+      loadLedger = result.grid;
+      break;
+    }
+  }
+  async function one(title: string, marker: RegExp): Promise<SheetGrid | null> {
+    const result = await readPublicCsv(spreadsheetId, title, fetchImpl);
+    if (result.privateSheet) return null;
+    if (result.grid && result.grid.some((row) => row.some((cell) => marker.test(cell)))) return result.grid;
+    return null;
+  }
+  const digits = unitNumber.replace(/\D/g, "");
+  const padded = (digits.replace(/^0+/, "") || digits || unitNumber).padStart(2, "0");
+  const mgmtExpenses = await one("Mgmt Expenses", /^category$/i);
+  const weeklyExpenses = await one(`Truck #${padded} Weekly Expenses`, /driver compensation/i);
+  const fuelLog = await one(`Truck #${padded} Fuel Log`, /^gallons$/i);
+  const fleetDirectory = await one("Fleet Directory", /^vin$/i);
+  if (!loadLedger && !mgmtExpenses) {
+    return emptyWorkbook("The sheet has no Load Ledger tab and no Mgmt Expenses tab.");
+  }
+  const notes: string[] = [];
+  if (!loadLedger) notes.push("Load Ledger tab was not found.");
+  if (!mgmtExpenses) notes.push("Mgmt Expenses tab was not found.");
+  return {
+    loadLedger,
+    mgmtExpenses,
+    weeklyExpenses,
+    fuelLog,
+    fleetDirectory,
+    note: notes.length ? notes.join(" ") : null,
+  };
+}
+
+export async function loadTruckWorkbook(
+  truck: { unitNumber: string; googleSheetUrl: string | null },
+  opts?: { fetchImpl?: FetchLike; env?: Record<string, string | undefined> },
+): Promise<TruckWorkbook> {
+  const fetchImpl = opts?.fetchImpl ?? fetch;
+  const env = opts?.env ?? process.env;
+  if (!truck.googleSheetUrl) return emptyWorkbook("No Google Sheet link. Paste it on Trucks.");
+  const spreadsheetId = spreadsheetIdFromUrl(truck.googleSheetUrl);
+  if (!spreadsheetId) return emptyWorkbook("Google Sheet link must be a docs.google.com spreadsheet URL.");
+  const account = serviceAccountConfig(env);
+  const apiKey = readEnv("GOOGLE_SHEETS_API_KEY", env);
+  let accessToken = "";
+  if (account) {
+    try {
+      accessToken = await serviceAccountToken(account.email, account.privateKey, fetchImpl);
+    } catch (err) {
+      return emptyWorkbook(err instanceof Error ? err.message : "Google service account sign-in failed.");
+    }
+  }
+  if (accessToken || apiKey) {
+    return readWorkbookWithToken(spreadsheetId, truck.unitNumber, accessToken, apiKey, fetchImpl);
+  }
+  return readPublicWorkbook(spreadsheetId, truck.unitNumber, fetchImpl, env);
 }

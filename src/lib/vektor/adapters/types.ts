@@ -2,7 +2,7 @@ import type { LookupMaps } from "../map";
 import type { ImportWindowReport } from "../mcp/window";
 import type { VektorManifest } from "../types";
 
-export type ImportSourceId = "mcp" | "csv" | "api";
+export type ImportSourceId = "mcp" | "csv" | "api" | "sheet";
 
 export type AdapterStatus = {
   id: ImportSourceId;
@@ -17,6 +17,8 @@ export type AdapterStatus = {
 export type FetchManifestsInput = {
   from: string;
   to: string;
+  /** CSV upload text. Used only by the CSV adapter. */
+  csvText?: string | null;
 };
 
 export type FetchManifestsResult = {

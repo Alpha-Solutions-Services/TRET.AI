@@ -1,6 +1,7 @@
 import { ApiAdapter } from "./api-adapter";
 import { CsvExportAdapter } from "./csv-adapter";
 import { McpAdapter } from "./mcp-adapter";
+import { SheetLedgerAdapter, type SheetLedgerSource } from "./sheet-adapter";
 import type { ImportSourceAdapter, ImportSourceId } from "./types";
 
 export type AdapterRegistryOptions = {
@@ -11,20 +12,29 @@ export type AdapterRegistryOptions = {
   csvColumnMapping: Record<string, string> | null;
   apiBaseUrl: string;
   apiToken: string;
+  apiPathTemplate?: string;
+  apiFetchImpl?: typeof fetch;
+  sheetLoadLedgers?: () => Promise<SheetLedgerSource[]>;
 };
 
 export function createAdapters(
   opts: AdapterRegistryOptions,
 ): ImportSourceAdapter[] {
   return [
+    new CsvExportAdapter({ columnMapping: opts.csvColumnMapping }),
+    new SheetLedgerAdapter({ loadLedgers: opts.sheetLoadLedgers }),
+    new ApiAdapter({
+      baseUrl: opts.apiBaseUrl,
+      token: opts.apiToken,
+      pathTemplate: opts.apiPathTemplate,
+      fetchImpl: opts.apiFetchImpl,
+    }),
     new McpAdapter({
       verified: opts.mcpVerified,
       hasTokens: opts.mcpHasTokens,
       needsSignIn: opts.mcpNeedsSignIn,
       fetchManifests: opts.mcpFetchManifests,
     }),
-    new CsvExportAdapter({ columnMapping: opts.csvColumnMapping }),
-    new ApiAdapter({ baseUrl: opts.apiBaseUrl, token: opts.apiToken }),
   ];
 }
 

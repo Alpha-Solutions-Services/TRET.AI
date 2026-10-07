@@ -16,6 +16,7 @@ import {
   readVektorPublicStatus,
   type VektorPublicStatus,
 } from "@/lib/vektor/oauth/supabase-store";
+import { loadTruckWorkbook } from "@/lib/sheets/read";
 import type { Database } from "@/lib/supabase/database.types";
 
 export async function loadImportRegistry(
@@ -69,6 +70,29 @@ export async function loadImportRegistry(
     csvColumnMapping: csvMapping,
     apiBaseUrl: process.env.VEKTOR_API_BASE_URL ?? "",
     apiToken: process.env.VEKTOR_API_TOKEN ?? "",
+    apiPathTemplate: process.env.VEKTOR_API_MANIFESTS_PATH ?? "",
+    sheetLoadLedgers: opts?.withLiveFetch
+      ? async () => {
+          const { data, error } = await supabase
+            .from("trucks")
+            .select("unit_number, google_sheet_url, active")
+            .eq("active", true);
+          if (error) throw new Error(error.message);
+          return Promise.all(
+            (data ?? []).map(async (truck) => {
+              const book = await loadTruckWorkbook({
+                unitNumber: truck.unit_number,
+                googleSheetUrl: truck.google_sheet_url,
+              });
+              return {
+                unitNumber: truck.unit_number,
+                grid: book.loadLedger,
+                note: book.note,
+              };
+            }),
+          );
+        }
+      : undefined,
   });
   const selected = (map.get("import_source") as ImportSourceId | null) ?? null;
   return {

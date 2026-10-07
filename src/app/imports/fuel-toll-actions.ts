@@ -93,8 +93,14 @@ export async function runFuelAndTollsImportAction(input?: {
       error: "No import source selected. Open Settings and choose Vektor MCP or CSV.",
     };
   }
-  if (registry.selected === "api") {
-    return { ok: false, error: "The API adapter does not import fuel or tolls." };
+  if (registry.selected === "api" || registry.selected === "sheet") {
+    return {
+      ok: false,
+      error:
+        registry.selected === "api"
+          ? "The API adapter does not import fuel or tolls."
+          : "Google Sheet import does not import fuel or tolls. Fuel and tolls still use Vektor MCP or a mapped CSV.",
+    };
   }
 
   const { data: settingRows, error: settingErr } = await supabase

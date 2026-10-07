@@ -4,7 +4,7 @@ import { buildWeekSnapshot, type WeekSnapshot } from "@/lib/overview/snapshot";
 import { listOperatingExpenses } from "@/lib/operating-expenses/queries";
 import { buildInbox, countOpenIssues } from "@/lib/issues/inbox";
 import { listImportIssues } from "@/lib/issues/queries";
-import { loadActiveTruckInsOuts } from "@/lib/sheets/load-week";
+import { loadInsOutsWeek } from "@/lib/sheets/load-week";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { loadStatements, resolveWeekStart } from "@/lib/statements/queries";
 
@@ -21,24 +21,19 @@ export type OverviewPageData = {
   operatingExpensesReady: boolean;
   insOuts: TruckWeekInsOuts[];
   insOutsError: string | null;
+  sheetEnvMissing: string[];
+  mismatchCount: number | null;
+  mismatchError: string | null;
 };
-
-async function loadInsOuts(
-  weekStart: string,
-  weekEnd: string,
-): Promise<{ insOuts: TruckWeekInsOuts[]; insOutsError: string | null }> {
-  const loaded = await loadActiveTruckInsOuts(weekStart, weekEnd);
-  return { insOuts: loaded.rows, insOutsError: loaded.error };
-}
 
 export async function loadOverview(weekRaw: string | undefined): Promise<OverviewPageData> {
   const weekStart = resolveWeekStart(weekRaw);
   const bounds = weekBoundsForDate(weekStart);
-  const [statements, expenses, issues, ins] = await Promise.all([
+  const ins = await loadInsOutsWeek(bounds.start, bounds.end);
+  const [statements, expenses, issues] = await Promise.all([
     loadStatements(weekStart),
     listOperatingExpenses(),
     listImportIssues(),
-    loadInsOuts(bounds.start, bounds.end),
   ]);
 
   const base = {
@@ -47,8 +42,11 @@ export async function loadOverview(weekRaw: string | undefined): Promise<Overvie
     locked: statements.locked,
     closedAt: statements.closedAt,
     operatingExpensesReady: expenses.ready,
-    insOuts: ins.insOuts,
-    insOutsError: ins.insOutsError,
+    insOuts: ins.rows,
+    insOutsError: ins.error,
+    sheetEnvMissing: ins.sheetEnvMissing,
+    mismatchCount: ins.mismatchCount,
+    mismatchError: ins.mismatchError,
   };
 
   if (statements.error) {

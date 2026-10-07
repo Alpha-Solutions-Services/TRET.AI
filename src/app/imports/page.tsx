@@ -3,6 +3,7 @@ import { ImportsClient } from "@/components/imports/imports-client";
 import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/server";
+import { loadImportRegistry } from "@/lib/vektor/import-registry";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,8 @@ async function ImportsContent() {
       </p>
     );
   }
-  return <ImportsClient runs={data ?? []} />;
+  const registry = await loadImportRegistry(supabase);
+  return <ImportsClient runs={data ?? []} source={registry.selected} />;
 }
 
 export default function ImportsPage() {

@@ -44,11 +44,15 @@ export function parseStatusFilter(raw: string | undefined): IssueStatusFilter {
  * An import issue is in the week when its run overlaps Monday–Sunday.
  * A row with no run range stays visible so it cannot disappear from every week.
  */
+const SHEET_WEEK = /^sheet:(\d{4}-\d{2}-\d{2}):/;
+
 export function importIssueInWeek(
   issue: ImportIssueInput,
   weekStart: string,
   weekEnd: string,
 ): boolean {
+  const tagged = SHEET_WEEK.exec(issue.ref ?? "");
+  if (tagged) return tagged[1] === weekStart;
   if (!issue.rangeFrom || !issue.rangeTo) return true;
   return issue.rangeFrom <= weekEnd && weekStart <= issue.rangeTo;
 }

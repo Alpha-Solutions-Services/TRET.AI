@@ -7,6 +7,7 @@ import { centsToDollarString } from "@/lib/money/cents";
 import type { OverviewPageData } from "@/lib/overview/queries";
 import type { ManagementPnl } from "@/lib/overview/pnl";
 import type { SnapshotRow } from "@/lib/overview/snapshot";
+import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 
 function money(cents: number): string {
@@ -92,6 +93,21 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
         )}
       </div>
 
+      <SheetsEnvBanner missing={data.sheetEnvMissing} />
+
+      {data.mismatchCount != null ? (
+        <Link
+          href={`/issues?week=${data.weekStart}`}
+          className="inline-flex rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline hover:bg-[var(--color-muted)]"
+        >
+          Sheet mismatches: {data.mismatchCount}
+        </Link>
+      ) : data.mismatchError ? (
+        <p className="text-sm text-red-700" role="status">
+          Sheet comparison could not be loaded. {data.mismatchError}
+        </p>
+      ) : null}
+
       {data.error ? (
         <p className="text-sm text-red-700" role="alert">
           {data.error}
@@ -168,10 +184,10 @@ function InsOutsTable({
                     {row.unitNumber}
                     <span className="block text-xs text-[var(--color-fg-muted)]">{row.truckName}</span>
                   </td>
-                  <td className="px-3 py-2">{row.readable ? row.loadCount : "Unread"}</td>
-                  <td className="px-3 py-2">{row.readable ? money(row.insCents) : "Unread"}</td>
-                  <td className="px-3 py-2">{row.readable ? money(row.outsCents) : "Unread"}</td>
-                  <td className="px-3 py-2">{row.readable ? money(row.netCents) : "Unread"}</td>
+                  <td className="px-3 py-2">{row.readable ? row.loadCount : row.note ?? "Sheet was not read."}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.insCents) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.outsCents) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.netCents) : ""}</td>
                   <td className="max-w-md px-3 py-2 text-[var(--color-fg-muted)]">{categoryLine(row)}</td>
                 </tr>
               ))

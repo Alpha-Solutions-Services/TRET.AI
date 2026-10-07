@@ -29,8 +29,8 @@ export class McpAdapter implements ImportSourceAdapter {
         selectable: false,
         configured: false,
         message: this.opts.hasTokens
-          ? "Needs sign-in. Click Connect Vektor, then Test connection. Import stays unverified until that passes."
-          : "Needs sign-in. Click Connect Vektor (unverified until Test connection passes).",
+          ? "Available, currently broken on filters proto. Needs sign-in. Click Connect Vektor, then Test connection. Unverified until that passes. Kept for when Vektor documents filters."
+          : "Available, currently broken on filters proto. Needs sign-in. Click Connect Vektor (unverified until Test connection passes). Kept for when Vektor documents filters.",
       };
     }
     if (!this.opts.verified) {
@@ -40,7 +40,7 @@ export class McpAdapter implements ImportSourceAdapter {
         selectable: false,
         configured: false,
         message:
-          "Connected. Run Test connection before choosing MCP. mcp_verified stays false until that passes.",
+          "Available, currently broken on filters proto. Connected. Run Test connection before choosing MCP. Unverified until that passes.",
       };
     }
     return {
@@ -48,7 +48,8 @@ export class McpAdapter implements ImportSourceAdapter {
       label: "Vektor MCP",
       selectable: true,
       configured: true,
-      message: "Ready (read-only MCP tools).",
+      message:
+        "Available, currently broken on filters proto. Selectable after Test connection, but manifest filters still fail proto decode. Prefer CSV or the truck Google Sheet until Vektor documents filters.",
     };
   }
 

@@ -42,6 +42,7 @@ async function loadAdapterRegistry(supabase: Awaited<ReturnType<typeof createCli
 export async function runVektorImportAction(input?: {
   from?: string;
   to?: string;
+  csvText?: string | null;
 }): Promise<ImportActionResult> {
   const access = await checkAccess();
   if (access.status !== "allowed") {
@@ -134,7 +135,10 @@ export async function runVektorImportAction(input?: {
   }
 
   try {
-    const fetched = await adapter.fetchManifests(range);
+    const fetched = await adapter.fetchManifests({
+      ...range,
+      csvText: input?.csvText ?? null,
+    });
     const manifests = fetched.manifests;
     const fetchReport = fetched.report ?? null;
 

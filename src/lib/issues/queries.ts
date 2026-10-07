@@ -1,4 +1,7 @@
 import { weekBoundsForDate } from "@/lib/fee-engine";
+import { loadActiveTruckInsOuts } from "@/lib/sheets/load-week";
+import { sheetLedgerRefs } from "@/lib/sheets/mismatch";
+import { syncSheetMismatches } from "@/lib/sheets/sync-mismatches";
 import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
 import { loadStatements, resolveWeekStart } from "@/lib/statements/queries";
@@ -65,6 +68,16 @@ export async function listImportIssues(): Promise<ImportIssueList> {
 export async function loadIssuesPage(weekRaw: string | undefined): Promise<IssuesPageData> {
   const weekStart = resolveWeekStart(weekRaw);
   const bounds = weekBoundsForDate(weekStart);
+  const sheets = await loadActiveTruckInsOuts(bounds.start, bounds.end);
+  if (!sheets.error) {
+    const refs = sheetLedgerRefs(sheets.rows);
+    await syncSheetMismatches({
+      weekStart: bounds.start,
+      weekEnd: bounds.end,
+      sheet: refs.sheet,
+      readableUnitKeys: refs.readableUnitKeys,
+    });
+  }
   const [statements, issues] = await Promise.all([
     loadStatements(weekStart),
     listImportIssues(),

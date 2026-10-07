@@ -22,7 +22,7 @@ The **database** is always the source of truth. If a sheet disagrees with the da
 
 ## Current version
 
-`VERSION` is the source of truth. v0.0.0.16 sends Vektor list `filters` as a JSON string, because a nested object fails proto decode, and adds the Legacy Inc Ins and Outs page at `/ins-outs`. v0.0.0.14 reads Vektor manifests into the loads ledger and shows per-truck Ins and Outs from each Google Sheet on Overview. See [modules.md](modules.md) and [WEEK-CLOSE-RUNBOOK.md](WEEK-CLOSE-RUNBOOK.md).
+`VERSION` is the source of truth. v0.0.0.17 keeps Google Sheets as the Ins and Outs numbers, shows the real sheet error instead of Unread, and adds CSV, Google Sheet Load Ledger, and Vektor REST as import sources beside MCP. MCP stays in Settings and is labeled broken on filters proto. A week can flag sheet Load IDs that are missing from `loads` or that disagree on rate. Ins and Outs can download a Weekly Asset Management Report PDF. See [modules.md](modules.md) and [WEEK-CLOSE-RUNBOOK.md](WEEK-CLOSE-RUNBOOK.md).
 
 ## What v0.0.0.1 included
 

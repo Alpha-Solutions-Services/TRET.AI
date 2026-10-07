@@ -1,4 +1,7 @@
-import { dollarStringToCents } from "@/lib/money/cents";
+import { inWeek, sheetAmountToCents, sheetDay } from "@/lib/sheets/cell";
+import { parseLoadLedger } from "@/lib/sheets/ledger";
+
+export { sheetAmountToCents, sheetDay } from "@/lib/sheets/cell";
 
 /** Categories on the truck sheet Mgmt Expenses dropdown. */
 export const MGMT_EXPENSE_CATEGORIES = [
@@ -33,50 +36,21 @@ export type TruckWeekInsOuts = {
   netCents: number;
   loadCount: number;
   categories: ExpenseCategoryTotal[];
-  /** Set when the sheet could not be read, or a tab was missing. */
+  /** Set when the sheet could not be read, a tab was missing, or a header did not parse. */
   note: string | null;
   readable: boolean;
+  /** Load ledger rows in this week. Rate is null when the cell was blank. */
+  ledgerLoads: Array<{ loadId: string; rateCents: number | null }>;
 };
 
 const CATEGORY_ORDER = new Map<string, number>(
   MGMT_EXPENSE_CATEGORIES.map((category, index) => [category.toLowerCase(), index]),
 );
 
-export function sheetAmountToCents(raw: string): number | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const negative = trimmed.startsWith("-") || /^\(.*\)$/.test(trimmed);
-  const cleaned = trimmed.replace(/[$,\s]/g, "").replace(/[()]/g, "").replace(/^-/, "");
-  if (!cleaned) return null;
-  try {
-    const cents = dollarStringToCents(cleaned);
-    return negative ? -cents : cents;
-  } catch {
-    return null;
-  }
-}
-
-/** Sheet dates: YYYY-MM-DD, with an optional time, or M/D/YYYY. */
-export function sheetDay(raw: string): string | null {
-  const text = raw.trim();
-  const iso = /^(\d{4}-\d{2}-\d{2})/.exec(text);
-  if (iso) return iso[1] ?? null;
-  const us = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(text);
-  if (!us) return null;
-  const month = us[1]!.padStart(2, "0");
-  const day = us[2]!.padStart(2, "0");
-  return `${us[3]}-${month}-${day}`;
-}
-
-function inWeek(day: string | null, weekStart: string, weekEnd: string): boolean {
-  if (!day) return false;
-  return day >= weekStart && day <= weekEnd;
-}
-
 function findHeader(grid: SheetGrid, required: string[]): number {
   const wanted = required.map((name) => name.toLowerCase());
   for (let index = 0; index < grid.length; index++) {
-    const cells = (grid[index] ?? []).map((cell) => cell.trim().toLowerCase());
+    const cells = (grid[index] ?? []).map((cell) => cell.trim().toLowerCase().replace(/\s+/g, " "));
     if (wanted.every((name) => cells.includes(name))) return index;
   }
   return -1;
@@ -84,7 +58,7 @@ function findHeader(grid: SheetGrid, required: string[]): number {
 
 function columnIndex(header: string[], name: string): number {
   const wanted = name.toLowerCase();
-  return header.findIndex((cell) => cell.trim().toLowerCase() === wanted);
+  return header.findIndex((cell) => cell.trim().toLowerCase().replace(/\s+/g, " ") === wanted);
 }
 
 function canonicalCategory(raw: string): string {
@@ -126,35 +100,34 @@ export function insFromLoadLedger(
   grid: SheetGrid,
   weekStart: string,
   weekEnd: string,
-): { insCents: number; loadCount: number } {
-  const headerIndex = findHeader(grid, ["Delivery Date", "Load ID", "Rate"]);
-  if (headerIndex < 0) return { insCents: 0, loadCount: 0 };
-  const header = grid[headerIndex] ?? [];
-  const dateCol = columnIndex(header, "Delivery Date");
-  const loadCol = columnIndex(header, "Load ID");
-  const rateCol = columnIndex(header, "Rate");
+): {
+  insCents: number;
+  loadCount: number;
+  headerFound: boolean;
+  loads: Array<{ loadId: string; rateCents: number | null }>;
+} {
+  const parsed = parseLoadLedger(grid);
+  if (!parsed.headerFound) return { insCents: 0, loadCount: 0, headerFound: false, loads: [] };
   let insCents = 0;
   let loadCount = 0;
-  for (const row of grid.slice(headerIndex + 1)) {
-    const loadId = (row[loadCol] ?? "").trim();
-    if (!loadId) continue;
-    const day = sheetDay(row[dateCol] ?? "");
-    if (!inWeek(day, weekStart, weekEnd)) continue;
-    const cents = sheetAmountToCents(row[rateCol] ?? "");
-    if (cents == null) continue;
-    insCents += cents;
+  const loads: Array<{ loadId: string; rateCents: number | null }> = [];
+  for (const row of parsed.rows) {
+    if (!inWeek(row.deliveryDay, weekStart, weekEnd)) continue;
+    loads.push({ loadId: row.loadId, rateCents: row.rateCents });
+    if (row.rateCents == null) continue;
+    insCents += row.rateCents;
     loadCount += 1;
   }
-  return { insCents, loadCount };
+  return { insCents, loadCount, headerFound: true, loads };
 }
 
 export function outsFromMgmtExpenses(
   grid: SheetGrid,
   weekStart: string,
   weekEnd: string,
-): { outsCents: number; categories: ExpenseCategoryTotal[] } {
+): { outsCents: number; categories: ExpenseCategoryTotal[]; headerFound: boolean } {
   const headerIndex = findHeader(grid, ["Date", "Category", "Amount"]);
-  if (headerIndex < 0) return { outsCents: 0, categories: [] };
+  if (headerIndex < 0) return { outsCents: 0, categories: [], headerFound: false };
   const header = grid[headerIndex] ?? [];
   const dateCol = columnIndex(header, "Date");
   const categoryCol = columnIndex(header, "Category");
@@ -180,7 +153,7 @@ export function outsFromMgmtExpenses(
     })
     .map(([category, cents]) => ({ category, cents }));
   const outsCents = [...totals.values()].reduce((sum, cents) => sum + cents, 0);
-  return { outsCents, categories };
+  return { outsCents, categories, headerFound: true };
 }
 
 export function fleetInsOutsTotals(rows: TruckWeekInsOuts[]): {
@@ -237,32 +210,49 @@ export function buildTruckWeekInsOuts(input: {
     unitNumber: input.unitNumber,
     truckName: input.truckName,
   };
+  const empty = {
+    ...base,
+    insCents: 0,
+    outsCents: 0,
+    netCents: 0,
+    loadCount: 0,
+    categories: [] as ExpenseCategoryTotal[],
+    ledgerLoads: [] as Array<{ loadId: string; rateCents: number | null }>,
+  };
   if (!input.loadLedger && !input.mgmtExpenses) {
-    return {
-      ...base,
-      insCents: 0,
-      outsCents: 0,
-      netCents: 0,
-      loadCount: 0,
-      categories: [],
-      note: input.note,
-      readable: false,
-    };
+    return { ...empty, note: input.note, readable: false };
   }
   const ins = input.loadLedger
     ? insFromLoadLedger(input.loadLedger, input.weekStart, input.weekEnd)
-    : { insCents: 0, loadCount: 0 };
+    : null;
   const outs = input.mgmtExpenses
     ? outsFromMgmtExpenses(input.mgmtExpenses, input.weekStart, input.weekEnd)
-    : { outsCents: 0, categories: [] };
+    : null;
+  const notes: string[] = [];
+  if (input.note) notes.push(input.note);
+  if (ins && !ins.headerFound) {
+    notes.push("Load Ledger was opened but the header row was not found. Expected Delivery Date, Load ID, and Rate.");
+  }
+  if (outs && !outs.headerFound) {
+    notes.push("Mgmt Expenses was opened but the header row was not found. Expected Date, Category, and Amount.");
+  }
+  const parsed = Boolean(ins?.headerFound || outs?.headerFound);
+  if (!parsed) {
+    return {
+      ...empty,
+      note: notes.join(" ") || "Sheet was not read.",
+      readable: false,
+    };
+  }
   return {
     ...base,
-    insCents: ins.insCents,
-    outsCents: outs.outsCents,
-    netCents: ins.insCents - outs.outsCents,
-    loadCount: ins.loadCount,
-    categories: outs.categories,
-    note: input.note,
+    insCents: ins?.insCents ?? 0,
+    outsCents: outs?.outsCents ?? 0,
+    netCents: (ins?.insCents ?? 0) - (outs?.outsCents ?? 0),
+    loadCount: ins?.loadCount ?? 0,
+    categories: outs?.categories ?? [],
+    ledgerLoads: ins?.loads ?? [],
+    note: notes.length ? notes.join(" ") : null,
     readable: true,
   };
 }

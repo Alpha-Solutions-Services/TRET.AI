@@ -115,7 +115,7 @@ describe("truck match via truckId → referenceId", () => {
 });
 
 describe("adapters", () => {
-  it("MCP unverified and CSV/API empty are not selectable", () => {
+  it("CSV and the sheet are selectable while MCP and an empty API are not", () => {
     const adapters = createAdapters({
       mcpVerified: false,
       mcpHasTokens: false,
@@ -123,7 +123,12 @@ describe("adapters", () => {
       apiBaseUrl: "",
       apiToken: "",
     });
-    expect(adapters.every((a) => !a.status().selectable)).toBe(true);
+    const byId = Object.fromEntries(adapters.map((adapter) => [adapter.id, adapter.status()]));
+    expect(byId.csv?.selectable).toBe(true);
+    expect(byId.sheet?.selectable).toBe(true);
+    expect(byId.api?.selectable).toBe(false);
+    expect(byId.mcp?.selectable).toBe(false);
+    expect(byId.mcp?.message).toMatch(/broken on filters proto/i);
     expect(new McpAdapter().status().message).toMatch(/unverified/i);
   });
 

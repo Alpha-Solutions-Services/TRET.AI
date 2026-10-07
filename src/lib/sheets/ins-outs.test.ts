@@ -14,6 +14,7 @@ import {
   insFromLoadLedger,
   outsFromMgmtExpenses,
   sheetAmountToCents,
+  sheetDay,
 } from "@/lib/sheets/ins-outs";
 import { InsOutsClient } from "@/components/ins-outs/ins-outs-client";
 import { loadTruckWeekInsOuts } from "@/lib/sheets/read";
@@ -52,6 +53,11 @@ describe("sheet Ins and Outs", () => {
     expect(insFromLoadLedger(ledger, WEEK.weekStart, WEEK.weekEnd)).toEqual({
       insCents: 595_000,
       loadCount: 2,
+      headerFound: true,
+      loads: [
+        { loadId: "TBH1178", rateCents: 275_000 },
+        { loadId: "TBH1186", rateCents: 320_000 },
+      ],
     });
     const outs = outsFromMgmtExpenses(expenses, WEEK.weekStart, WEEK.weekEnd);
     expect(outs.outsCents).toBe(33_000);
@@ -126,6 +132,9 @@ describe("sheet Ins and Outs", () => {
         weekEnd: WEEK.weekEnd,
         rows: [readable, unread],
         error: null,
+        sheetEnvMissing: ["GOOGLE_SERVICE_ACCOUNT_EMAIL"],
+        mismatchCount: 1,
+        mismatchError: null,
       }),
     );
     expect(html).toContain("Legacy Inc income and outgoing");
@@ -133,7 +142,10 @@ describe("sheet Ins and Outs", () => {
     expect(html).toContain("Spare Expense 5");
     expect(html).toContain("Vektor Fee");
     expect(html).toContain("John Reed");
-    expect(html).toContain("Unread");
+    expect(html).toContain("No Google Sheet link. Paste it on Trucks.");
+    expect(html).not.toContain("Unread");
+    expect(html).toContain("Sheet mismatches: 1");
+    expect(html).toContain("GOOGLE_SERVICE_ACCOUNT_EMAIL");
     expect(html).toContain("Fleet");
     expect(html).toContain("$5950.00");
     expect(html).toContain("$330.00");
@@ -264,6 +276,28 @@ describe("sheet fetch", () => {
       },
     );
     expect(calls.some((url) => url.includes("oauth2.googleapis.com/token"))).toBe(true);
+    const batch = calls.find((url) => url.includes("/values:batchGet")) ?? "";
+    expect(batch).toContain("dateTimeRenderOption=FORMATTED_STRING");
+    expect(decodeURIComponent(batch)).toContain("!A1:AZ");
     expect(rows[0]).toMatchObject({ insCents: 275_000, outsCents: 3_000, readable: true });
+  });
+});
+
+describe("sheet dates", () => {
+  it("reads ledger datetimes and Google serial days", () => {
+    expect(sheetDay("2026-09-01 0:00:00")).toBe("2026-09-01");
+    expect(sheetDay("9/1/2026 12:00:00 AM")).toBe("2026-09-01");
+    const epoch = Date.UTC(1899, 11, 30);
+    const target = Date.UTC(2026, 8, 1);
+    const serial = Math.round((target - epoch) / 86_400_000);
+    expect(sheetDay(String(serial))).toBe("2026-09-01");
+    const ledger = parseCsv(
+      "Delivery Date,Load ID,Rate\n2026-09-01 0:00:00,TBH-1081,\"$1,600.00\"\n",
+    );
+    expect(insFromLoadLedger(ledger, "2026-08-31", "2026-09-06")).toMatchObject({
+      insCents: 160_000,
+      loadCount: 1,
+      headerFound: true,
+    });
   });
 });

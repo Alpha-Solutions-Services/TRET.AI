@@ -3,7 +3,7 @@ import { InsOutsClient } from "@/components/ins-outs/ins-outs-client";
 import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { weekBoundsForDate } from "@/lib/fee-engine";
-import { loadActiveTruckInsOuts } from "@/lib/sheets/load-week";
+import { loadInsOutsWeek } from "@/lib/sheets/load-week";
 import { resolveWeekStart } from "@/lib/statements/queries";
 
 export const dynamic = "force-dynamic";
@@ -20,13 +20,16 @@ function PageSkeleton() {
 async function InsOutsContent({ week }: { week: string | undefined }) {
   const weekStart = resolveWeekStart(week);
   const bounds = weekBoundsForDate(weekStart);
-  const loaded = await loadActiveTruckInsOuts(bounds.start, bounds.end);
+  const loaded = await loadInsOutsWeek(bounds.start, bounds.end);
   return (
     <InsOutsClient
       weekStart={bounds.start}
       weekEnd={bounds.end}
       rows={loaded.rows}
       error={loaded.error}
+      sheetEnvMissing={loaded.sheetEnvMissing}
+      mismatchCount={loaded.mismatchCount}
+      mismatchError={loaded.mismatchError}
     />
   );
 }

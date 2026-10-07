@@ -19,7 +19,7 @@ Ingest → Staging → Validate → Ledger → Reports → Sync
 
 ## Source of truth
 
-The **Postgres database (Supabase)** wins over sheets and files. Disagreements create issues; nothing is overwritten silently.
+The **Postgres database (Supabase)** is the loads ledger. Google Sheets are the numbers on Overview, Ins and Outs, and the Weekly Asset Management Report. A sheet Load ID or rate that disagrees with `loads` opens a Warn issue. Nothing is overwritten silently.
 
 ## Money
 
