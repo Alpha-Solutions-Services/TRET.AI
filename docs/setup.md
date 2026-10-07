@@ -93,3 +93,10 @@ Do these once (or when credentials change). The app cannot finish login or healt
 1. In the Supabase SQL editor, run `supabase/migrations/20261007130000_fixed_expenses_monday_rule.sql`. Do this only when you are ready (say go).
 2. It adds fixed weekly expenses, week overrides, and management operating expenses, all with Row Level Security. It also requires new fee rate versions to start on a Monday.
 3. Until that script has run, the Fixed expenses tab and Operating expenses page say the migration has not been applied. Trucks, loads, and imports keep working.
+
+## 11. Fuel and tolls (v0.0.0.7) — do this before importing fuel or tolls
+
+1. In the Supabase SQL editor, run `supabase/migrations/20261007140000_fuel_tolls_import.sql`. Do this only when you are ready (say go).
+2. It adds fuel and toll staging, `fuel_transactions`, `toll_transactions`, and threshold rows in `import_settings`. All new tables have Row Level Security.
+3. Until that script has run, Fuel, Tolls, and Import fuel and tolls say the migration has not been applied. Loads keep working.
+4. No new environment variables. Connect Vektor (section 9) is still required for the MCP path.

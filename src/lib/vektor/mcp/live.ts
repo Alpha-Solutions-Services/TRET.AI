@@ -4,7 +4,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { OAuthClientInformationMixed } from "@modelcontextprotocol/sdk/shared/auth.js";
 import { VEKTOR_MCP_URL, vektorClientMetadata } from "../oauth/flow";
 import { NeedsSignInError, safeErrorMessage } from "../oauth/needs-sign-in";
-import { MCP_READ_ALLOWLIST, assertMcpToolAllowed } from "./allowlist";
+import { MCP_CONNECTION_TOOLS, assertMcpToolAllowed } from "./allowlist";
 import type { ToolCaller } from "./fetch-manifests";
 import { buildManifestsGetArgs } from "./args";
 import { withRetry, withTimeout } from "./retry";
@@ -103,7 +103,7 @@ export async function probeVektorConnection(tools: {
   listToolNames: () => Promise<string[]>;
 }): Promise<{ toolCount: number }> {
   const names = await tools.listToolNames();
-  for (const required of MCP_READ_ALLOWLIST) {
+  for (const required of MCP_CONNECTION_TOOLS) {
     if (!names.includes(required)) {
       throw new Error(
         `Vektor did not expose required read tool ${required}. On the consent screen, enable read tools and try Test connection again.`,

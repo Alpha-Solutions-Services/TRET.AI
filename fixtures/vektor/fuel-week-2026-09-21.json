@@ -1,0 +1,79 @@
+{
+  "weekStart": "2026-09-21",
+  "weekEnd": "2026-09-27",
+  "note": "The uploaded handoff did not include per-unit fuel dollar totals (it says see original handoff). These rows are the acceptance stand-in for units 02-08. Unit 03 retail is 100 cents above discounted.",
+  "truck3Unit": "03",
+  "truck3RetailMinusDiscountedCents": 100,
+  "transactions": [
+    {
+      "transactionId": "fuel-02-1",
+      "unitNumber": "02",
+      "transactedAt": "2026-09-23 14:05:00",
+      "card": "CARD02",
+      "product": "DIESEL",
+      "gallons": "100.000",
+      "discountedAmount": "350.00",
+      "retailAmount": "350.00"
+    },
+    {
+      "transactionId": "fuel-03-1",
+      "unitNumber": "03",
+      "transactedAt": "2026-09-23 15:10:00",
+      "card": "CARD03",
+      "product": "DIESEL",
+      "gallons": "120.000",
+      "discountedAmount": "420.00",
+      "retailAmount": "421.00"
+    },
+    {
+      "transactionId": "fuel-04-1",
+      "unitNumber": "04",
+      "transactedAt": "2026-09-24 09:00:00",
+      "card": "CARD04",
+      "product": "DIESEL",
+      "gallons": "80.000",
+      "discountedAmount": "280.00",
+      "retailAmount": "280.00"
+    },
+    {
+      "transactionId": "fuel-05-1",
+      "unitNumber": "05",
+      "transactedAt": "2026-09-24 11:20:00",
+      "card": "CARD05",
+      "product": "DIESEL",
+      "gallons": "50.000",
+      "discountedAmount": "175.00",
+      "retailAmount": "175.00"
+    },
+    {
+      "transactionId": "fuel-06-1",
+      "unitNumber": "06",
+      "transactedAt": "2026-09-25 08:40:00",
+      "card": "CARD06",
+      "product": "DIESEL",
+      "gallons": "150.000",
+      "discountedAmount": "525.00",
+      "retailAmount": "525.00"
+    },
+    {
+      "transactionId": "fuel-07-1",
+      "unitNumber": "07",
+      "transactedAt": "2026-09-25 16:15:00",
+      "card": "CARD07",
+      "product": "DIESEL",
+      "gallons": "60.000",
+      "discountedAmount": "210.00",
+      "retailAmount": "210.00"
+    },
+    {
+      "transactionId": "fuel-08-1",
+      "unitNumber": "08",
+      "transactedAt": "2026-09-26 07:55:00",
+      "card": "CARD08",
+      "product": "DIESEL",
+      "gallons": "90.000",
+      "discountedAmount": "315.00",
+      "retailAmount": "315.00"
+    }
+  ]
+}

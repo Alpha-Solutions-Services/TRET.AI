@@ -74,9 +74,19 @@ If Connect Vektor reports that the database migration or `VEKTOR_TOKEN_ENCRYPTIO
 1. Make sure trucks exist with unit numbers that match Vektor exactly (for example `02`, not `2`).
 2. Connect Vektor and pass Test connection (above).
 3. Open **Imports**.
-4. Set the date range (defaults to the last 14 days) and click **Import now**.
+4. Set the date range (defaults to the last 14 days) and click **Import loads**.
 5. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts and any plain-language error. A zero-row result is stated in that message; a sign-in failure is a Failed run, not a silent zero.
 6. Open **Loads** to review promoted rows. Filter by week (Monday–Sunday) and truck. Totals are at the bottom.
+
+## Import fuel and tolls
+
+1. Trucks must use the same unit numbers as Vektor (`02`, not `2`). Import loads for the same week first so a fuel day can be checked against a load.
+2. Open **Imports**. Set From and To. For 21–27 Sep 2026 use `2026-09-21` and `2026-09-27`.
+3. Click **Import fuel and tolls**. MCP is used when Vektor MCP is the selected source and Test connection has passed.
+4. CSV is the fallback. It runs only when Settings has selected CSV and the fuel and toll column mappings are saved. Choose both CSV files, then click **Import fuel and tolls**.
+5. Open **Fuel** and **Tolls**. Pick the week starting `2026-09-21`. The summary is per unit. Fuel shows discounted and retail. Tolls show the transaction count and the amount.
+
+Importing the same Vektor transaction again updates that row. It does not add a second one. A truck that does not match stays in staging and opens a Warn issue.
 
 Notes:
 

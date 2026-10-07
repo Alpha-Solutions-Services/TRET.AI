@@ -194,6 +194,8 @@ export type Database = {
           status: string;
           /** After additive migration 20261007100000 (unapplied until go). */
           source?: string | null;
+          /** After additive migration 20261007140000 (unapplied until go). */
+          kind?: string | null;
           range_from: string;
           range_to: string;
           rows_fetched: number;
@@ -209,6 +211,7 @@ export type Database = {
           finished_at?: string | null;
           status: string;
           source?: string | null;
+          kind?: string;
           range_from: string;
           range_to: string;
           rows_fetched?: number;
@@ -224,6 +227,7 @@ export type Database = {
           finished_at?: string | null;
           status?: string;
           source?: string | null;
+          kind?: string;
           range_from?: string;
           range_to?: string;
           rows_fetched?: number;
@@ -431,6 +435,183 @@ export type Database = {
           import_run_id?: string | null;
           manifest_id?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      vektor_fuel_staging: {
+        Row: {
+          id: string;
+          import_run_id: string | null;
+          vektor_transaction_id: string;
+          raw: Json;
+          promote_status: string;
+          reject_reason: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          import_run_id?: string | null;
+          vektor_transaction_id: string;
+          raw: Json;
+          promote_status?: string;
+          reject_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          import_run_id?: string | null;
+          vektor_transaction_id?: string;
+          raw?: Json;
+          promote_status?: string;
+          reject_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      vektor_toll_staging: {
+        Row: {
+          id: string;
+          import_run_id: string | null;
+          vektor_transaction_id: string;
+          raw: Json;
+          promote_status: string;
+          reject_reason: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          import_run_id?: string | null;
+          vektor_transaction_id: string;
+          raw: Json;
+          promote_status?: string;
+          reject_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          import_run_id?: string | null;
+          vektor_transaction_id?: string;
+          raw?: Json;
+          promote_status?: string;
+          reject_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      fuel_transactions: {
+        Row: {
+          id: string;
+          vektor_transaction_id: string;
+          truck_id: string | null;
+          unit_number: string | null;
+          transacted_at: string;
+          transacted_date: string;
+          week_start: string;
+          week_end: string;
+          product: string;
+          card: string | null;
+          gallons_milli: number;
+          amount_cents: number;
+          retail_amount_cents: number | null;
+          import_run_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vektor_transaction_id: string;
+          truck_id?: string | null;
+          unit_number?: string | null;
+          transacted_at: string;
+          transacted_date: string;
+          week_start: string;
+          week_end: string;
+          product: string;
+          card?: string | null;
+          gallons_milli: number;
+          amount_cents: number;
+          retail_amount_cents?: number | null;
+          import_run_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          vektor_transaction_id?: string;
+          truck_id?: string | null;
+          unit_number?: string | null;
+          transacted_at?: string;
+          transacted_date?: string;
+          week_start?: string;
+          week_end?: string;
+          product?: string;
+          card?: string | null;
+          gallons_milli?: number;
+          amount_cents?: number;
+          retail_amount_cents?: number | null;
+          import_run_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      toll_transactions: {
+        Row: {
+          id: string;
+          vektor_transaction_id: string;
+          truck_id: string | null;
+          vektor_truck_id: string | null;
+          unit_number: string | null;
+          transacted_at: string;
+          transacted_date: string;
+          week_start: string;
+          week_end: string;
+          amount_cents: number;
+          card: string | null;
+          location: string | null;
+          import_run_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vektor_transaction_id: string;
+          truck_id?: string | null;
+          vektor_truck_id?: string | null;
+          unit_number?: string | null;
+          transacted_at: string;
+          transacted_date: string;
+          week_start: string;
+          week_end: string;
+          amount_cents: number;
+          card?: string | null;
+          location?: string | null;
+          import_run_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          vektor_transaction_id?: string;
+          truck_id?: string | null;
+          vektor_truck_id?: string | null;
+          unit_number?: string | null;
+          transacted_at?: string;
+          transacted_date?: string;
+          week_start?: string;
+          week_end?: string;
+          amount_cents?: number;
+          card?: string | null;
+          location?: string | null;
+          import_run_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

@@ -72,8 +72,17 @@ Audit trail. Truck create / activate / deactivate, rate-version create / delete,
 - **vektor_loads_staging** — raw manifests, unique on `manifest_id` (idempotency). Unmatched trucks stay here.
 - **loads** — promoted delivered loads. Money in integer cents. `load_id` = order friendlyId; `manifest_friendly_id` separate. Deadhead = `emptyDistance`. Trip Group / Primary Load columns exist but stay empty (OPEN). Lineage fields stored raw.
 - **issues** — Block / Warn / Info with rule, message, ref, status.
+- **import_runs.kind** (v0.0.0.7) — `loads` (default), `fuel`, or `tolls`. Row-count drop compares the same kind only.
 - **vektor_mcp_connection** — one row of encrypted Vektor OAuth client data and tokens. Not readable by the browser.
 - **vektor_oauth_pending** — one-time encrypted PKCE verifier while Connect Vektor is in progress.
+
+## vektor_fuel_staging / vektor_toll_staging / fuel_transactions / toll_transactions (v0.0.0.7)
+
+Staging is unique on `vektor_transaction_id`. A second import of the same id updates that row. Unmatched trucks stay in staging.
+
+Promoted fuel stores gallons as milli-gallons and money as integer cents. `amount_cents` is the discounted amount that is booked. `retail_amount_cents` is kept so the Truck 3 $1 gap can be checked. Promoted tolls store the Vektor truck id and the resolved `unit_number`.
+
+Validation thresholds are rows in `import_settings` (price per gallon, tank size, MPG band, row-count drop). They are not hardcoded in the validators.
 
 ## truck_fixed_expenses (v0.0.0.6)
 
@@ -125,6 +134,6 @@ Each write function checks `allowed_users` and writes `change_log`. `change_log.
 
 ## Access (RLS)
 
-`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, and `mgmt_operating_expenses` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`.
+`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, `mgmt_operating_expenses`, `vektor_fuel_staging`, `vektor_toll_staging`, `fuel_transactions`, and `toll_transactions` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`.
 
 `vektor_mcp_connection` and `vektor_oauth_pending` have Row Level Security on and no policies. `anon` and `authenticated` have no table grants. Allowed users touch ciphertext only through security-definer functions. The encryption key stays in server env.
