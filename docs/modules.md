@@ -5,7 +5,7 @@
 | 1 | Foundation and login (v0.0.0.1) | Done |
 | 2 | Database and fee engine (v0.0.0.2) | Done |
 | 2b | Trucks and fee rules screens (v0.0.0.3) | Done |
-| 3 | Vektor loads import (v0.0.0.4) plus live MCP connect (v0.0.0.5). List calls use `filters`, `page`, and `perPage` (v0.0.0.12). Empty list probes the tool schema (v0.0.0.14) | Done |
+| 3 | Vektor loads import (v0.0.0.4) plus live MCP connect (v0.0.0.5). List calls use `filters`, `page`, and `perPage` (v0.0.0.12). Empty list probes the tool schema (v0.0.0.14). Filters stay an object map (v0.0.0.15) | Done |
 | 3b | Fixed weekly expenses and operating expenses (v0.0.0.6) | Done |
 | 4 | Fuel and tolls from Vektor (v0.0.0.7) | Done |
 | 4b | Truck edit and per-truck Google Sheet link (v0.0.0.13) | Done |

@@ -86,7 +86,7 @@ If Connect Vektor reports that the database migration or `VEKTOR_TOKEN_ENCRYPTIO
 2. Connect Vektor and pass Test connection (above).
 3. Open **Imports**.
 4. Set the date range (defaults to the last 14 days) and click **Import loads**.
-5. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts. A zero-row result is written in Notes, including which list filter was used and the payload shape (keys and counts only). A sign-in failure is a Failed run, not a silent zero.
+5. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts. A zero-row result is written in Notes, including which list filters were tried and the payload shape (keys and counts only). If Vektor returns a tool error, the run is Failed and Notes show that error. A sign-in failure is a Failed run, not a silent zero.
 6. Open **Loads** to review promoted rows. Filter by week (Monday–Sunday) and truck. Totals are at the bottom.
 
 ## Import fuel and tolls

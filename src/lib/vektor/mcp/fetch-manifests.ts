@@ -117,6 +117,7 @@ export async function fetchManifestsFromTools(opts: {
   const seenTokens = new Set<string>();
   const notes: string[] = [];
   const primary = defaultManifestFilters(window.queryFrom, window.queryTo);
+  const triedLabels = [primary.label];
   let chosen = primary;
   let first = await readManifestPage(opts.callTool, primary.filters, 1);
   let sawSuccessfulCall = !first.errorText;
@@ -141,6 +142,7 @@ export async function fetchManifestsFromTools(opts: {
       schema,
       alreadyTried: primary.filters,
     })) {
+      triedLabels.push(probe.label);
       const hit = await readManifestPage(opts.callTool, probe.filters, 1);
       if (hit.errorText) notes.push(`${probe.label}: ${hit.errorText}`);
       else sawSuccessfulCall = true;
@@ -239,7 +241,12 @@ export async function fetchManifestsFromTools(opts: {
   const { kept, report } = summarizeManifestWindow(manifests, opts.from, opts.to);
   const shape =
     first.manifests.length === 0 ? `Payload: ${summarizePayloadShape(first.payload)}.` : null;
-  const payloadNote = [...notes, shape].filter((part): part is string => Boolean(part)).join(" ").trim();
+  const triedNote =
+    first.manifests.length === 0 ? `Tried filters: ${triedLabels.join(", ")}.` : null;
+  const payloadNote = [...notes, triedNote, shape]
+    .filter((part): part is string => Boolean(part))
+    .join(" ")
+    .trim();
   report.filterLabel = chosen.label;
   report.payloadNote = payloadNote ? payloadNote.slice(0, 800) : null;
   const driverMap: Record<string, string> = {};

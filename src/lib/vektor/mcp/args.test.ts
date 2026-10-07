@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { MCP_CONNECTION_TOOLS } from "./allowlist";
 import {
+  VEKTOR_LIST_ARGUMENT_NAMES,
   VEKTOR_LIST_PER_PAGE,
+  buildManifestListArgs,
   buildManifestsGetArgs,
   buildOrderDetailsGetArgs,
   buildTransactionDateArgs,
@@ -11,14 +13,7 @@ import { fetchManifestsFromTools } from "./fetch-manifests";
 import { probeVektorConnection } from "./live";
 import type { VektorManifest } from "../types";
 
-const ACCEPTED_TOP_LEVEL = [
-  "aggregationKeys",
-  "filters",
-  "page",
-  "perPage",
-  "sortDirection",
-  "sortKey",
-] as const;
+const ACCEPTED_TOP_LEVEL = VEKTOR_LIST_ARGUMENT_NAMES;
 
 function expectAcceptedListArgs(args: Record<string, unknown>): void {
   for (const key of Object.keys(args)) {
@@ -49,6 +44,15 @@ describe("core_Manifests_Get arguments", () => {
       page: 2,
       perPage: 100,
     });
+  });
+
+  it("refuses an array of field objects before the call is sent", () => {
+    expect(() =>
+      buildManifestListArgs(
+        [{ field: "firstStopAppointmentStartDate", operator: "between", from: "2026-09-21", to: "2026-10-14" }],
+        1,
+      ),
+    ).toThrow(/object map/);
   });
 
   it("starts at page 1 when the caller does not pass a page", () => {
