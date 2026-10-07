@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.0.0.19 — 2026-10-07
+
+- The production build failed because the footer is a client component and it imported `src/lib/version.ts`. That module reads the VERSION file with `node:fs` and `node:path`. Webpack does not bundle those in the browser.
+- The footer now imports `APP_VERSION` and `formatFooterLabel` from `src/lib/app-version.ts`. That file has no Node imports. The label is still `TRET.AI v0.0.0.19`.
+- `package.json` stays `0.0.0`. npm cannot store a 4-part version. The VERSION file remains the source of truth. Server pages still read it through `readAppVersion`.
+
 ## v0.0.0.18 — 2026-10-07
 
 - Google Sheets sign-in normalizes the service account private key before OpenSSL reads it. A one-line PEM with literal `\n`, a quoted PEM, PKCS#8 (`BEGIN PRIVATE KEY`), and PKCS#1 (`BEGIN RSA PRIVATE KEY`) all work. When `GOOGLE_SERVICE_ACCOUNT_JSON` is set, that full JSON is used for the email and private key. The email and private key pair still works when JSON is unset.
