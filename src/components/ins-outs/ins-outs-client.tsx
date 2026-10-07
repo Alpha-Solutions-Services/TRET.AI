@@ -1,9 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { weekBoundsForDate } from "@/lib/fee-engine";
-import { centsToDollarString } from "@/lib/money/cents";
+import { CopyableError } from "@/components/copyable-error";
+import { PageGuidance } from "@/components/page-guidance";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
+import { weekBoundsForDate } from "@/lib/fee-engine";
+import { sheetPageGuidance } from "@/lib/footer-copy";
+import { centsToDollarString } from "@/lib/money/cents";
 import {
   MGMT_EXPENSE_CATEGORIES,
   fleetInsOutsTotals,
@@ -52,8 +55,9 @@ export function InsOutsClient({
 
   return (
     <div className="space-y-6">
+      <PageGuidance text={sheetPageGuidance(rows, error)} />
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Legacy Inc income and outgoing</h1>
+        <h1 className="text-2xl font-semibold">Legacy Inc income and outgoing</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
           Ins and outs for each active truck in the selected Monday to Sunday week. Ins are load earnings
           from that truck&apos;s Google Sheet load ledger (the Rate column, by delivery date). Outs are Mgmt
@@ -68,21 +72,21 @@ export function InsOutsClient({
       {mismatchCount != null ? (
         <a
           href={`/issues?week=${weekStart}`}
-          className="inline-flex rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline hover:bg-[var(--color-muted)]"
+          className="pressable material inline-flex rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline"
         >
           Sheet mismatches: {mismatchCount}
         </a>
       ) : mismatchError ? (
-        <p className="text-sm text-red-700" role="status">
-          Sheet comparison could not be loaded. {mismatchError}
-        </p>
+        <div role="status">
+          <CopyableError headline="Sheet comparison could not be loaded." detail={mismatchError} />
+        </div>
       ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
         <button
           type="button"
           onClick={() => openWeek(shiftWeek(weekStart, -1))}
-          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Previous week
         </button>
@@ -99,13 +103,13 @@ export function InsOutsClient({
                 return;
               }
             }}
-            className="h-10 rounded-md border border-[var(--color-border)] px-3"
+            className="h-10 rounded-lg border border-[var(--color-border)] bg-white/80 px-3"
           />
         </label>
         <button
           type="button"
           onClick={() => openWeek(shiftWeek(weekStart, 1))}
-          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Next week
         </button>
@@ -114,7 +118,7 @@ export function InsOutsClient({
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+      <div className="material overflow-x-auto rounded-xl border border-[var(--color-border)]">
         <table className="min-w-full text-left text-sm">
           <caption className="px-3 py-3 text-left font-medium">Ins and Outs</caption>
           <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
@@ -135,8 +139,8 @@ export function InsOutsClient({
           <tbody>
             {error ? (
               <tr>
-                <td className="px-3 py-3 text-red-700" colSpan={columnCount} role="alert">
-                  {error}
+                <td className="px-3 py-3" colSpan={columnCount} role="alert">
+                  <CopyableError headline="Ins and Outs could not be loaded." detail={error} />
                 </td>
               </tr>
             ) : rows.length === 0 ? (
@@ -152,7 +156,13 @@ export function InsOutsClient({
                     {row.unitNumber}
                     <span className="block text-xs text-[var(--color-fg-muted)]">{row.truckName}</span>
                   </td>
-                  <td className="px-3 py-2">{row.readable ? row.loadCount : row.note ?? "Sheet was not read."}</td>
+                  <td className="px-3 py-2">
+                    {row.readable ? (
+                      row.loadCount
+                    ) : (
+                      <CopyableError headline={row.note ?? "Sheet was not read."} detail={row.noteDetail} />
+                    )}
+                  </td>
                   <td className="px-3 py-2">{row.readable ? money(row.insCents) : ""}</td>
                   {MGMT_EXPENSE_CATEGORIES.map((category) => (
                     <td key={category} className="px-3 py-2 whitespace-nowrap">

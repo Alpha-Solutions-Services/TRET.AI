@@ -1,6 +1,8 @@
 import { Suspense } from "react";
+import { CopyableError } from "@/components/copyable-error";
 import { HealthSkeleton } from "@/components/health-skeleton";
 import { SignedInShell } from "@/components/signed-in-shell";
+import { sheetsAccountHealth } from "@/lib/sheets/private-key";
 import { createClient } from "@/lib/supabase/server";
 import { readAppVersion } from "@/lib/version";
 
@@ -8,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 async function HealthContent() {
   const version = readAppVersion();
+  const sheets = sheetsAccountHealth();
   let databaseStatus: "OK" | "FAILED" = "FAILED";
 
   try {
@@ -30,7 +33,17 @@ async function HealthContent() {
           <dt className="text-[var(--color-fg-muted)]">Database connection</dt>
           <dd className="font-medium">{databaseStatus}</dd>
         </div>
+        <div className="flex gap-2">
+          <dt className="text-[var(--color-fg-muted)]">Sheet account</dt>
+          <dd className="font-medium">{sheets.summary}</dd>
+        </div>
       </dl>
+      {sheets.formatDetail ? (
+        <CopyableError
+          headline="Google private key on the server is the wrong format"
+          detail={sheets.formatDetail}
+        />
+      ) : null}
     </section>
   );
 }

@@ -22,7 +22,7 @@ The **database** is always the source of truth. If a sheet disagrees with the da
 
 ## Current version
 
-`VERSION` is the source of truth. v0.0.0.17 keeps Google Sheets as the Ins and Outs numbers, shows the real sheet error instead of Unread, and adds CSV, Google Sheet Load Ledger, and Vektor REST as import sources beside MCP. MCP stays in Settings and is labeled broken on filters proto. A week can flag sheet Load IDs that are missing from `loads` or that disagree on rate. Ins and Outs can download a Weekly Asset Management Report PDF. See [modules.md](modules.md) and [WEEK-CLOSE-RUNBOOK.md](WEEK-CLOSE-RUNBOOK.md).
+`VERSION` is the source of truth. v0.0.0.18 keeps Google Sheets as the Ins and Outs numbers. The service account can be the full JSON (`GOOGLE_SERVICE_ACCOUNT_JSON`) or the email and private key. A bad private key shows a plain error and copies the real cause. The footer has the page instructions, a non-secret sheet check, and the version. v0.0.0.17 still supplies CSV, Google Sheet Load Ledger, and Vektor REST beside MCP. MCP stays labeled broken on filters proto. See [modules.md](modules.md) and [WEEK-CLOSE-RUNBOOK.md](WEEK-CLOSE-RUNBOOK.md).
 
 ## What v0.0.0.1 included
 

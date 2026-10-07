@@ -7,7 +7,10 @@ import { centsToDollarString } from "@/lib/money/cents";
 import type { OverviewPageData } from "@/lib/overview/queries";
 import type { ManagementPnl } from "@/lib/overview/pnl";
 import type { SnapshotRow } from "@/lib/overview/snapshot";
+import { CopyableError } from "@/components/copyable-error";
+import { PageGuidance } from "@/components/page-guidance";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
+import { sheetPageGuidance } from "@/lib/footer-copy";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 
 function money(cents: number): string {
@@ -29,11 +32,12 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      <PageGuidance text={sheetPageGuidance(data.insOuts, data.insOutsError)} />
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
+        <h1 className="text-2xl font-semibold">Overview</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
-          Fleet and unit totals for one Monday–Sunday week. Fees are driver, management or Tolson, dispatch, and
+          Fleet and unit totals for one Monday to Sunday week. Fees are driver, management or Tolson, dispatch, and
           factoring. Fixed is the amount charged to the owner. Amounts are cents.
         </p>
       </div>
@@ -42,7 +46,7 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
         <button
           type="button"
           onClick={() => openWeek(shiftWeek(data.weekStart, -1))}
-          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Previous week
         </button>
@@ -59,34 +63,37 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
                 return;
               }
             }}
-            className="h-10 rounded-md border border-[var(--color-border)] px-3"
+            className="h-10 rounded-lg border border-[var(--color-border)] bg-white/80 px-3"
           />
         </label>
         <button
           type="button"
           onClick={() => openWeek(shiftWeek(data.weekStart, 1))}
-          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Next week
         </button>
         <p className="text-sm text-[var(--color-fg-muted)]">
-          Showing {data.weekStart} → {data.weekEnd}
+          Showing {data.weekStart} through {data.weekEnd}
         </p>
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <p className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm">
+        <p className="material rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm">
           Close status: {data.locked ? "Locked" : "Open"}
           {data.locked && data.closedAt ? ` ${data.closedAt.slice(0, 10)}` : ""}
         </p>
         {data.openIssueCount == null ? (
-          <p className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-red-700" role="status">
-            {data.issuesError ?? "Open issues could not be loaded."}
-          </p>
+          <div className="material rounded-xl border border-[var(--color-border)] px-3 py-2" role="status">
+            <CopyableError
+              headline="Open issues could not be loaded."
+              detail={data.issuesError ?? "Open issues could not be loaded."}
+            />
+          </div>
         ) : (
           <Link
             href={`/issues?week=${data.weekStart}`}
-            className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+            className="pressable material rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
             Open issues: {data.openIssueCount}
           </Link>
@@ -98,20 +105,20 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
       {data.mismatchCount != null ? (
         <Link
           href={`/issues?week=${data.weekStart}`}
-          className="inline-flex rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline hover:bg-[var(--color-muted)]"
+          className="pressable material inline-flex rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline"
         >
           Sheet mismatches: {data.mismatchCount}
         </Link>
       ) : data.mismatchError ? (
-        <p className="text-sm text-red-700" role="status">
-          Sheet comparison could not be loaded. {data.mismatchError}
-        </p>
+        <div role="status">
+          <CopyableError headline="Sheet comparison could not be loaded." detail={data.mismatchError} />
+        </div>
       ) : null}
 
       {data.error ? (
-        <p className="text-sm text-red-700" role="alert">
-          {data.error}
-        </p>
+        <div role="alert">
+          <CopyableError headline="This week could not be loaded." detail={data.error} />
+        </div>
       ) : null}
 
       {data.snapshot ? <SnapshotTable snapshot={data.snapshot} /> : null}
@@ -124,7 +131,7 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
 }
 
 function categoryLine(row: TruckWeekInsOuts): string {
-  if (!row.readable) return row.note ?? "Sheet was not read.";
+  if (!row.readable) return "Not read";
   const parts = row.categories.map((category) => `${category.category} ${money(category.cents)}`);
   if (row.note) parts.push(row.note);
   if (parts.length === 0) return "No outs this week.";
@@ -151,7 +158,7 @@ function InsOutsTable({
 
   return (
     <section className="space-y-2">
-      <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+      <div className="material overflow-x-auto rounded-xl border border-[var(--color-border)]">
         <table className="min-w-full text-left text-sm">
           <caption className="px-3 py-3 text-left font-medium">Ins and Outs</caption>
           <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
@@ -167,8 +174,8 @@ function InsOutsTable({
           <tbody>
             {error ? (
               <tr>
-                <td className="px-3 py-3 text-red-700" colSpan={6} role="alert">
-                  {error}
+                <td className="px-3 py-3" colSpan={6} role="alert">
+                  <CopyableError headline="Ins and Outs could not be loaded." detail={error} />
                 </td>
               </tr>
             ) : rows.length === 0 ? (
@@ -184,7 +191,13 @@ function InsOutsTable({
                     {row.unitNumber}
                     <span className="block text-xs text-[var(--color-fg-muted)]">{row.truckName}</span>
                   </td>
-                  <td className="px-3 py-2">{row.readable ? row.loadCount : row.note ?? "Sheet was not read."}</td>
+                  <td className="px-3 py-2">
+                    {row.readable ? (
+                      row.loadCount
+                    ) : (
+                      <CopyableError headline={row.note ?? "Sheet was not read."} detail={row.noteDetail} />
+                    )}
+                  </td>
                   <td className="px-3 py-2">{row.readable ? money(row.insCents) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? money(row.outsCents) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? money(row.netCents) : ""}</td>
@@ -223,7 +236,7 @@ function InsOutsTable({
 
 function SnapshotTable({ snapshot }: { snapshot: NonNullable<OverviewPageData["snapshot"]> }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+    <div className="material overflow-x-auto rounded-xl border border-[var(--color-border)]">
       <table className="min-w-full text-left text-sm">
         <caption className="px-3 py-3 text-left font-medium">Week snapshot</caption>
         <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
@@ -281,7 +294,7 @@ function PnlTable({
 
   return (
     <section className="space-y-2">
-      <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+      <div className="material overflow-x-auto rounded-xl border border-[var(--color-border)]">
         <table className="min-w-full text-left text-sm">
           <caption className="px-3 py-3 text-left font-medium">Management P&L</caption>
           <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">

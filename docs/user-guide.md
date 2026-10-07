@@ -133,8 +133,9 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 5. **Open issues** shows the count and opens Issues for that week.
 6. Management P&L is under the snapshot. Income is Legacy retained on managed trucks and the dispatch fee. Expenses are fixed costs charged to management and operating expenses dated in that week. Tolson payable is listed and is not in the net.
 7. **Ins and Outs** is one row per active truck. Ins are load earnings from that truck’s Google Sheet load ledger (the Rate column, loads whose delivery date is in the week). Outs are the Mgmt Expenses rows dated in the week: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5.
-8. If a truck cannot be read, the Loads cell shows the note (missing link, missing service account variables, share, or a missing header). Ins, Outs, and Net stay blank for that row. A blank expense amount is not counted. The dashboard read does not write these sheets.
+8. If a truck cannot be read, the Loads cell shows a short reason (missing link, missing service account, a bad private key, share, or a missing header). Ins, Outs, and Net stay blank for that row. Click the reason, or **Copy**, to copy the real cause. A blank expense amount is not counted. The dashboard read does not write these sheets.
 9. **Open the Ins and Outs page** for the same week with one column per expense. **Sheet mismatches** links to Issues when a sheet Load ID is missing from loads or the rate differs.
+10. The footer at the bottom tells you what to do on this page, whether the Google service account is set, and the app version. It does not show secrets.
 
 ## Ins and Outs
 
@@ -142,7 +143,7 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 2. Pick the week. The date snaps to the Monday.
 3. Each active truck is one row. **Ins** are the Google Sheet load ledger Rate for deliveries in that week. **Outs** are Mgmt Expenses dated in that week.
 4. The expense columns are Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5.
-5. The **Fleet** row adds the readable sheets. A truck that was not read is left out of that total. The note on the row says why.
+5. The **Fleet** row adds the readable sheets. A truck that was not read is left out of that total. The note on the row says why. Click it, or **Copy**, to copy the real cause. The footer repeats that note for this week.
 6. **Download report** saves a Weekly Asset Management Report PDF for that truck and week. It uses the Load Ledger, Weekly Expenses, Fuel Log, and Fleet Directory on the sheet, plus fuel and toll rows in the database when the sheet fuel or toll cells are blank.
 7. This page does not change statements or the sheet. Promoting loads is a separate Import step.
 

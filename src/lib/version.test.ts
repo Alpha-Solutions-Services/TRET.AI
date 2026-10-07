@@ -3,7 +3,7 @@ import { formatFooterLabel, readAppVersion } from "./version";
 
 describe("version", () => {
   it("reads VERSION as the only source of truth", () => {
-    expect(readAppVersion()).toBe("0.0.0.17");
+    expect(readAppVersion()).toBe("0.0.0.18");
   });
 
   it("formats the signed-in footer label", () => {

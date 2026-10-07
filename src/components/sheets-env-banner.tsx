@@ -7,8 +7,8 @@ export function SheetsEnvBanner({ missing }: { missing: string[] }) {
       role="status"
     >
       Google Sheets service account is not set. {missing.join(" and ")} {verb} missing on the server.
-      Ins and Outs use each truck sheet as the source. Set both variables, then share each sheet with that
-      account as a viewer.
+      Ins and Outs use each truck sheet as the source. Set GOOGLE_SERVICE_ACCOUNT_JSON (the whole service
+      account file), or set both variables. Then share each sheet with that account as a viewer.
     </p>
   );
 }
