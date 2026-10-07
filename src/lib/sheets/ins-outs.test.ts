@@ -13,9 +13,11 @@ import {
   fleetInsOutsTotals,
   insFromLoadLedger,
   outsFromMgmtExpenses,
+  pickLoadLedgerTitle,
   sheetAmountToCents,
   sheetDay,
 } from "@/lib/sheets/ins-outs";
+import { inWeek } from "@/lib/sheets/cell";
 import { InsOutsClient } from "@/components/ins-outs/ins-outs-client";
 import { loadTruckWeekInsOuts } from "@/lib/sheets/read";
 
@@ -281,6 +283,134 @@ describe("sheet fetch", () => {
     expect(decodeURIComponent(batch)).toContain("!A1:AZ");
     expect(rows[0]).toMatchObject({ insCents: 275_000, outsCents: 3_000, readable: true });
   });
+
+  it("signs in when the private key uses literal newlines and quotes", async () => {
+    const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const pem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+    const stored = `"${pem.replace(/\n/g, "\\n")}"`;
+    let signedIn = false;
+    const rows = await loadTruckWeekInsOuts(
+      [
+        {
+          unitNumber: "3",
+          truckName: "John Reed",
+          googleSheetUrl: "https://docs.google.com/spreadsheets/d/sheet-3/edit",
+        },
+      ],
+      WEEK.weekStart,
+      WEEK.weekEnd,
+      {
+        env: {
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: "sheets@example.iam.gserviceaccount.com",
+          GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: stored,
+        },
+        fetchImpl: async (input) => {
+          const url = String(input);
+          if (url.includes("oauth2.googleapis.com/token")) {
+            signedIn = true;
+            return new Response(JSON.stringify({ access_token: "token-test" }), { status: 200 });
+          }
+          if (url.includes("/values:batchGet")) {
+            return new Response(
+              JSON.stringify({
+                valueRanges: [
+                  { values: [["Delivery Date", "Load ID", "Rate"], ["10/11/2026", "TBH1", "$10.00"]] },
+                  { values: [["Date", "Category", "Amount"]] },
+                ],
+              }),
+              { status: 200 },
+            );
+          }
+          return new Response(
+            JSON.stringify({
+              sheets: [
+                { properties: { title: "Truck #03 Load Ledger" } },
+                { properties: { title: "Mgmt Expenses" } },
+              ],
+            }),
+            { status: 200 },
+          );
+        },
+      },
+    );
+    expect(signedIn).toBe(true);
+    expect(rows[0]).toMatchObject({ insCents: 1_000, readable: true, note: null });
+  });
+
+  it("uses the JSON service account when that env is set", async () => {
+    const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const pem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+    let iss = "";
+    await loadTruckWeekInsOuts(
+      [
+        {
+          unitNumber: "03",
+          truckName: "John Reed",
+          googleSheetUrl: "https://docs.google.com/spreadsheets/d/sheet-3/edit",
+        },
+      ],
+      WEEK.weekStart,
+      WEEK.weekEnd,
+      {
+        env: {
+          GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+            client_email: "json@example.iam.gserviceaccount.com",
+            private_key: pem,
+          }),
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: "pem@example.iam.gserviceaccount.com",
+          GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: "not-a-key",
+        },
+        fetchImpl: async (input, init) => {
+          const url = String(input);
+          if (url.includes("oauth2.googleapis.com/token")) {
+            const assertion = new URLSearchParams(String(init?.body)).get("assertion") ?? "";
+            const payload = assertion.split(".")[1] ?? "";
+            iss = JSON.parse(Buffer.from(payload, "base64url").toString()).iss as string;
+            return new Response(JSON.stringify({ access_token: "token-test" }), { status: 200 });
+          }
+          if (url.includes("/values:batchGet")) {
+            return new Response(JSON.stringify({ valueRanges: [{ values: [] }, { values: [] }] }), {
+              status: 200,
+            });
+          }
+          return new Response(
+            JSON.stringify({
+              sheets: [{ properties: { title: "unit 3 Load Ledger" } }, { properties: { title: "Mgmt Expenses" } }],
+            }),
+            { status: 200 },
+          );
+        },
+      },
+    );
+    expect(iss).toBe("json@example.iam.gserviceaccount.com");
+  });
+
+  it("names a bad private key in plain language and keeps the OpenSSL cause", async () => {
+    const rows = await loadTruckWeekInsOuts(
+      [
+        {
+          unitNumber: "3",
+          truckName: "John Reed",
+          googleSheetUrl: "https://docs.google.com/spreadsheets/d/sheet-3/edit",
+        },
+      ],
+      WEEK.weekStart,
+      WEEK.weekEnd,
+      {
+        env: {
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: "sheets@example.iam.gserviceaccount.com",
+          GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: `-----BEGIN PRIVATE KEY-----\\n${"A".repeat(180)}\\n-----END PRIVATE KEY-----`,
+        },
+        fetchImpl: async () => {
+          throw new Error("should not call Google");
+        },
+      },
+    );
+    expect(rows[0]?.readable).toBe(false);
+    expect(rows[0]?.note).toBe("Google private key on the server is the wrong format");
+    expect(rows[0]?.noteDetail).toMatch(/error:|DECODER|unsupported/i);
+    expect(rows[0]?.insCents).toBe(0);
+  });
 });
 
 describe("sheet dates", () => {
@@ -299,5 +429,28 @@ describe("sheet dates", () => {
       loadCount: 1,
       headerFound: true,
     });
+    expect(sheetDay("2026-10-05T00:00:00")).toBe("2026-10-05");
+    expect(sheetDay("10/11/2026 11:59:00 PM")).toBe("2026-10-11");
+    expect(inWeek("2026-10-11", WEEK.weekStart, WEEK.weekEnd)).toBe(true);
+    expect(inWeek("2026-10-12", WEEK.weekStart, WEEK.weekEnd)).toBe(false);
+    expect(inWeek("2026-10-04", WEEK.weekStart, WEEK.weekEnd)).toBe(false);
+    const sunday = parseCsv("Delivery Date,Load ID,Rate\n10/11/2026,TBH-SUN,\"$10.00\"\n");
+    expect(insFromLoadLedger(sunday, WEEK.weekStart, WEEK.weekEnd)).toMatchObject({
+      insCents: 1_000,
+      loadCount: 1,
+    });
+    const nextMonday = parseCsv("Delivery Date,Load ID,Rate\n10/12/2026,TBH-NEXT,\"$10.00\"\n");
+    expect(insFromLoadLedger(nextMonday, WEEK.weekStart, WEEK.weekEnd).loadCount).toBe(0);
+  });
+
+  it("matches Truck #03 and unit 3 tab titles to the same truck", () => {
+    const titles = ["Truck #03 Load Ledger", "Truck #04 Load Ledger", "Mgmt Expenses"];
+    expect(pickLoadLedgerTitle(titles, "3")).toBe("Truck #03 Load Ledger");
+    expect(pickLoadLedgerTitle(titles, "03")).toBe("Truck #03 Load Ledger");
+    expect(pickLoadLedgerTitle(titles, "unit 3")).toBe("Truck #03 Load Ledger");
+    expect(pickLoadLedgerTitle(["unit 3 Load Ledger", "Truck #04 Load Ledger"], "03")).toBe(
+      "unit 3 Load Ledger",
+    );
+    expect(pickLoadLedgerTitle(titles, "13")).toBeNull();
   });
 });

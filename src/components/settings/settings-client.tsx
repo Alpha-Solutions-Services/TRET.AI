@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
 import { useToast } from "@/components/ui/toast";
+import { CopyableError } from "@/components/copyable-error";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import type { ImportSourceId } from "@/lib/vektor/adapters";
 
@@ -32,10 +33,14 @@ export function SettingsClient({
   initial,
   notice,
   sheetEnvMissing,
+  sheetHealthSummary,
+  sheetHealthDetail,
 }: {
   initial: Settings;
   notice?: string | null;
   sheetEnvMissing: string[];
+  sheetHealthSummary: string;
+  sheetHealthDetail: string | null;
 }) {
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -102,13 +107,26 @@ export function SettingsClient({
 
       <SheetsEnvBanner missing={sheetEnvMissing} />
 
+      <section className="material rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm">
+        <h2 className="font-medium text-[var(--color-fg)]">Sheet account</h2>
+        <p className="mt-1 text-[var(--color-fg-muted)]">{sheetHealthSummary}</p>
+        {sheetHealthDetail ? (
+          <div className="mt-2">
+            <CopyableError
+              headline="Google private key on the server is the wrong format"
+              detail={sheetHealthDetail}
+            />
+          </div>
+        ) : null}
+      </section>
+
       {noticeText ? (
         <p className="rounded-md border border-[var(--color-border)] bg-white px-4 py-3 text-sm" role="status">
           {noticeText}
         </p>
       ) : null}
 
-      <section className="space-y-3 rounded-lg border border-[var(--color-border)] bg-white p-4">
+      <section className="material space-y-3 rounded-xl border border-[var(--color-border)] p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-medium">Vektor</h2>
@@ -139,7 +157,7 @@ export function SettingsClient({
         ) : null}
       </section>
 
-      <fieldset className="space-y-3 rounded-lg border border-[var(--color-border)] bg-white p-4">
+      <fieldset className="material space-y-3 rounded-xl border border-[var(--color-border)] p-4">
         <legend className="px-1 text-sm font-medium">Import source</legend>
         <p className="text-sm text-[var(--color-fg-muted)]">
           CSV upload is the working file path. Google Sheet Load Ledger promotes sheet rows into loads for the
@@ -181,7 +199,7 @@ export function SettingsClient({
         ))}
       </fieldset>
 
-      <section className="space-y-2 rounded-lg border border-[var(--color-border)] bg-white p-4">
+      <section className="material space-y-2 rounded-xl border border-[var(--color-border)] p-4">
         <h2 className="text-sm font-medium">Truck Google Sheets</h2>
         <p className="text-sm text-[var(--color-fg-muted)]">
           Paste each truck link on Trucks. Overview reads that sheet for the selected week. Ins are the load

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.0.18 — 2026-10-07
+
+- Google Sheets sign-in normalizes the service account private key before OpenSSL reads it. A one-line PEM with literal `\n`, a quoted PEM, PKCS#8 (`BEGIN PRIVATE KEY`), and PKCS#1 (`BEGIN RSA PRIVATE KEY`) all work. When `GOOGLE_SERVICE_ACCOUNT_JSON` is set, that full JSON is used for the email and private key. The email and private key pair still works when JSON is unset.
+- A key OpenSSL cannot read shows "Google private key on the server is the wrong format". The real cause stays available. Click the error, or Copy, to put that cause on the clipboard.
+- The signed-in footer is a tray: short instructions for the current page, a non-secret sheet account check (JSON, email, and private key set or not, and whether the key format is ok), and `TRET.AI v…`. Overview and Ins and Outs put the latest sheet note in that tray.
+- Load ledger tabs match unit 3 to `Truck #03` and to `unit 3`. Shell, tables, and buttons use a light material surface, a small press, and tighter titles. Motion is reduced when the system asks for that.
+- No new migration.
+
 ## v0.0.0.17 — 2026-10-07
 
 - Google Sheets stay the source for Overview and Ins and Outs. A sheet that cannot be read shows the real note (missing link, missing service account variables, share, HTTP error, or a missing header) in the Loads cell. Ins, Outs, and Net stay blank for that truck. The word Unread is no longer used. A banner names `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` when either is unset.

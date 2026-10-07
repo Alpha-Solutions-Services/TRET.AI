@@ -34,7 +34,7 @@ export function AppNav() {
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "inline-flex h-10 items-center rounded-md px-3 text-sm font-medium no-underline transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]",
+              "pressable inline-flex h-10 items-center rounded-lg px-3 text-sm font-medium no-underline transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]",
               active
                 ? "bg-[var(--color-accent)] text-white"
                 : "text-[var(--color-fg)] hover:bg-[var(--color-muted)]",

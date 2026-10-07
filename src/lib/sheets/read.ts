@@ -9,21 +9,20 @@ import {
   type SheetGrid,
   type TruckWeekInsOuts,
 } from "@/lib/sheets/ins-outs";
+import {
+  authFailureFromError,
+  missingGoogleServiceAccountEnv,
+  resolveServiceAccount,
+  serviceAccountSigningKey,
+  SHEET_ENV_EMAIL,
+  SHEET_ENV_JSON,
+  SHEET_ENV_KEY,
+} from "@/lib/sheets/private-key";
 
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
-export const SHEET_ENV_EMAIL = "GOOGLE_SERVICE_ACCOUNT_EMAIL";
-export const SHEET_ENV_KEY = "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY";
-
-export function missingGoogleServiceAccountEnv(
-  env: Record<string, string | undefined> = process.env,
-): string[] {
-  const missing: string[] = [];
-  if (!readEnv(SHEET_ENV_EMAIL, env)) missing.push(SHEET_ENV_EMAIL);
-  if (!readEnv(SHEET_ENV_KEY, env)) missing.push(SHEET_ENV_KEY);
-  return missing;
-}
+export { missingGoogleServiceAccountEnv, SHEET_ENV_EMAIL, SHEET_ENV_JSON, SHEET_ENV_KEY };
 
 export function privateSheetNote(env: Record<string, string | undefined>): string {
   const missing = missingGoogleServiceAccountEnv(env);
@@ -51,16 +50,6 @@ function base64url(value: string | Buffer): string {
   return Buffer.from(value).toString("base64url");
 }
 
-function serviceAccountConfig(env: Record<string, string | undefined>): {
-  email: string;
-  privateKey: string;
-} | null {
-  const email = readEnv("GOOGLE_SERVICE_ACCOUNT_EMAIL", env);
-  const privateKey = readEnv("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY", env).replace(/\\n/g, "\n");
-  if (!email || !privateKey) return null;
-  return { email, privateKey };
-}
-
 async function serviceAccountToken(
   email: string,
   privateKey: string,
@@ -80,7 +69,8 @@ async function serviceAccountToken(
   const signer = createSign("RSA-SHA256");
   signer.update(`${header}.${claim}`);
   signer.end();
-  const assertion = `${header}.${claim}.${signer.sign(privateKey).toString("base64url")}`;
+  const signingKey = serviceAccountSigningKey(privateKey);
+  const assertion = `${header}.${claim}.${signer.sign(signingKey).toString("base64url")}`;
   const response = await fetchImpl(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -277,16 +267,16 @@ export async function loadTruckWeekInsOuts(
 ): Promise<TruckWeekInsOuts[]> {
   const fetchImpl = opts?.fetchImpl ?? fetch;
   const env = opts?.env ?? process.env;
-  const account = serviceAccountConfig(env);
   const apiKey = readEnv("GOOGLE_SHEETS_API_KEY", env);
   let accessToken = "";
-  let authNote: string | null = null;
-  if (account) {
-    try {
+  let authFailure: { note: string; noteDetail: string } | null = null;
+  try {
+    const account = resolveServiceAccount(env);
+    if (account) {
       accessToken = await serviceAccountToken(account.email, account.privateKey, fetchImpl);
-    } catch (err) {
-      authNote = err instanceof Error ? err.message : "Google service account sign-in failed.";
     }
+  } catch (err) {
+    authFailure = authFailureFromError(err);
   }
 
   return Promise.all(
@@ -314,7 +304,7 @@ export async function loadTruckWeekInsOuts(
           note: "Google Sheet link must be a docs.google.com spreadsheet URL.",
         });
       }
-      if (authNote) {
+      if (authFailure) {
         return buildTruckWeekInsOuts({
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
@@ -322,7 +312,8 @@ export async function loadTruckWeekInsOuts(
           weekEnd,
           loadLedger: null,
           mgmtExpenses: null,
-          note: authNote,
+          note: authFailure.note,
+          noteDetail: authFailure.noteDetail,
         });
       }
       try {
@@ -339,7 +330,9 @@ export async function loadTruckWeekInsOuts(
           mgmtExpenses: tabs.mgmtExpenses,
           note: tabs.note,
         });
-      } catch {
+      } catch (err) {
+        const failure = authFailureFromError(err);
+        const decoder = failure.note !== failure.noteDetail;
         return buildTruckWeekInsOuts({
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
@@ -347,7 +340,10 @@ export async function loadTruckWeekInsOuts(
           weekEnd,
           loadLedger: null,
           mgmtExpenses: null,
-          note: "This Google Sheet is not readable. The read failed before a tab could be opened.",
+          note: decoder
+            ? failure.note
+            : "This Google Sheet is not readable. The read failed before a tab could be opened.",
+          noteDetail: failure.noteDetail,
         });
       }
     }),
@@ -509,15 +505,20 @@ export async function loadTruckWorkbook(
   if (!truck.googleSheetUrl) return emptyWorkbook("No Google Sheet link. Paste it on Trucks.");
   const spreadsheetId = spreadsheetIdFromUrl(truck.googleSheetUrl);
   if (!spreadsheetId) return emptyWorkbook("Google Sheet link must be a docs.google.com spreadsheet URL.");
-  const account = serviceAccountConfig(env);
   const apiKey = readEnv("GOOGLE_SHEETS_API_KEY", env);
   let accessToken = "";
-  if (account) {
-    try {
+  try {
+    const account = resolveServiceAccount(env);
+    if (account) {
       accessToken = await serviceAccountToken(account.email, account.privateKey, fetchImpl);
-    } catch (err) {
-      return emptyWorkbook(err instanceof Error ? err.message : "Google service account sign-in failed.");
     }
+  } catch (err) {
+    const failure = authFailureFromError(err);
+    const note =
+      failure.noteDetail && failure.noteDetail !== failure.note
+        ? `${failure.note} ${failure.noteDetail}`
+        : failure.note;
+    return emptyWorkbook(note);
   }
   if (accessToken || apiKey) {
     return readWorkbookWithToken(spreadsheetId, truck.unitNumber, accessToken, apiKey, fetchImpl);

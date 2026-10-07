@@ -145,3 +145,12 @@ Do these once (or when credentials change). The app cannot finish login or healt
 2. Optional server variable `VEKTOR_API_MANIFESTS_PATH`. Leave it empty until Vektor confirms the list path. `VEKTOR_API_BASE_URL` and `VEKTOR_API_TOKEN` turn on the REST source. That path never calls MCP.
 3. In **Settings**, read the four sources and save the one you want. CSV and Google Sheet Load Ledger work without Vektor keys. MCP stays listed and is labeled broken on filters proto.
 4. On **Ins and Outs**, **Download report** builds the Weekly Asset Management Report for that truck and week. Dispatcher, on-time, and compliance print Not stored. MC Lease adds Truck Pymts and Trailer Pymts.
+
+## 18. Service account key and the footer (v0.0.0.18)
+
+1. No new migration.
+2. On Vercel, set `GOOGLE_SERVICE_ACCOUNT_JSON` to the full service account JSON. That value is preferred. It supplies the email and the private key.
+3. You can still set `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` when JSON is unset. A one-line PEM may use `\n` for line breaks. Quotes around the PEM are removed.
+4. Share each truck sheet with that service account as a viewer.
+5. The footer shows whether JSON, the email, and the private key are set, and whether the key format is ok. It does not show the key. The same check is on Health and Settings.
+6. If the key format is wrong, the row says so in plain language. Click the error, or Copy, to copy the real cause.

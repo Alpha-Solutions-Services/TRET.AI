@@ -36,8 +36,10 @@ export type TruckWeekInsOuts = {
   netCents: number;
   loadCount: number;
   categories: ExpenseCategoryTotal[];
-  /** Set when the sheet could not be read, a tab was missing, or a header did not parse. */
+  /** Easy-language cause when the sheet could not be read, a tab was missing, or a header did not parse. */
   note: string | null;
+  /** Technical cause. Click copies this. Null when the note is already the full cause. */
+  noteDetail: string | null;
   readable: boolean;
   /** Load ledger rows in this week. Rate is null when the cell was blank. */
   ledgerLoads: Array<{ loadId: string; rateCents: number | null }>;
@@ -69,15 +71,33 @@ function canonicalCategory(raw: string): string {
   return known ?? trimmed;
 }
 
+function unitForms(unitNumber: string): string[] {
+  const digits = unitNumber.replace(/\D/g, "");
+  const bare = digits.replace(/^0+/, "") || digits;
+  if (!bare) return [];
+  return [...new Set([bare, bare.padStart(2, "0")])];
+}
+
+function titleMatchesUnit(title: string, unitNumber: string): boolean {
+  return unitForms(unitNumber).some((form) =>
+    new RegExp(`(?:^|[^0-9])${form}(?:[^0-9]|$)`).test(title),
+  );
+}
+
 export function loadLedgerCandidates(unitNumber: string): string[] {
   const digits = unitNumber.replace(/\D/g, "");
   const bare = digits.replace(/^0+/, "") || digits || unitNumber.trim();
   const padded = bare.padStart(2, "0");
   return [
-    `Truck #${padded} Load Ledger`,
-    `Truck #${bare} Load Ledger`,
-    `Truck ${padded} Load Ledger`,
-    "Load Ledger",
+    ...new Set([
+      `Truck #${padded} Load Ledger`,
+      `Truck #${bare} Load Ledger`,
+      `Truck ${padded} Load Ledger`,
+      `Truck ${bare} Load Ledger`,
+      `Unit ${padded} Load Ledger`,
+      `Unit ${bare} Load Ledger`,
+      "Load Ledger",
+    ]),
   ];
 }
 
@@ -85,7 +105,12 @@ export function pickLoadLedgerTitle(titles: string[], unitNumber: string): strin
   const ledgers = titles.filter((title) => /load ledger/i.test(title));
   if (ledgers.length === 0) return null;
   const wanted = new Set(loadLedgerCandidates(unitNumber).map((title) => title.toLowerCase()));
-  return ledgers.find((title) => wanted.has(title.trim().toLowerCase())) ?? ledgers[0] ?? null;
+  const exact = ledgers.find((title) => wanted.has(title.trim().toLowerCase()));
+  if (exact) return exact;
+  const matched = ledgers.filter((title) => titleMatchesUnit(title, unitNumber));
+  if (matched.length > 0) return matched[0] ?? null;
+  if (ledgers.length === 1) return ledgers[0] ?? null;
+  return null;
 }
 
 export function pickMgmtExpensesTitle(titles: string[]): string | null {
@@ -205,7 +230,9 @@ export function buildTruckWeekInsOuts(input: {
   loadLedger: SheetGrid | null;
   mgmtExpenses: SheetGrid | null;
   note: string | null;
+  noteDetail?: string | null;
 }): TruckWeekInsOuts {
+  const noteDetail = input.noteDetail ?? null;
   const base = {
     unitNumber: input.unitNumber,
     truckName: input.truckName,
@@ -218,6 +245,7 @@ export function buildTruckWeekInsOuts(input: {
     loadCount: 0,
     categories: [] as ExpenseCategoryTotal[],
     ledgerLoads: [] as Array<{ loadId: string; rateCents: number | null }>,
+    noteDetail,
   };
   if (!input.loadLedger && !input.mgmtExpenses) {
     return { ...empty, note: input.note, readable: false };
@@ -253,6 +281,7 @@ export function buildTruckWeekInsOuts(input: {
     categories: outs?.categories ?? [],
     ledgerLoads: ins?.loads ?? [],
     note: notes.length ? notes.join(" ") : null,
+    noteDetail,
     readable: true,
   };
 }
