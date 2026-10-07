@@ -66,6 +66,8 @@ describe("sheet Ins and Outs", () => {
           deadheadMilesHundredths: null,
           driverName: null,
           manifestId: null,
+          tripGroup: null,
+          sheetPrimary: null,
         },
         {
           loadId: "TBH--1186",
@@ -76,6 +78,8 @@ describe("sheet Ins and Outs", () => {
           deadheadMilesHundredths: null,
           driverName: null,
           manifestId: null,
+          tripGroup: null,
+          sheetPrimary: null,
         },
       ],
     });

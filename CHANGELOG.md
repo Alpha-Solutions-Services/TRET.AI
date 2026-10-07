@@ -2,7 +2,7 @@
 
 ## v0.0.0.28 — 2026-10-07
 
-- The weekly report joins a sheet load to its Vektor manifest on letters and digits. A blank delivery date still matches. The Oct 5 export marks TBH--1188 and TBH--1195 In Transit with no delivery date, so a week filter left them off the manifest and the report counted every mile. Manifest 1195 also includes TBH--1195 (384 miles), so that load is partial too. For the live Truck 8 week, loaded miles are 2,075.00, not 3,383.00 and not 2,459.00. Dispatch miles, rate per mile, and fuel cost per mile use those counted miles.
+- The weekly report joins a sheet load to its Vektor manifest on letters and digits. A blank delivery date still matches. The Oct 5 export marks TBH--1188 and TBH--1195 In Transit with no delivery date, so a week filter left them off the manifest and the report counted every mile. Truck #08 Load Ledger marks trip M-1195 with Primary Yes on TBH--1188 only. TBH--1192 and TBH--1195 are partial. Loaded miles are 2,075.00 and dispatch miles are 2,316.00. The sheet Primary flag and trip group win. The Vektor manifest is the fallback. Revenue still sums every load.
 - Migration `supabase/migrations/20261007230000_v28_backfill_manifest_refs.sql` is not applied. It fills a blank `source_manifest_ref` from that export. It does not change a manifest that is already set, and it does not insert rows.
 - Page 2 table fills stop on the template borders. The light blue no longer hangs left of the Weekly Totals block or below either table.
 - The weekly expense line is Maintenance Escrow Weekly on the report and on Ins and Outs. The escrow card stays Escrow Balance, or Escrow Balance (this week) when the sheet has no running balance.

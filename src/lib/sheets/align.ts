@@ -17,6 +17,8 @@ export type LoadFacts = {
   deliveryDateKind?: DateKind;
   pickupDateKind?: DateKind;
   manifestRef?: string | null;
+  /** Sheet Primary column. Null when the sheet did not say. */
+  sheetPrimary?: boolean | null;
 };
 
 export type AlignHighlight =
@@ -135,8 +137,9 @@ export function alignSheetAndVektor(input: {
     keys.map((key) => buildAligned(key, sheetByKey, vektorByKey, byPair, input.acceptances ?? [])),
   );
   return laid.map((row) => {
-    const { rankHundredths, ...aligned } = row;
+    const { rankHundredths, sheetPrimary, ...aligned } = row;
     void rankHundredths;
+    void sheetPrimary;
     return aligned;
   });
 }
@@ -147,7 +150,7 @@ function buildAligned(
   vektorByKey: Map<string, LoadFacts>,
   byPair: Map<string, SheetMismatch[]>,
   acceptances: FieldAcceptance[],
-): AlignedLoad & { rankHundredths: number } {
+): AlignedLoad & { rankHundredths: number; sheetPrimary: boolean | null } {
   const sheet = sheetByKey.get(key) ?? null;
   const vektor = vektorByKey.get(key) ?? null;
   const highlights: AlignHighlight[] = [];
@@ -229,6 +232,7 @@ function buildAligned(
     manifestRole: "solo",
     manifestHeader: false,
     rankHundredths: rankMiles(sheet, vektor),
+    sheetPrimary: sheet?.sheetPrimary ?? null,
   };
 }
 

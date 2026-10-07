@@ -162,4 +162,48 @@ describe("sheet and Vektor alignment", () => {
     ]);
     expect(rows[0]?.manifestHeader).toBe(true);
   });
+
+  it("lets the sheet Primary flag choose the full load on trip M-1195", () => {
+    const rows = alignSheetAndVektor({
+      weekStart: "2026-10-05",
+      sheet: [
+        {
+          unitNumber: "8",
+          loadId: "TBH--1192",
+          deliveryDay: "2026-10-08",
+          rateCents: 170_000,
+          loadedMilesHundredths: 92_400,
+          deadheadMilesHundredths: 0,
+          manifestRef: "M-1195",
+          sheetPrimary: false,
+        },
+        {
+          unitNumber: "8",
+          loadId: "TBH--1188",
+          deliveryDay: "2026-10-08",
+          rateCents: 180_000,
+          loadedMilesHundredths: 116_500,
+          deadheadMilesHundredths: 15_300,
+          manifestRef: "M-1195",
+          sheetPrimary: true,
+        },
+        {
+          unitNumber: "8",
+          loadId: "TBH--1195",
+          deliveryDay: "2026-10-08",
+          rateCents: 90_000,
+          loadedMilesHundredths: 38_400,
+          deadheadMilesHundredths: 0,
+          manifestRef: "M-1195",
+          sheetPrimary: false,
+        },
+      ],
+      vektor: [],
+    });
+    expect(rows.map((row) => [row.loadId, row.manifestRole, row.manifestRef])).toEqual([
+      ["TBH--1188", "primary", "1195"],
+      ["TBH--1192", "partial", "1195"],
+      ["TBH--1195", "partial", "1195"],
+    ]);
+  });
 });

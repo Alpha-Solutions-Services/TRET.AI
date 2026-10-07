@@ -229,15 +229,15 @@ describe("weekly asset report", () => {
     expect(text).not.toContain("2,999.00");
   });
 
-  it("groups the production week when in-transit orders share the manifest", async () => {
+  it("counts week 41 loaded miles from the sheet Primary row on trip M-1195", async () => {
     const ledger = [
       ["Primary Driver", "Brison", "Truck #", "8", "Status", "Active"],
-      ["Delivery Date", "Load ID", "Rate", "Loaded Miles", "Deadhead Miles", "Broker/Customer", "Origin", "Destination"],
-      ["10/05/2026", "TBH--1179", "$2,400.00", "596", "78", "LANDSTAR TRANSPORTATION LOGISTICS, INC", "Spring Hill, TN", "Kansas City, KS"],
-      ["10/06/2026", "TBH--1184", "$1,100.00", "314", "10", "TALLGRASS FREIGHT COMPANY", "Kansas City, MO", "Stillwater, OK"],
-      ["10/08/2026", "TBH--1188", "$1,800.00", "1,165", "153", "TOTAL QUALITY LOGISTICS LLC", "Afton, OK", "Richmond, VA"],
-      ["10/08/2026", "TBH--1192", "$1,700.00", "924", "0", "NEW ERA LOGISTICS INC (NEW ERA LOGISTICS)", "Tulsa, OK", "Greenville, SC"],
-      ["10/08/2026", "TBH--1195", "$900.00", "384", "0", "LANDSTAR TRANSPORTATION LOGISTICS, INC", "Chester, SC", "Fredericksburg, VA"],
+      ["Delivery Date", "Load ID", "Rate", "Loaded Miles", "Deadhead Miles", "Broker/Customer", "Origin", "Destination", "Trip Group", "Primary", "Truck Miles"],
+      ["10/05/2026", "TBH--1179", "$2,400.00", "596", "78", "LANDSTAR TRANSPORTATION LOGISTICS, INC", "Spring Hill, TN", "Kansas City, KS", "M-1179", "Yes", "596"],
+      ["10/06/2026", "TBH--1184", "$1,100.00", "314", "10", "TALLGRASS FREIGHT COMPANY", "Kansas City, MO", "Stillwater, OK", "M-1184", "Yes", "314"],
+      ["10/08/2026", "TBH--1188", "$1,800.00", "1,165", "153", "TOTAL QUALITY LOGISTICS LLC", "Afton, OK", "Richmond, VA", "M-1195", "Yes", "1,165"],
+      ["10/08/2026", "TBH--1192", "$1,700.00", "924", "0", "NEW ERA LOGISTICS INC (NEW ERA LOGISTICS)", "Tulsa, OK", "Greenville, SC", "M-1195", "", "0"],
+      ["10/08/2026", "TBH--1195", "$900.00", "384", "0", "LANDSTAR TRANSPORTATION LOGISTICS, INC", "Chester, SC", "Fredericksburg, VA", "M-1195", "", "0"],
     ];
     const weekly = [
       ["Week Start Date", "Driver Compensation", "Driver Compensation %", "Management Fee", "Management Fee %", "Dispatch Fee", "Factoring Fee", "Factoring Fee %", "Fuel", "Insurance", "Maintenance Escrow Weekly", "Escrow Balance", "ELD Fee", "Yard Parking", "GPS Tracker", "Toll Pass", "Toll Fees", "Permit Fees"],
@@ -249,11 +249,7 @@ describe("weekly asset report", () => {
     ];
     const refs = manifestRefsByLoad(
       [
-        { load_id: "TBH--1188", source_manifest_ref: "1195", truck_unit_number: "08", delivery_date: null },
-        { load_id: "TBH--1192", source_manifest_ref: "1195", truck_unit_number: "8", delivery_date: "2026-10-08" },
-        { load_id: "TBH--1195", source_manifest_ref: "1195", truck_unit_number: "08", delivery_date: null },
-        { load_id: "TBH--1184", source_manifest_ref: "1184", truck_unit_number: "8", delivery_date: "2026-10-06" },
-        { load_id: "TBH1188", source_manifest_ref: null, truck_unit_number: "8", delivery_date: "2026-10-08" },
+        { load_id: "TBH--1192", source_manifest_ref: "9999", truck_unit_number: "8", delivery_date: "2026-10-08" },
       ],
       "8",
     );
