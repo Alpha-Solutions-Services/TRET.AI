@@ -129,12 +129,12 @@ export function TrucksClient({ trucks, feeSummaries, googleSheetReady, tolsonRea
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-10">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Trucks</h1>
+          <h1 className="text-[1.75rem]">Trucks</h1>
           <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-            Fee rates are set per truck. Trucks are never deleted — deactivate instead.
+            Fee rates are set per truck. Trucks are never deleted. Deactivate a truck instead.
           </p>
         </div>
         <Button onClick={openAdd}>Add truck</Button>
@@ -172,7 +172,7 @@ export function TrucksClient({ trucks, feeSummaries, googleSheetReady, tolsonRea
       ) : filtered.length === 0 ? (
         <p className="text-sm text-[var(--color-fg-muted)]">No trucks match that search.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
+        <div className="material overflow-x-auto border border-[var(--color-border)]">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
               <tr>
@@ -202,7 +202,7 @@ export function TrucksClient({ trucks, feeSummaries, googleSheetReady, tolsonRea
                   </td>
                   <td className="px-4 py-3">{truck.name}</td>
                   <td className="px-4 py-3">{truckClassLabel(truck.truck_class)}</td>
-                  <td className="px-4 py-3">{truck.owner_name ?? "—"}</td>
+                  <td className="px-4 py-3">{truck.owner_name ?? "None"}</td>
                   <td className="px-4 py-3">{truck.active ? "Yes" : "No"}</td>
                   <td className="px-4 py-3">
                     <GoogleSheetLink

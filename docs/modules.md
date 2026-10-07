@@ -20,4 +20,5 @@
 | 6b | Fixture week 21–27 Sep 2026 smoke (v0.0.0.11) | Done |
 | 7 | Tolson payable payments, recurring charges, Quicken export | Not started |
 | 8 | Google Sheets sync | Not started |
-| 9 | Dashboard polish and extra automation | Not started |
+| 9 | Dashboard polish and extra automation | Glass Light restyle in v0.0.0.25. Extra automation not started |
+| 10 | QuickBooks Online for Legacy Inc (v0.0.0.25) | Connect, import Purchase and Bill into portal expenses, post one weekly journal entry. Migration not applied until go |

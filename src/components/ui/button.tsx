@@ -14,7 +14,7 @@ const variantClass: Record<ButtonVariant, string> = {
     "border border-[var(--color-border)] bg-[var(--color-field)] text-[var(--color-fg)] hover:bg-[var(--color-muted)]",
   ghost: "bg-transparent text-[var(--color-fg)] hover:bg-[var(--color-muted)]",
   danger:
-    "bg-[#b91c1c] text-white hover:bg-[#991b1b] disabled:bg-[#b91c1c]/50",
+    "bg-[var(--color-danger-fill)] text-white hover:brightness-95 disabled:opacity-60",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -24,7 +24,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         className={cn(
-          "pressable inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-medium transition-[transform,background-color,box-shadow] duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100",
+          "pressable inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100",
           variantClass[variant],
           className,
         )}

@@ -15,9 +15,9 @@ import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 
 function StatusCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="material rounded-xl border border-[var(--color-border)] px-4 py-3">
-      <p className="text-xs text-[var(--color-fg-muted)]">{label}</p>
-      <p className="mt-1 text-sm font-medium">{value}</p>
+    <div className="material border border-[var(--color-border)] px-6 py-5">
+      <p className="text-xs tracking-wide text-[var(--color-fg-muted)]">{label}</p>
+      <p className="num mt-2 text-sm font-medium">{value}</p>
     </div>
   );
 }
@@ -47,9 +47,9 @@ export function OverviewClient({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <h1 className="text-[1.75rem]">Dashboard</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
           Fleet sheets, loads, issues, and status for one Monday to Sunday week. Fees are driver, management or
           Tolson, dispatch, and factoring. Fixed is the amount charged to the owner. Amounts are cents. Legacy
@@ -57,7 +57,7 @@ export function OverviewClient({
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatusCard label="Version" value={data.versionLabel} />
         <StatusCard label="Sheets" value={data.sheetHealth} />
         <StatusCard

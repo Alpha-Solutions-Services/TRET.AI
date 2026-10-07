@@ -153,3 +153,16 @@ v0.0.0.10 does not add a table. Overview and the management P&L are computed whe
 `trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, `mgmt_operating_expenses`, `legacy_org_settings`, `legacy_truck_week_fees`, `legacy_load_fees`, `vektor_fuel_staging`, `vektor_toll_staging`, `fuel_transactions`, `toll_transactions`, `weekly_statements`, `weekly_statement_lines`, and `week_closes` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Statement rows are inserted only by `lock_week`. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`. `resolve_issue` is security definer, checks `allowed_users`, and is the only app path that marks an issue resolved.
 
 `vektor_mcp_connection` and `vektor_oauth_pending` have Row Level Security on and no policies. `anon` and `authenticated` have no table grants. Allowed users touch ciphertext only through security-definer functions. The encryption key stays in server env.
+
+## QuickBooks (v0.0.0.25)
+
+Migration `20261007210000_quickbooks.sql` is not applied until the owner says go.
+
+- **quickbooks_connection**. One row. `realm_id`, encrypted access token, encrypted refresh token, expiry, and `sandbox` or `production`. Row Level Security on, no policies, no grants for `anon` or `authenticated`. Admins reach it only through functions.
+- **quickbooks_oauth_pending**. One-time sign-in state. Same lock as the connection table.
+- **quickbooks_category_map**. Vendor or account id to a portal category. Row Level Security allows role `owner` or `admin` only.
+- **quickbooks_posting_accounts**. The four accounts used on the weekly journal entry.
+- **quickbooks_push_log**. Each confirmed post, with the QuickBooks id, the week, income cents, Tolson cents, and who posted. Admins can read and insert. They cannot update or delete a log row.
+- **mgmt_operating_expenses.qbo_source_id**. Unique when set. Stops the same Purchase or Bill line from being imported twice.
+
+`is_admin_user` is true when the signed-in email is in `allowed_users` with role `owner` or `admin`. Token functions call `require_admin_user`.

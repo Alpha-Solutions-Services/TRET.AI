@@ -174,6 +174,36 @@ The footer is one short line under the page: whether the Google service account 
 4. A highlighted cell means the load is missing on one side, or the rate, delivery date, or miles differ. The Check column says which one in plain words.
 5. A missing sheet load or a different rate still opens the same Warn issue as before. Date and miles are shown here and are not stored as issues.
 
+## QuickBooks
+
+Only an admin can use this. The owner role counts as an admin.
+
+1. Open **Integrations**.
+2. If the page says **QuickBooks not set up yet**, the server keys are missing. Stop there. Nothing will crash.
+3. Click **Connect QuickBooks**. Sign in to Intuit and choose the Legacy Inc company. This app keeps one company.
+4. To import expenses, set **From** and **To**, then **Preview import**. Pick a category. Choose whether to remember the vendor or the account. Click **Save to portal expenses**. Rows are not saved before that click. A row that says Already saved is skipped.
+5. To post a week, load and save the four accounts once. Pick a week, click **Preview post**, then **Post journal entry**. Nothing is sent before that click. The QuickBooks id shows in **Push history**.
+
+### Intuit developer portal
+
+Do this once, in a browser, at [developer.intuit.com](https://developer.intuit.com).
+
+1. Sign in.
+2. Open the dashboard.
+3. Click **Create an app**.
+4. Choose **QuickBooks Online and Payments**.
+5. Name the app (for example TRET.AI) and create it.
+6. Open the app, then **Keys and credentials** (Development for a sandbox company, Production after Intuit approves the app for the live Legacy Inc books).
+7. Under **Redirect URIs**, add this address exactly, with no extra slash at the end:
+
+   `https://tret.ai.alphasolutions.software/api/quickbooks/oauth/callback`
+
+8. Save.
+9. Copy the Client ID and Client Secret for that same key set (Development or Production).
+10. Put them in the server env with `INTUIT_REDIRECT_URI` set to that same address and `INTUIT_ENVIRONMENT` set to `sandbox` or `production` to match the key set.
+11. Accounting scope is what the connect button requests (`com.intuit.quickbooks.accounting`). If the app page lists scopes, leave Accounting on.
+12. For a sandbox test, open **Sandbox** in the portal and use a sandbox company. For the real Legacy Inc books, finish Intuit's production access, switch the keys and `INTUIT_ENVIRONMENT` to production, and connect that company.
+
 ## Issues
 
 1. Open **Issues**.

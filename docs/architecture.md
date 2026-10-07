@@ -15,7 +15,7 @@ Ingest → Staging → Validate → Ledger → Reports → Sync
 | **Validate** | Check rules, flag issues, block bad data from becoming final |
 | **Ledger** | Store fee results, weekly statement snapshots, payables, income, expenses, and adjustments |
 | **Reports** | Weekly owner PDF and the management P&L are built in the app. They are not stored as tables. A locked week uses the statement snapshot for the P&L income lines. |
-| **Sync** | Push or compare with Google Sheets; Quicken export |
+| **Sync** | Push or compare with Google Sheets; Quicken export; QuickBooks Online for the Legacy Inc company (confirm before anything is saved or posted) |
 
 ## Source of truth
 

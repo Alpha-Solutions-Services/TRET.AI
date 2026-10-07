@@ -25,9 +25,9 @@ export function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="material rounded-xl border border-[var(--color-border)] p-4">
+    <section className="material border border-[var(--color-border)] p-6">
       <h2 className="text-sm font-medium">{title}</h2>
-      <div className="mt-3">{children}</div>
+      <div className="mt-4">{children}</div>
     </section>
   );
 }
