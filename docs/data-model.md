@@ -150,7 +150,7 @@ v0.0.0.10 does not add a table. Overview and the management P&L are computed whe
 
 ## Access (RLS)
 
-`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, `mgmt_operating_expenses`, `legacy_org_settings`, `legacy_truck_week_fees`, `legacy_load_fees`, `vektor_fuel_staging`, `vektor_toll_staging`, `fuel_transactions`, `toll_transactions`, `weekly_statements`, `weekly_statement_lines`, and `week_closes` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Statement rows are inserted only by `lock_week`. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`. `resolve_issue` is security definer, checks `allowed_users`, and is the only app path that marks an issue resolved.
+`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, `mgmt_operating_expenses`, `legacy_org_settings`, `legacy_truck_week_fees`, `legacy_load_fees`, `vektor_fuel_staging`, `vektor_toll_staging`, `fuel_transactions`, `toll_transactions`, `weekly_statements`, `weekly_statement_lines`, `week_closes`, `load_field_decisions`, and `load_field_acceptances` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Statement rows are inserted only by `lock_week`. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`. `resolve_issue` is security definer, checks `allowed_users`, and is the only app path that marks an issue resolved.
 
 `vektor_mcp_connection` and `vektor_oauth_pending` have Row Level Security on and no policies. `anon` and `authenticated` have no table grants. Allowed users touch ciphertext only through security-definer functions. The encryption key stays in server env.
 
@@ -166,3 +166,14 @@ Migration `20261007210000_quickbooks.sql` is not applied until the owner says go
 - **mgmt_operating_expenses.qbo_source_id**. Unique when set. Stops the same Purchase or Bill line from being imported twice.
 
 `is_admin_user` is true when the signed-in email is in `allowed_users` with role `owner` or `admin`. Token functions call `require_admin_user`.
+
+## v0.0.0.26 load ids, compare, and file expenses
+
+Migration `20261007220000_v26_load_ids_compare_qbo_file.sql` is not applied until the owner says go.
+
+- **loads** gains `source_manifest_ref`, `pickup_date_kind`, and `delivery_date_kind` (`order` or `manifest`). Existing `load_id` values become the `TBH--1192` form only when no other row on that truck shares the letters and digits key.
+- **legacy_load_fees** gets the same load id form, skipped when another fee row for that truck and week already uses the key.
+- **load_field_decisions**. One admin choice per field: use sheet, use Vektor, or write to sheet, with a note. Allowed users can read. Admins can insert. Row Level Security is on.
+- **load_field_acceptances**. The Vektor value an admin accepted so the highlight stays off. Allowed users can read. Admins can write. Row Level Security is on.
+- **change_log** may use entity type `load`.
+- **import_quickbooks_file_expense** inserts a portal expense for a file row id `csv:` plus 64 hex characters. A repeat id is skipped. Admins only.

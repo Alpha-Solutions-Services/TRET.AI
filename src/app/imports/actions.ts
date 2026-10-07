@@ -8,11 +8,15 @@ import {
   type ExistingLoadSnapshot,
 } from "@/lib/vektor/adapters";
 import { timestampToDate } from "@/lib/vektor/dates";
+import { chooseExistingLoad, sameSourcePreviousCount } from "@/lib/vektor/dedupe";
 import { loadImportRegistry } from "@/lib/vektor/import-registry";
+import { parseVektorLoadsCsv } from "@/lib/vektor/csv-loads";
+import { canonicalLoadId, loadIdLookupForms } from "@/lib/loads/load-id";
+import { unitKey } from "@/lib/sheets/mismatch";
 import { formatImportResultMessage } from "@/lib/vektor/mcp/window";
 import { NeedsSignInError } from "@/lib/vektor/oauth/needs-sign-in";
 import { runImportPipeline } from "@/lib/vektor/pipeline";
-import type { Json } from "@/lib/supabase/database.types";
+import type { Database, Json } from "@/lib/supabase/database.types";
 
 export type ImportActionResult =
   | {
@@ -148,13 +152,21 @@ export async function runVektorImportAction(input?: {
       .eq("key", "row_count_drop_block_pct")
       .maybeSingle();
 
-    const { data: prevRun } = await supabase
+    const { data: prevRuns, error: prevErr } = await supabase
       .from("import_runs")
-      .select("rows_fetched")
+      .select("rows_fetched, source")
       .eq("status", "success")
       .order("finished_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(40);
+    const previousFetched = prevErr
+      ? null
+      : sameSourcePreviousCount(
+          (prevRuns ?? []).map((run) => ({
+            source: run.source ?? null,
+            rowsFetched: run.rows_fetched,
+          })),
+          selected,
+        );
 
     const { data: trucks } = await supabase
       .from("trucks")
@@ -168,7 +180,7 @@ export async function runVektorImportAction(input?: {
       knownTruckUnits: knownUnits,
       rangeFrom: range.from,
       rangeTo: range.to,
-      previousFetched: prevRun?.rows_fetched ?? null,
+      previousFetched,
       settings: { rowCountDropBlockPct: dropSetting?.value_int ?? 50 },
     });
 
@@ -212,6 +224,31 @@ export async function runVektorImportAction(input?: {
     let rejected = 0;
     let updated = 0;
 
+    const lookupForms = new Set<string>();
+    for (const decision of pipeline.decisions) {
+      if (!decision.promote || !decision.mapped.loadId) continue;
+      for (const form of loadIdLookupForms(decision.mapped.loadId)) lookupForms.add(form);
+    }
+    const existingPool =
+      lookupForms.size === 0
+        ? []
+        : (
+            await supabase
+              .from("loads")
+              .select(
+                "id, manifest_id, load_id, truck_unit_number, delivery_date, rate_cents, loaded_distance_mi, deadhead_miles, origin_city, destination_city, import_run_id",
+              )
+              .in("load_id", [...lookupForms])
+          ).data ?? [];
+    const sourceByRun = new Map<string, string | null>();
+    const runIds = [...new Set(existingPool.map((row) => row.import_run_id).filter((id): id is string => Boolean(id)))];
+    if (runIds.length > 0) {
+      const sourceQuery = await supabase.from("import_runs").select("id, source").in("id", runIds);
+      if (!sourceQuery.error) {
+        for (const runRow of sourceQuery.data ?? []) sourceByRun.set(runRow.id, runRow.source ?? null);
+      }
+    }
+
     for (const decision of pipeline.decisions) {
       const { mapped, issues, promote, rejectReason } = decision;
 
@@ -246,65 +283,69 @@ export async function runVektorImportAction(input?: {
         continue;
       }
 
+      const matched = chooseExistingLoad(
+        existingPool.map((row) => ({
+          id: row.id,
+          loadId: row.load_id,
+          unitNumber: row.truck_unit_number,
+          manifestId: row.manifest_id,
+          importRunId: row.import_run_id,
+          deliveryDate: row.delivery_date,
+          rateCents: row.rate_cents,
+          loadedDistanceMi: row.loaded_distance_mi,
+          deadheadMiles: row.deadhead_miles,
+          originCity: row.origin_city,
+          destinationCity: row.destination_city,
+        })),
+        {
+          loadId: mapped.loadId ?? "",
+          unitNumber: mapped.truckUnitNumber ?? "",
+          manifestId: mapped.manifestId,
+        },
+      );
+      const matchedSource = matched?.importRunId ? (sourceByRun.get(matched.importRunId) ?? null) : null;
+      const sameFamily = !matched || matchedSource == null || matchedSource === selected;
+
       let existingSnap: ExistingLoadSnapshot | null = null;
-      if (mapped.manifestFriendlyId) {
-        const { data: existing } = await supabase
-          .from("loads")
-          .select(
-            "manifest_id, load_id, delivery_date, rate_cents, loaded_distance_mi, deadhead_miles, origin_city, destination_city, import_run_id",
-          )
-          .eq("manifest_friendly_id", mapped.manifestFriendlyId)
-          .maybeSingle();
-        if (existing) {
-          let source: string | null = null;
-          if (existing.import_run_id) {
-            const { data: er } = await supabase
-              .from("import_runs")
-              .select("source")
-              .eq("id", existing.import_run_id)
-              .maybeSingle();
-            source = er?.source ?? null;
-          }
-          existingSnap = {
-            naturalKey: mapped.manifestFriendlyId,
-            manifestId: existing.manifest_id,
-            loadId: existing.load_id,
-            deliveryDate: existing.delivery_date
-              ? `${existing.delivery_date} 00:00:00`
-              : null,
-            rateCents: existing.rate_cents,
-            loadedDistanceMi: existing.loaded_distance_mi,
-            deadheadMiles: existing.deadhead_miles,
-            originCity: existing.origin_city,
-            destinationCity: existing.destination_city,
-            source,
-          };
+      if (matched && mapped.manifestFriendlyId) {
+        existingSnap = {
+          naturalKey: mapped.manifestFriendlyId,
+          manifestId: matched.manifestId,
+          loadId: matched.loadId,
+          deliveryDate: matched.deliveryDate ? `${matched.deliveryDate} 00:00:00` : null,
+          rateCents: matched.rateCents,
+          loadedDistanceMi: matched.loadedDistanceMi,
+          deadheadMiles: matched.deadheadMiles,
+          originCity: matched.originCity,
+          destinationCity: matched.destinationCity,
+          source: matchedSource,
+        };
+      }
+
+      if (!sameFamily) {
+        const conflict = resolveCrossSourceConflict(mapped, existingSnap, selected);
+        if (conflict.issue) {
+          await supabase.from("issues").insert({
+            severity: conflict.issue.severity,
+            rule: conflict.issue.rule,
+            message: conflict.issue.message,
+            ref: conflict.issue.ref ?? null,
+            status: "open",
+            import_run_id: run.id,
+            manifest_id: mapped.manifestId,
+          });
+        }
+        if (conflict.action === "skip_identical") continue;
+        if (conflict.action === "warn_differ") {
+          rejected += 1;
+          continue;
         }
       }
 
-      const conflict = resolveCrossSourceConflict(mapped, existingSnap, selected);
-      if (conflict.issue) {
-        await supabase.from("issues").insert({
-          severity: conflict.issue.severity,
-          rule: conflict.issue.rule,
-          message: conflict.issue.message,
-          ref: conflict.issue.ref ?? null,
-          status: "open",
-          import_run_id: run.id,
-          manifest_id: mapped.manifestId,
-        });
-      }
-      if (conflict.action === "skip_identical") {
-        updated += 0;
-        continue;
-      }
-      if (conflict.action === "warn_differ") {
-        rejected += 1;
-        continue;
-      }
-
       const truckId = mapped.truckUnitNumber
-        ? (unitToId.get(mapped.truckUnitNumber) ?? null)
+        ? (unitToId.get(mapped.truckUnitNumber) ??
+          [...unitToId.entries()].find(([unit]) => unitKey(unit) === unitKey(mapped.truckUnitNumber ?? ""))?.[1] ??
+          null)
         : null;
 
       const deliveryDay = timestampToDate(mapped.deliveryDate)!;
@@ -313,7 +354,10 @@ export async function runVektorImportAction(input?: {
       const row = {
         manifest_id: mapped.manifestId,
         order_ids: mapped.orderIds,
-        load_id: mapped.loadId,
+        load_id: mapped.loadId ? canonicalLoadId(mapped.loadId) : null,
+        source_manifest_ref: mapped.sourceManifestRef ?? null,
+        pickup_date_kind: mapped.pickupDateKind ?? null,
+        delivery_date_kind: mapped.deliveryDateKind ?? null,
         manifest_friendly_id: mapped.manifestFriendlyId,
         pickup_date: pickupDay,
         delivery_date: deliveryDay,
@@ -349,21 +393,13 @@ export async function runVektorImportAction(input?: {
         updated_at: new Date().toISOString(),
       };
 
-      const { data: existingByManifest } = await supabase
-        .from("loads")
-        .select("id")
-        .eq("manifest_id", mapped.manifestId)
-        .maybeSingle();
-
-      const { error: upErr } = await supabase
-        .from("loads")
-        .upsert(row, { onConflict: "manifest_id" });
-      if (upErr) {
+      const written = await writePromotedLoad(supabase, row, matched?.id ?? null);
+      if (written.error) {
         rejected += 1;
         await supabase.from("issues").insert({
           severity: "Block",
           rule: "promote_failed",
-          message: upErr.message,
+          message: written.error,
           ref: mapped.manifestFriendlyId,
           status: "open",
           import_run_id: run.id,
@@ -371,7 +407,7 @@ export async function runVektorImportAction(input?: {
         });
         continue;
       }
-      if (existingByManifest) updated += 1;
+      if (matched) updated += 1;
       else promoted += 1;
     }
 
@@ -446,4 +482,84 @@ export async function runVektorImportAction(input?: {
       error: needsSignIn ? "Vektor connection needs sign-in" : safe,
     };
   }
+}
+
+type LoadWrite = {
+  manifest_id: string;
+  manifest_friendly_id: string | null;
+  source_manifest_ref: string | null;
+  pickup_date_kind: string | null;
+  delivery_date_kind: string | null;
+  [key: string]: unknown;
+};
+
+async function writePromotedLoad(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  row: LoadWrite,
+  existingId: string | null,
+): Promise<{ error: string | null }> {
+  let payload: Record<string, unknown> = { ...row };
+  if (existingId) {
+    delete payload.manifest_id;
+    delete payload.manifest_friendly_id;
+  }
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const result = existingId
+      ? await supabase.from("loads").update(payload as Database["public"]["Tables"]["loads"]["Update"]).eq("id", existingId)
+      : await supabase.from("loads").upsert(payload as Database["public"]["Tables"]["loads"]["Insert"], { onConflict: "manifest_id" });
+    if (!result.error) return { error: null };
+    if (/source_manifest_ref|pickup_date_kind|delivery_date_kind|schema cache/i.test(result.error.message)) {
+      delete payload.source_manifest_ref;
+      delete payload.pickup_date_kind;
+      delete payload.delivery_date_kind;
+      payload = { ...payload };
+      continue;
+    }
+    return { error: result.error.message };
+  }
+  return { error: "Could not save the load." };
+}
+
+export async function previewLoadsCsvAction(input: {
+  csvText: string;
+  from: string;
+  to: string;
+}): Promise<
+  | { ok: true; rows: Array<{ loadId: string; unitNumber: string; statusLabel: string; deliveryDay: string | null; rateCents: number | null; action: "import" | "skip"; reason: string | null }> }
+  | { ok: false; error: string }
+> {
+  const access = await checkAccess();
+  if (access.status !== "allowed") return { ok: false, error: "You must be signed in." };
+  const text = input.csvText.trim();
+  if (!text) return { ok: false, error: "Choose a loads CSV." };
+  const supabase = await createClient();
+  const stored = await supabase
+    .from("import_settings")
+    .select("value_text")
+    .eq("key", "csv_column_mapping")
+    .maybeSingle();
+  let columnMapping: Record<string, string> | null = null;
+  if (stored.data?.value_text) {
+    try {
+      columnMapping = JSON.parse(stored.data.value_text) as Record<string, string>;
+    } catch {
+      columnMapping = null;
+    }
+  }
+  const parsed = parseVektorLoadsCsv(text, columnMapping, { from: input.from, to: input.to });
+  if (!parsed.headerFound) {
+    return { ok: false, error: "CSV header row was not found. Expected Order ID, Gross, and a delivery date." };
+  }
+  return {
+    ok: true,
+    rows: parsed.rows.map((row) => ({
+      loadId: row.loadId,
+      unitNumber: row.unitNumber,
+      statusLabel: row.statusLabel,
+      deliveryDay: row.deliveryDay,
+      rateCents: row.rateCents,
+      action: row.action,
+      reason: row.reason,
+    })),
+  };
 }

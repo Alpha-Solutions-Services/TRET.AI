@@ -1,15 +1,38 @@
+import { driverNamesEqual } from "@/lib/loads/drivers";
+import { canonicalLoadId, loadMatchKey } from "@/lib/loads/load-id";
 import { compareSheetLoads, unitKey, type SheetMismatch } from "@/lib/sheets/mismatch";
+
+export type DateKind = "order" | "manifest" | null;
 
 export type LoadFacts = {
   unitNumber: string;
   loadId: string;
   deliveryDay: string | null;
+  pickupDay?: string | null;
   rateCents: number | null;
   loadedMilesHundredths: number | null;
   deadheadMilesHundredths: number | null;
+  driverName?: string | null;
+  deliveryDateKind?: DateKind;
+  pickupDateKind?: DateKind;
 };
 
-export type AlignHighlight = "missing_sheet" | "missing_vektor" | "rate" | "date" | "loaded_miles" | "deadhead";
+export type AlignHighlight =
+  | "missing_sheet"
+  | "missing_vektor"
+  | "rate"
+  | "date"
+  | "pickup"
+  | "loaded_miles"
+  | "deadhead"
+  | "driver";
+
+export type FieldAcceptance = {
+  unitNumber: string;
+  loadId: string;
+  field: string;
+  acceptedValue: string;
+};
 
 export type AlignedLoad = {
   unitNumber: string;
@@ -21,7 +44,11 @@ export type AlignedLoad = {
 };
 
 function pairKey(unitNumber: string, loadId: string): string {
-  return `${unitKey(unitNumber)}|${loadId.trim().toLowerCase()}`;
+  return `${unitKey(unitNumber)}|${loadMatchKey(loadId)}`;
+}
+
+function displayId(sheet: LoadFacts | null, vektor: LoadFacts | null): string {
+  return canonicalLoadId((sheet ?? vektor)!.loadId);
 }
 
 function dollars(cents: number): string {
@@ -60,6 +87,7 @@ export function alignSheetAndVektor(input: {
   weekStart: string;
   sheet: LoadFacts[];
   vektor: LoadFacts[];
+  acceptances?: FieldAcceptance[];
 }): AlignedLoad[] {
   const sheetByKey = indexFacts(input.sheet);
   const vektorByKey = indexFacts(input.vektor);
@@ -119,17 +147,27 @@ export function alignSheetAndVektor(input: {
       notes.push(`Load ${vektor.loadId} is in Vektor and not on the sheet for this week.`);
     }
     if (sheet && vektor) {
-      if (
-        sheet.deliveryDay &&
-        vektor.deliveryDay &&
-        sheet.deliveryDay !== vektor.deliveryDay
-      ) {
-        highlights.push("date");
-        notes.push(
-          `Delivery date differs. The sheet says ${sheet.deliveryDay} and Vektor says ${vektor.deliveryDay}.`,
-        );
+      if (sheet.deliveryDay && vektor.deliveryDay && sheet.deliveryDay !== vektor.deliveryDay) {
+        if (vektor.deliveryDateKind === "manifest") {
+          notes.push(`Vektor delivery date ${vektor.deliveryDay} is a manifest date.`);
+        } else {
+          highlights.push("date");
+          notes.push(
+            `Delivery date differs. The sheet says ${sheet.deliveryDay} and Vektor says ${vektor.deliveryDay}.`,
+          );
+        }
       }
-      pushMiles(highlights, notes, "loaded_miles", "Loaded miles", sheet.loadedMilesHundredths, vektor.loadedMilesHundredths);
+      if (sheet.pickupDay && vektor.pickupDay && sheet.pickupDay !== vektor.pickupDay) {
+        if (vektor.pickupDateKind === "manifest") {
+          notes.push(`Vektor pickup date ${vektor.pickupDay} is a manifest date.`);
+        } else {
+          highlights.push("pickup");
+          notes.push(
+            `Pickup date differs. The sheet says ${sheet.pickupDay} and Vektor says ${vektor.pickupDay}.`,
+          );
+        }
+      }
+      pushMiles(highlights, notes, "loaded_miles", "Loaded miles", sheet.loadedMilesHundredths, vektor.loadedMilesHundredths, false);
       pushMiles(
         highlights,
         notes,
@@ -137,6 +175,7 @@ export function alignSheetAndVektor(input: {
         "Deadhead miles",
         sheet.deadheadMilesHundredths,
         vektor.deadheadMilesHundredths,
+        true,
       );
       if (
         sheet.rateCents != null &&
@@ -149,16 +188,63 @@ export function alignSheetAndVektor(input: {
           `Rate differs. The sheet says ${dollars(sheet.rateCents)} and Vektor says ${dollars(vektor.rateCents)}.`,
         );
       }
+      if (!driverNamesEqual(sheet.driverName, vektor.driverName)) {
+        highlights.push("driver");
+        notes.push(
+          `Driver differs. The sheet says ${sheet.driverName || "blank"} and Vektor says ${vektor.driverName || "blank"}.`,
+        );
+      }
     }
+    const kept = highlights.filter((field) => !accepted(input.acceptances ?? [], sheet, vektor, field));
     return {
       unitNumber: (sheet ?? vektor)!.unitNumber,
-      loadId: (sheet ?? vektor)!.loadId,
+      loadId: displayId(sheet, vektor),
       sheet,
       vektor,
-      highlights,
-      notes,
+      highlights: kept,
+      notes: kept.length === 0 && highlights.length > 0 ? notes.filter((note) => note.includes("manifest date")) : notes,
     };
   });
+}
+
+function accepted(
+  rows: FieldAcceptance[],
+  sheet: LoadFacts | null,
+  vektor: LoadFacts | null,
+  field: AlignHighlight,
+): boolean {
+  const unit = (sheet ?? vektor)!.unitNumber;
+  const loadId = (sheet ?? vektor)!.loadId;
+  const match = rows.find(
+    (row) =>
+      unitKey(row.unitNumber) === unitKey(unit) &&
+      loadMatchKey(row.loadId) === loadMatchKey(loadId) &&
+      row.field === highlightToField(field),
+  );
+  if (!match) return false;
+  if (field === "missing_sheet" || field === "missing_vektor") return match.acceptedValue === "missing";
+  if (!vektor) return false;
+  return match.acceptedValue === acceptanceValue(field, vektor);
+}
+
+export function highlightToField(field: AlignHighlight): string {
+  if (field === "date") return "delivery_date";
+  if (field === "pickup") return "pickup_date";
+  if (field === "loaded_miles") return "loaded_miles";
+  if (field === "deadhead") return "deadhead";
+  if (field === "driver") return "driver";
+  if (field === "rate") return "rate";
+  return "presence";
+}
+
+function acceptanceValue(field: AlignHighlight, vektor: LoadFacts): string {
+  if (field === "rate") return String(vektor.rateCents ?? "");
+  if (field === "date") return vektor.deliveryDay ?? "";
+  if (field === "pickup") return vektor.pickupDay ?? "";
+  if (field === "loaded_miles") return String(vektor.loadedMilesHundredths ?? "");
+  if (field === "deadhead") return String(vektor.deadheadMilesHundredths ?? "");
+  if (field === "driver") return vektor.driverName ?? "";
+  return "missing";
 }
 
 function pushMiles(
@@ -168,7 +254,9 @@ function pushMiles(
   label: string,
   sheet: number | null,
   vektor: number | null,
+  blankEqualsZero: boolean,
 ): void {
+  if (blankEqualsZero && (sheet ?? 0) === 0 && (vektor ?? 0) === 0) return;
   if (sheet == null && vektor == null) return;
   if (sheet === vektor) return;
   highlights.push(highlight);

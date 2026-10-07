@@ -21,4 +21,5 @@
 | 7 | Tolson payable payments, recurring charges, Quicken export | Not started |
 | 8 | Google Sheets sync | Not started |
 | 9 | Dashboard polish and extra automation | Glass Light restyle in v0.0.0.25. Extra automation not started |
-| 10 | QuickBooks Online for Legacy Inc (v0.0.0.25) | Connect, import Purchase and Bill into portal expenses, post one weekly journal entry. Migration not applied until go |
+| 10 | QuickBooks Online for Legacy Inc (v0.0.0.25) | Connect, import Purchase and Bill into portal expenses, post one weekly journal entry. Hidden unless `QUICKBOOKS_API_ENABLED` is true (v0.0.0.26). Migration not applied until go |
+| 11 | Vektor CSV, canonical load ids, sheet resolve, file QuickBooks (v0.0.0.26) | Orders CSV, `TBH--1192`, resolve on Sheet vs Vektor, five themes, journal CSV out and expense CSV in. Migration not applied until go |

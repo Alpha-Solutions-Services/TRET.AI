@@ -152,7 +152,7 @@ Do these once (or when credentials change). The app cannot finish login or healt
 2. On Vercel, set `GOOGLE_SERVICE_ACCOUNT_JSON` to the full service account JSON. That value is preferred. It supplies the email and the private key.
 3. You can still set `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` when JSON is unset. A one-line PEM may use `\n` for line breaks. Quotes around the PEM are removed.
 4. Share each truck sheet with that service account as a viewer.
-5. The footer shows whether JSON, the email, and the private key are set, and whether the key format is ok. It does not show the key. The same check is on Health and Settings.
+5. When the sheet account is set, the footer shows only the version. When it is missing, or the key cannot be read, the footer says so in plain words. It does not list JSON, email, or private key. Health and Settings still say the account is set. The key itself is never shown.
 6. If the key format is wrong, the row says so in plain language. Click the error, or Copy, to copy the real cause.
 
 ## 19. Legacy fees and monthly expenses (v0.0.0.20)
@@ -191,3 +191,12 @@ Do this before Connect QuickBooks. The migration is not applied until you say go
 5. Do not put any of those in a `NEXT_PUBLIC_` variable. Do not commit the values.
 6. Redeploy. Open Integrations as the owner. If the keys are missing, the page says QuickBooks not set up yet.
 7. Connect the Legacy Inc company only. Import and post both wait for a confirm.
+8. Leave `QUICKBOOKS_API_ENABLED` blank. Integrations then hides Connect QuickBooks and uses the CSV export and import. Set it to `true` only if an Intuit developer app exists.
+
+## 23. v0.0.0.26 database update
+
+Do this only when you are ready. It is not applied yet.
+
+1. In the Supabase SQL editor, run `supabase/migrations/20261007220000_v26_load_ids_compare_qbo_file.sql` after the v0.0.0.25 QuickBooks script.
+2. It renames load ids to the `TBH--1192` form when that would not collide, adds date kind columns, decision tables with Row Level Security, and the file expense function.
+3. Until it has run, Sheet vs Vektor still compares loads. Resolve buttons say the migration has not been applied. QuickBooks file import says the same before the first save. The journal CSV download does not need this script.

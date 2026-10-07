@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { runFuelAndTollsImportAction } from "@/app/imports/fuel-toll-actions";
-import { runVektorImportAction } from "@/app/imports/actions";
+import { previewLoadsCsvAction, runVektorImportAction } from "@/app/imports/actions";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 
@@ -47,6 +47,17 @@ export function ImportsClient({
   const [fuelCsv, setFuelCsv] = useState<string | null>(null);
   const [tollCsv, setTollCsv] = useState<string | null>(null);
   const [loadsCsv, setLoadsCsv] = useState<string | null>(null);
+  const [preview, setPreview] = useState<
+    Array<{
+      loadId: string;
+      unitNumber: string;
+      statusLabel: string;
+      deliveryDay: string | null;
+      rateCents: number | null;
+      action: "import" | "skip";
+      reason: string | null;
+    }> | null
+  >(null);
 
   function readFile(file: File | undefined, setText: (value: string | null) => void) {
     if (!file) {
@@ -56,6 +67,18 @@ export function ImportsClient({
     const reader = new FileReader();
     reader.onload = () => setText(typeof reader.result === "string" ? reader.result : null);
     reader.readAsText(file);
+  }
+
+  function onPreview() {
+    startTransition(async () => {
+      const result = await previewLoadsCsvAction({ csvText: loadsCsv ?? "", from, to });
+      if (!result.ok) {
+        toast(result.error, "error");
+        setPreview(null);
+        return;
+      }
+      setPreview(result.rows);
+    });
   }
 
   function onImport() {
@@ -117,6 +140,9 @@ export function ImportsClient({
             className="h-10 rounded-md border border-[var(--color-border)] px-3"
           />
         </label>
+        <Button disabled={pending} onClick={onPreview}>
+          {pending ? "Working…" : "Preview loads"}
+        </Button>
         <Button disabled={pending} onClick={onImport}>
           {pending ? "Importing…" : "Import loads"}
         </Button>
@@ -152,11 +178,40 @@ export function ImportsClient({
         </label>
       </div>
       <p className="max-w-3xl text-sm text-[var(--color-fg-muted)]">
-        Loads CSV columns: Delivery Date, Load ID, Rate, and Unit or Truck #. Optional columns are Pick Up
-        Date, Loaded Miles, Deadhead Miles, Origin, Destination, Driver, and Broker/Customer. A Load Ledger
-        export matches those headers. Google Sheet import ignores this file and reads each truck ledger.
-        Fuel and tolls still use Vektor MCP or their own CSV mapping.
+        A Vektor orders export is accepted: Order ID, Gross, Truck Reference ID, and a delivery date. Booked,
+        En Route, and In Transit rows stay in the preview and are not imported. A Load Ledger export still
+        works. Google Sheet import ignores this file and reads each truck ledger. Fuel and tolls still use
+        Vektor MCP or their own CSV mapping. Save the Vektor column mapping in Settings once.
       </p>
+      {preview ? (
+        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
+          <table className="min-w-full text-left text-sm">
+            <caption className="px-4 py-3 text-left font-medium">CSV preview</caption>
+            <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
+              <tr>
+                <th className="px-4 py-3 font-medium">Load</th>
+                <th className="px-4 py-3 font-medium">Unit</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Delivery</th>
+                <th className="px-4 py-3 font-medium">Action</th>
+                <th className="px-4 py-3 font-medium">Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preview.map((row, index) => (
+                <tr key={`${row.loadId}-${index}`} className="border-b border-[var(--color-border)]">
+                  <td className="px-4 py-2">{row.loadId || "Blank"}</td>
+                  <td className="px-4 py-2">{row.unitNumber || "Blank"}</td>
+                  <td className="px-4 py-2">{row.statusLabel}</td>
+                  <td className="px-4 py-2">{row.deliveryDay ?? "Blank"}</td>
+                  <td className="px-4 py-2">{row.action === "import" ? "Import" : "Skip"}</td>
+                  <td className="px-4 py-2 text-[var(--color-fg-muted)]">{row.reason ?? ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
 
       {runs.length === 0 ? (
         <p className="text-sm text-[var(--color-fg-muted)]">No import runs yet.</p>

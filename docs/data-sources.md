@@ -10,6 +10,6 @@
 | **Tolls** | Expense lines on weekly reports | Read from Vektor or CSV. Bestpass API is OPEN. The asset report uses the sheet toll cell first. |
 | **Google Sheets** | Overview, Ins and Outs, and the Weekly Asset Management Report | Primary for those screens. Tabs: Load Ledger, Weekly Expenses (dashboard Outs), Mgmt Expenses (Outs only when Weekly Expenses has no header), Fuel Log, Fleet Directory. The asset report reads trailer, VIN, dispatcher, and status from those tabs when the columns exist. Private sheets use `GOOGLE_SERVICE_ACCOUNT_JSON` when set, otherwise the email and private key. |
 | **Quicken (Windows)** | Export (QIF planned) | Exact Quicken version is OPEN |
-| **QuickBooks Online** | Legacy Inc company expenses in, weekly fee income and Tolson payable out | One company. Admins connect on Integrations. Import is Purchase and Bill, saved only after confirm. Post is one journal entry, only after confirm. |
+| **QuickBooks Online** | Legacy Inc company expenses in, weekly fee income and Tolson payable out | Files by default. Download a journal CSV and upload a Transaction List or Expenses CSV. Connect stays hidden unless `QUICKBOOKS_API_ENABLED` is true. |
 
 Overview and **Ins and Outs** read each truck’s Google Sheet. Loads can also be promoted from CSV, the sheet Load Ledger, REST, or MCP. When a sheet Load ID is missing from `loads`, or the rate differs, a Warn issue is opened. Quicken is a later module.

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   disconnectVektorAction,
+  saveVektorCsvPresetAction,
   setImportSourceAction,
   setLegacyManagementFeeAction,
   testVektorConnectionAction,
@@ -215,6 +216,32 @@ export function SettingsClient({
           </label>
         ))}
       </fieldset>
+
+      <section className="material space-y-3 rounded-xl border border-[var(--color-border)] p-4">
+        <h2 className="text-sm font-medium">Vektor CSV columns</h2>
+        <p className="text-sm text-[var(--color-fg-muted)]">
+          Save the column names from a Vektor orders export. Imports then map Order ID, Gross, Truck Reference
+          ID, Drivers, miles, dates, and Broker Name without typing them again.
+        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={pending}
+          onClick={() => {
+            startTransition(async () => {
+              const result = await saveVektorCsvPresetAction();
+              if (!result.ok) {
+                toast(result.error, "error");
+                return;
+              }
+              toast("Vektor CSV columns saved", "success");
+              router.refresh();
+            });
+          }}
+        >
+          Save Vektor export mapping
+        </Button>
+      </section>
 
       <section className="material space-y-3 rounded-xl border border-[var(--color-border)] p-4">
         <h2 className="text-sm font-medium">Management fee</h2>

@@ -328,6 +328,9 @@ export type Database = {
           trip_group_id: string | null;
           primary_load: boolean | null;
           import_run_id: string | null;
+          source_manifest_ref: string | null;
+          pickup_date_kind: string | null;
+          delivery_date_kind: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -368,6 +371,9 @@ export type Database = {
           trip_group_id?: string | null;
           primary_load?: boolean | null;
           import_run_id?: string | null;
+          source_manifest_ref?: string | null;
+          pickup_date_kind?: string | null;
+          delivery_date_kind?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -408,6 +414,9 @@ export type Database = {
           trip_group_id?: string | null;
           primary_load?: boolean | null;
           import_run_id?: string | null;
+          source_manifest_ref?: string | null;
+          pickup_date_kind?: string | null;
+          delivery_date_kind?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1079,6 +1088,75 @@ export type Database = {
         };
         Relationships: [];
       };
+      load_field_decisions: {
+        Row: {
+          id: string;
+          unit_number: string;
+          load_id: string;
+          load_key: string;
+          field: string;
+          choice: string;
+          note: string;
+          previous_value: string | null;
+          new_value: string | null;
+          actor_email: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          unit_number: string;
+          load_id: string;
+          load_key: string;
+          field: string;
+          choice: string;
+          note: string;
+          previous_value?: string | null;
+          new_value?: string | null;
+          actor_email: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          unit_number?: string;
+          load_id?: string;
+          load_key?: string;
+          field?: string;
+          choice?: string;
+          note?: string;
+          previous_value?: string | null;
+          new_value?: string | null;
+          actor_email?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      load_field_acceptances: {
+        Row: {
+          id: string;
+          unit_number: string;
+          load_key: string;
+          field: string;
+          accepted_value: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          unit_number: string;
+          load_key: string;
+          field: string;
+          accepted_value: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          unit_number?: string;
+          load_key?: string;
+          field?: string;
+          accepted_value?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -1249,6 +1327,16 @@ export type Database = {
         Returns: string[];
       };
       import_quickbooks_operating_expense: {
+        Args: {
+          p_expense_date: string;
+          p_category: string;
+          p_amount_cents: number;
+          p_note: string | null;
+          p_qbo_source_id: string;
+        };
+        Returns: Json;
+      };
+      import_quickbooks_file_expense: {
         Args: {
           p_expense_date: string;
           p_category: string;

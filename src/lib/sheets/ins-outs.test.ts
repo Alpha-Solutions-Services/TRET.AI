@@ -58,18 +58,22 @@ describe("sheet Ins and Outs", () => {
       headerFound: true,
       loads: [
         {
-          loadId: "TBH1178",
+          loadId: "TBH--1178",
           rateCents: 275_000,
           deliveryDay: "2026-10-05",
+          pickupDay: "2026-10-02",
           loadedMilesHundredths: null,
           deadheadMilesHundredths: null,
+          driverName: null,
         },
         {
-          loadId: "TBH1186",
+          loadId: "TBH--1186",
           rateCents: 320_000,
           deliveryDay: "2026-10-07",
+          pickupDay: "2026-10-06",
           loadedMilesHundredths: null,
           deadheadMilesHundredths: null,
+          driverName: null,
         },
       ],
     });

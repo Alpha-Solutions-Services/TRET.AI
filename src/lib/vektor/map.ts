@@ -1,3 +1,4 @@
+import { canonicalLoadId } from "@/lib/loads/load-id";
 import { findStop, resolveStopDate, timestampToDate, weekFieldsFromDeliveryDate } from "./dates";
 import { classifyManifestEligibility, eligibilityIssue } from "./eligibility";
 import { decimalStringToCents, decimalStringToMiles } from "./money";
@@ -118,7 +119,7 @@ export function mapManifestToLoad(
   return {
     manifestId: manifest.manifestId,
     orderIds,
-    loadId,
+    loadId: loadId ? canonicalLoadId(loadId) : null,
     manifestFriendlyId: manifest.friendlyId ?? null,
     pickupDate: pickupAt,
     deliveryDate: deliveryAt,
@@ -156,6 +157,9 @@ export function mapManifestToLoad(
     issues,
     eligible,
     skipReason,
+    pickupDateKind: manifest.pickupDateKind ?? null,
+    deliveryDateKind: manifest.deliveryDateKind ?? null,
+    sourceManifestRef: manifest.sourceManifestRef ?? null,
   };
 }
 

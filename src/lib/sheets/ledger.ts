@@ -3,23 +3,33 @@ import {
   cleanLoadId,
   columnIndex,
   findHeaderRow,
+  isEmptyCell,
   sheetAmountToCents,
   sheetDay,
 } from "@/lib/sheets/cell";
 
 type SheetGrid = string[][];
 
-const DELIVERY = ["delivery date", "deliverydate", "delivery_date"];
-const LOAD_ID = ["load id", "loadid", "load_id", "order friendly id", "friendly id"];
-const RATE = ["rate", "gross amount", "grossamount", "gross_amount"];
-const PICKUP = ["pick up date", "pickup date", "pickup_date", "pickupdate"];
+const DELIVERY = ["delivery date", "deliverydate", "delivery_date", "order date delivered"];
+const DELIVERY_FALLBACK = ["destination datetime"];
+const LOAD_ID = ["load id", "loadid", "load_id", "order friendly id", "friendly id", "order id"];
+const RATE = ["rate", "gross amount", "grossamount", "gross_amount", "gross"];
+const PICKUP = ["pick up date", "pickup date", "pickup_date", "pickupdate", "origin datetime"];
 const LOADED = ["loaded miles", "loaded distance", "loadeddistance", "loaded_distance"];
-const DEADHEAD = ["deadhead miles", "deadhead", "empty distance", "emptydistance", "empty_distance"];
+const DEADHEAD = ["deadhead miles", "deadhead", "empty distance", "emptydistance", "empty_distance", "empty miles"];
 const ORIGIN = ["origin"];
 const DESTINATION = ["destination"];
-const DRIVER = ["driver", "driver name", "primary driver"];
+const DRIVER = ["driver", "drivers", "driver name", "primary driver"];
 const BROKER = ["broker/customer", "broker", "customer", "broker name"];
-const UNIT = ["unit", "unit number", "unit_number", "truck #", "truck number", "truck"];
+const UNIT = [
+  "unit",
+  "unit number",
+  "unit_number",
+  "truck #",
+  "truck number",
+  "truck",
+  "truck reference id",
+];
 const MANIFEST = ["manifest id", "manifestid", "manifest_id"];
 const STATUS = ["status"];
 
@@ -37,6 +47,8 @@ export type LedgerLoadRow = {
   unitNumber: string | null;
   manifestId: string | null;
   status: string | null;
+  /** order: the delivery column. fallback: Destination Datetime. */
+  deliverySource: "column" | "fallback" | null;
 };
 
 export type ParsedLoadLedger = {
@@ -56,12 +68,14 @@ function cell(row: string[], index: number): string {
 }
 
 function textOrNull(raw: string): string | null {
+  if (isEmptyCell(raw)) return null;
   const text = cleanCell(raw);
   return text || null;
 }
 
 /** Miles text to integer hundredths. Half-up on a third decimal. Blank is null. */
 export function milesToHundredths(raw: string): number | null {
+  if (isEmptyCell(raw)) return null;
   const cleaned = cleanCell(raw).replace(/,/g, "");
   if (!cleaned || !/^\d+(\.\d+)?$/.test(cleaned)) return null;
   const [whole = "0", frac = ""] = cleaned.split(".");
@@ -83,7 +97,10 @@ function neighbor(grid: SheetGrid, label: string): string | null {
   return null;
 }
 
-export function parseLoadLedger(grid: SheetGrid): ParsedLoadLedger {
+export function parseLoadLedger(
+  grid: SheetGrid,
+  opts?: { keepUndated?: boolean; deliveryFallback?: string[] },
+): ParsedLoadLedger {
   const headerIndex = findHeaderRow(grid, [DELIVERY, LOAD_ID, RATE]);
   if (headerIndex < 0) {
     return { headerFound: false, rows: [], driverHint: null, statusHint: null, unitHint: null };
@@ -91,6 +108,10 @@ export function parseLoadLedger(grid: SheetGrid): ParsedLoadLedger {
   const preamble = grid.slice(0, headerIndex);
   const header = grid[headerIndex] ?? [];
   const dateCol = columnIndex(header, DELIVERY);
+  const fallbackCol = columnIndex(header, [
+    ...DELIVERY_FALLBACK,
+    ...(opts?.deliveryFallback ?? []).map((name) => name.toLowerCase()),
+  ]);
   const loadCol = columnIndex(header, LOAD_ID);
   const rateCol = columnIndex(header, RATE);
   const pickupCol = columnIndex(header, PICKUP);
@@ -107,8 +128,10 @@ export function parseLoadLedger(grid: SheetGrid): ParsedLoadLedger {
   for (const row of grid.slice(headerIndex + 1)) {
     const loadId = cleanLoadId(cell(row, loadCol));
     if (!loadId || loadId.toLowerCase() === "total" || loadId.toLowerCase() === "totals") continue;
-    const deliveryDay = sheetDay(cell(row, dateCol));
-    if (!deliveryDay) continue;
+    const primaryDay = sheetDay(cell(row, dateCol));
+    const fallbackDay = primaryDay ? null : sheetDay(cell(row, fallbackCol));
+    const deliveryDay = primaryDay || fallbackDay || "";
+    if (!deliveryDay && !opts?.keepUndated) continue;
     rows.push({
       loadId,
       deliveryDay,
@@ -123,6 +146,7 @@ export function parseLoadLedger(grid: SheetGrid): ParsedLoadLedger {
       unitNumber: textOrNull(cell(row, unitCol)),
       manifestId: textOrNull(cell(row, manifestCol)),
       status: textOrNull(cell(row, statusCol)),
+      deliverySource: primaryDay ? "column" : fallbackDay ? "fallback" : null,
     });
   }
   return {

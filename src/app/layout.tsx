@@ -22,7 +22,7 @@ function ThemeBoot() {
     <script
       dangerouslySetInnerHTML={{
         __html:
-          '(function(){try{var t=localStorage.getItem("tret.theme");var ok={glass:1,midnight:1,graphite:1,ocean:1,sand:1};if(t&&ok[t])document.documentElement.setAttribute("data-theme",t);}catch(e){}})();',
+          '(function(){try{var t=localStorage.getItem("tret.theme");var ok={glass:1,mono:1,ocean:1,mint:1,sand:1,rose:1,graphite:1,midnight:1,aurora:1,carbon:1};if(t&&ok[t])document.documentElement.setAttribute("data-theme",t);}catch(e){}})();',
       }}
     />
   );

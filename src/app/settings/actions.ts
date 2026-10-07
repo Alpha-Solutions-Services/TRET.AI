@@ -5,6 +5,7 @@ import { checkAccess } from "@/lib/auth/access";
 import { tryPercentStringToBp } from "@/lib/fees/percent";
 import { createClient } from "@/lib/supabase/server";
 import type { ImportSourceId } from "@/lib/vektor/adapters";
+import { VEKTOR_CSV_PRESET } from "@/lib/vektor/csv-loads";
 import { loadImportRegistry } from "@/lib/vektor/import-registry";
 import { probeVektorConnection, withVektorMcp } from "@/lib/vektor/mcp/live";
 import { readTokenEncryptionKey, TOKEN_ENCRYPTION_ENV } from "@/lib/vektor/oauth/crypto";
@@ -184,6 +185,21 @@ export async function testVektorConnectionAction(): Promise<SettingsActionResult
     }
     return { ok: false, error: safeErrorMessage(err) };
   }
+}
+
+export async function saveVektorCsvPresetAction(): Promise<SettingsActionResult> {
+  const access = await checkAccess();
+  if (access.status !== "allowed") return { ok: false, error: "You must be signed in." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("import_settings").upsert({
+    key: "csv_column_mapping",
+    value_text: JSON.stringify(VEKTOR_CSV_PRESET),
+    updated_at: new Date().toISOString(),
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/settings");
+  revalidatePath("/imports");
+  return { ok: true };
 }
 
 export async function setLegacyManagementFeeAction(percent: string): Promise<SettingsActionResult> {

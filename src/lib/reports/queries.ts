@@ -1,3 +1,4 @@
+import { canonicalLoadId } from "@/lib/loads/load-id";
 import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
 import { assertMonday } from "@/lib/fee-engine";
@@ -110,12 +111,12 @@ function readLoads(
   }
   return (rows ?? []).map((row) => {
     if (!row.truck_id) {
-      throw new ReportBlockedError(`Load ${row.load_id ?? row.id} has no truck.`);
+      throw new ReportBlockedError(`Load ${row.load_id ? canonicalLoadId(row.load_id) : row.id} has no truck.`);
     }
     try {
       return {
         truckId: row.truck_id,
-        loadNumber: row.load_id,
+        loadNumber: row.load_id ? canonicalLoadId(row.load_id) : null,
         deliveryDate: row.delivery_date,
         brokerName: row.broker_name,
         origin: place(row.origin_city, row.origin_state),
