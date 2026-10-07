@@ -153,7 +153,7 @@ On the Dashboard, pick the week. The date snaps to the Monday. The week snapshot
 
 **Ins and Outs** on the Dashboard is one row per active truck. Ins are load earnings from that truck's Google Sheet load ledger. Outs are the Weekly Expenses row for that week. If that tab has no header, Outs use the Mgmt Expenses rows instead. Portal monthly Legacy expenses are not added into those outs. If a truck cannot be read, the Loads cell shows a short reason. Click it, or **Copy**, to copy the real cause. **Sheet vs Vektor** opens the side by side load list for that week.
 
-The footer is one short line under the page: whether the Google service account is set, and the app version. It does not show secrets and it does not cover the page.
+The footer shows the app version. It adds a plain sentence only when the Google sheet account is missing or the key cannot be read. It does not list env names, it does not show secrets, and it does not cover the page.
 
 ## Ins and Outs
 
@@ -171,9 +171,9 @@ The footer is one short line under the page: whether the Google service account 
 1. Open **Sheet vs Vektor**.
 2. Pick the week and, if you want, one truck. All trucks is the default.
 3. The top table is the sheet load ledger for deliveries in that week. The bottom table is the Vektor `loads` rows for the same load numbers.
-4. A highlighted cell means the load is missing on one side, or the rate, date, miles, or driver differ. A short name and a full legal name match. Blank deadhead matches zero. A manifest date is labeled and is not highlighted.
+4. A highlighted cell means the load is missing on one side, or the rate, date, miles, or driver differ. Load numbers and dates stay on one line. Check is a short label such as Rate differs. The full note sits on the row under that load. A short name and a full legal name match. Blank deadhead matches zero. A manifest date is labeled and is not highlighted.
 5. A missing sheet load or a different rate still opens the same Warn issue as before.
-6. An admin enters a short note, then clicks **Use sheet** (updates TRET and logs the old value), **Use Vektor** (accepts the Vektor value), or **Write to sheet** (one cell, only when the Google account can edit). The choice stays on the row. Use sheet does not rewrite the load id inside Google Sheets.
+6. On that row under the load, an admin enters a short note, then clicks **Use sheet** (updates TRET and logs the old value), **Use Vektor** (accepts the Vektor value), or **Write to sheet** (one cell, only when the Google account can edit). The choice stays on the row. Use sheet does not rewrite the load id inside Google Sheets. On a narrow screen the table scrolls sideways.
 
 ## QuickBooks
 

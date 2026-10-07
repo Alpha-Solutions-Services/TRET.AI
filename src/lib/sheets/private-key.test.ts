@@ -77,10 +77,33 @@ describe("service account private key", () => {
       GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: bad,
     });
     expect(health.keyReadable).toBe(false);
-    expect(health.summary).toMatch(/key format wrong/);
+    expect(health.showInFooter).toBe(true);
+    expect(health.summary).toBe("The Google sheet account key could not be read.");
+    expect(health.summary).not.toMatch(/JSON|private key|key format/);
     expect(health.formatDetail).toBeTruthy();
     expect(health.formatDetail).not.toContain("A".repeat(40));
     expect(health.summary).not.toContain(bad);
+  });
+
+  it("stays quiet in the footer when the account can be read", () => {
+    const health = sheetsAccountHealth({
+      GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+        client_email: "sheets@example.iam.gserviceaccount.com",
+        private_key: pkcs8,
+      }),
+    });
+    expect(health.keyReadable).toBe(true);
+    expect(health.showInFooter).toBe(false);
+    expect(health.summary).toBe("Sheet account is set.");
+  });
+
+  it("says the account is missing in plain words", () => {
+    const health = sheetsAccountHealth({});
+    expect(health.showInFooter).toBe(true);
+    expect(health.summary).toBe(
+      "The Google sheet account is not set. Add it on the server, then share each truck sheet.",
+    );
+    expect(health.summary).not.toMatch(/JSON|GOOGLE_/);
   });
 });
 

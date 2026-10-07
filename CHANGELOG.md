@@ -9,6 +9,8 @@
 - Five more themes: Mono Minimal, Mint Breeze, Rose Quartz, Aurora Night, and Carbon Electric. Each option shows a swatch.
 - QuickBooks API screens stay in the code and stay hidden unless `QUICKBOOKS_API_ENABLED` is exactly `true`. Integrations uses a CSV export of the weekly fee income and Tolson payable, and a CSV import of a QuickBooks Transaction List or Expenses report. Account names and vendor maps are saved once. Rows save only after confirm, and a repeated row hash is skipped.
 - Migration `20261007220000_v26_load_ids_compare_qbo_file.sql` is not applied until the owner says go. It renames load ids only when that would not collide with a row that already uses the same match key.
+- Sheet vs Vektor keeps load ids and dates on one line. The Check column is a short label. The note and the resolve buttons sit on a full width row under the mismatch, and the table scrolls sideways instead of squeezing columns.
+- The footer names a missing Google sheet account in plain words. When that account is set, the footer shows only the version.
 
 ## v0.0.0.25 — 2026-10-07
 

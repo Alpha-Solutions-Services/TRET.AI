@@ -36,7 +36,10 @@ export type SheetsAccountHealth = {
   source: "json" | "pem" | "none";
   /** OpenSSL or parse cause. No key material. */
   formatDetail: string | null;
+  /** Plain status. No env names. */
   summary: string;
+  /** Footer prints summary only when the account is missing or the key cannot be read. */
+  showInFooter: boolean;
 };
 
 type ParsedAccount = {
@@ -231,22 +234,23 @@ export function authFailureFromError(err: unknown): { note: string; noteDetail: 
 
 const DECODER_IN = /DECODER routines|1E08010C|routines::unsupported/i;
 
-function yesNo(value: boolean): string {
-  return value ? "yes" : "no";
-}
-
-function healthSummary(input: {
-  jsonSet: boolean;
-  emailSet: boolean;
-  privateKeySet: boolean;
-  keyReadable: boolean;
-  hasMaterial: boolean;
-}): string {
+function healthSummary(input: { keyReadable: boolean; hasMaterial: boolean }): {
+  summary: string;
+  showInFooter: boolean;
+} {
   if (!input.hasMaterial) {
-    return "Sheet account: JSON no, email no, private key no. Set GOOGLE_SERVICE_ACCOUNT_JSON, or the email and private key, then share each sheet.";
+    return {
+      summary: "The Google sheet account is not set. Add it on the server, then share each truck sheet.",
+      showInFooter: true,
+    };
   }
-  const format = input.keyReadable ? "key format ok" : "key format wrong";
-  return `Sheet account: JSON ${yesNo(input.jsonSet)}, email ${yesNo(input.emailSet)}, private key ${yesNo(input.privateKeySet)}, ${format}.`;
+  if (!input.keyReadable) {
+    return {
+      summary: "The Google sheet account key could not be read.",
+      showInFooter: true,
+    };
+  }
+  return { summary: "Sheet account is set.", showInFooter: false };
 }
 
 /** Non-secret check. Does not return the email address or the key. */
@@ -272,7 +276,7 @@ export function sheetsAccountHealth(
         keyReadable: false,
         source: "none",
         formatDetail: null,
-        summary: healthSummary({ jsonSet, emailSet, privateKeySet, keyReadable: false, hasMaterial }),
+        ...healthSummary({ keyReadable: false, hasMaterial }),
       };
     }
     return {
@@ -282,13 +286,7 @@ export function sheetsAccountHealth(
       keyReadable: true,
       source: account.source,
       formatDetail: null,
-      summary: healthSummary({
-        jsonSet,
-        emailSet: true,
-        privateKeySet: true,
-        keyReadable: true,
-        hasMaterial: true,
-      }),
+      ...healthSummary({ keyReadable: true, hasMaterial: true }),
     };
   } catch (err) {
     const formatDetail =
@@ -304,13 +302,7 @@ export function sheetsAccountHealth(
       keyReadable: false,
       source: jsonSet ? "json" : "pem",
       formatDetail,
-      summary: healthSummary({
-        jsonSet,
-        emailSet,
-        privateKeySet,
-        keyReadable: false,
-        hasMaterial: true,
-      }),
+      ...healthSummary({ keyReadable: false, hasMaterial: true }),
     };
   }
 }

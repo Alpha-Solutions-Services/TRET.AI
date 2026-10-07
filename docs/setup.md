@@ -152,7 +152,7 @@ Do these once (or when credentials change). The app cannot finish login or healt
 2. On Vercel, set `GOOGLE_SERVICE_ACCOUNT_JSON` to the full service account JSON. That value is preferred. It supplies the email and the private key.
 3. You can still set `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` when JSON is unset. A one-line PEM may use `\n` for line breaks. Quotes around the PEM are removed.
 4. Share each truck sheet with that service account as a viewer.
-5. The footer shows whether JSON, the email, and the private key are set, and whether the key format is ok. It does not show the key. The same check is on Health and Settings.
+5. When the sheet account is set, the footer shows only the version. When it is missing, or the key cannot be read, the footer says so in plain words. It does not list JSON, email, or private key. Health and Settings still say the account is set. The key itself is never shown.
 6. If the key format is wrong, the row says so in plain language. Click the error, or Copy, to copy the real cause.
 
 ## 19. Legacy fees and monthly expenses (v0.0.0.20)
