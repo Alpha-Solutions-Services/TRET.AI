@@ -1,18 +1,17 @@
 {
-  "_comment": "Sample A — delivered with stop completion timestamps; promotes clean. friendlyIds from owner; completion path per owner test requirements.",
+  "_comment": "Sample A — real anonymized values from owner (manifest 1152).",
   "manifestId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa1152",
   "friendlyId": "1152",
   "status": "STATUS_DELIVERED",
-  "loadedDistance": "580.00",
-  "emptyDistance": "40.00",
-  "totalDistance": "620.00",
-  "autoLoadedDistance": "580.00",
-  "autoEmptyDistance": "40.00",
-  "grossAmount": "2500.00",
+  "loadedDistance": "332.00",
+  "emptyDistance": "14.00",
+  "totalDistance": "346.00",
+  "autoLoadedDistance": "333.00",
+  "autoEmptyDistance": "203.00",
+  "grossAmount": "2200.00",
   "grossType": "GROSS_TYPE_AUTO",
-  "ratePerDistance": "4.31",
   "primaryDriverId": "dddddddd-dddd-dddd-dddd-dddddddd0001",
-  "truck": { "unitNumber": "02", "truckId": "tttttttt-tttt-tttt-tttt-tttttttt0002" },
+  "truckId": "tttttttt-tttt-tttt-tttt-tttttttt0002",
   "tour": {},
   "lineage": {
     "rootManifestId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa1152",
@@ -22,19 +21,26 @@
   },
   "stops": [
     {
+      "kind": "KIND_TYPE_START",
+      "orderStopType": "TYPE_START",
+      "sequence": "0",
+      "appointmentStartAtLocal": "2026-09-23 08:00:00",
+      "appointmentType": "APPOINTMENT_TYPE_FIXED",
+      "location": { "city": "Leander", "state": "TX" }
+    },
+    {
       "kind": "KIND_ORDER_STOP",
       "orderFriendlyId": "TBH--1152",
       "orderId": "oooooooo-oooo-oooo-oooo-oooooooo1152",
       "sequence": "1",
       "orderStopType": "pickup",
       "orderStopStatus": "STATUS_COMPLETED",
-      "arrivedAt": "2026-09-15T13:00:00Z",
-      "checkedOutAt": "2026-09-15T15:30:00Z",
-      "appointmentStartAtLocal": "2026-09-15 07:00:00",
-      "appointmentType": "APPOINTMENT_TYPE_RANGE",
-      "orderReferenceId": "REF-1152",
+      "arrivedAt": "2026-09-25 12:54:16",
+      "checkedOutAt": "2026-09-25 16:38:52",
+      "appointmentStartAtLocal": "2026-09-25 15:00:00",
+      "appointmentType": "APPOINTMENT_TYPE_FIXED",
       "orderBrokerId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0001",
-      "location": { "city": "Dallas", "state": "TX" }
+      "location": { "city": "Irving", "state": "TX" }
     },
     {
       "kind": "KIND_ORDER_STOP",
@@ -43,13 +49,12 @@
       "sequence": "2",
       "orderStopType": "dropoff",
       "orderStopStatus": "STATUS_COMPLETED",
-      "arrivedAt": "2026-09-17T18:00:00Z",
-      "checkedOutAt": "2026-09-17T19:00:00Z",
-      "appointmentStartAtLocal": "2026-09-17 08:00:00",
-      "appointmentType": "APPOINTMENT_TYPE_FIXED",
-      "orderReferenceId": "REF-1152",
+      "arrivedAt": "2026-09-26 10:50:31",
+      "checkedOutAt": "2026-09-26 12:29:26",
+      "appointmentStartAtLocal": "2026-09-28 00:00:00",
+      "appointmentType": "APPOINTMENT_TYPE_NEED_TO_SET",
       "orderBrokerId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0001",
-      "location": { "city": "Atlanta", "state": "GA" }
+      "location": { "city": "Little Rock", "state": "AR" }
     }
   ],
   "orders": [
@@ -57,8 +62,7 @@
       "orderId": "oooooooo-oooo-oooo-oooo-oooooooo1152",
       "friendlyId": "TBH--1152",
       "grossAmount": "0.00",
-      "brokerId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0001",
-      "customerId": null
+      "brokerId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0001"
     }
   ],
   "_lookups": {
@@ -67,6 +71,12 @@
     },
     "brokers": {
       "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0001": "Test Broker LLC"
+    },
+    "trucks": {
+      "tttttttt-tttt-tttt-tttt-tttttttt0002": {
+        "referenceId": "02",
+        "truckId": "tttttttt-tttt-tttt-tttt-tttttttt0002"
+      }
     }
   }
 }

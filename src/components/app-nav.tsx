@@ -9,6 +9,7 @@ const NAV = [
   { href: "/trucks", label: "Trucks" },
   { href: "/loads", label: "Loads" },
   { href: "/imports", label: "Imports" },
+  { href: "/settings", label: "Settings" },
 ] as const;
 
 export function AppNav() {

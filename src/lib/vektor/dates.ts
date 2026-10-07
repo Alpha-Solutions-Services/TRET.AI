@@ -7,35 +7,45 @@ const USABLE_APPOINTMENT: AppointmentType[] = [
 ];
 
 /**
- * Resolve stop completion date.
+ * Normalize a Vektor timestamp to "YYYY-MM-DD HH:mm:ss" when possible.
+ */
+export function normalizeTimestamp(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const local = trimmed.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/);
+  if (local) return `${local[1]} ${local[2]}`;
+  const dateOnly = trimmed.match(/^(\d{4}-\d{2}-\d{2})$/);
+  if (dateOnly) return `${dateOnly[1]} 00:00:00`;
+  return null;
+}
+
+export function timestampToDate(ts: string | null): string | null {
+  if (!ts) return null;
+  return ts.slice(0, 10);
+}
+
+/**
+ * Resolve stop completion time.
  * checkedOutAt → arrivedAt → appointmentStartAtLocal only if FIXED or RANGE.
  * NEED_TO_SET is never a date.
  */
 export function resolveStopDate(stop: VektorStop | undefined): string | null {
   if (!stop) return null;
 
-  const fromIso = (iso: string | null | undefined): string | null => {
-    if (!iso) return null;
-    const d = iso.includes("T") ? iso.slice(0, 10) : iso.slice(0, 10);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-    // local "2026-09-11 08:00:00"
-    const m = iso.match(/^(\d{4}-\d{2}-\d{2})/);
-    return m?.[1] ?? null;
-  };
-
-  const checkout = fromIso(stop.checkedOutAt ?? null);
+  const checkout = normalizeTimestamp(stop.checkedOutAt ?? null);
   if (checkout) return checkout;
 
-  const arrived = fromIso(stop.arrivedAt ?? null);
+  const arrived = normalizeTimestamp(stop.arrivedAt ?? null);
   if (arrived) return arrived;
 
   const apptType = stop.appointmentType ?? "";
   if (apptType === "APPOINTMENT_TYPE_NEED_TO_SET") return null;
   if (!USABLE_APPOINTMENT.includes(apptType)) return null;
 
-  return fromIso(stop.appointmentStartAtLocal ?? null);
+  return normalizeTimestamp(stop.appointmentStartAtLocal ?? null);
 }
 
+/** Only pickup / dropoff order stops. TYPE_START and others are ignored. */
 export function findStop(
   stops: VektorStop[] | undefined,
   type: "pickup" | "dropoff",
@@ -49,15 +59,16 @@ export function monthKeyFromDate(isoDate: string): string {
   return isoDate.slice(0, 7);
 }
 
-export function weekFieldsFromDeliveryDate(deliveryDate: string): {
+export function weekFieldsFromDeliveryDate(deliveryDateOrTs: string): {
   weekStart: string;
   weekEnd: string;
   monthKey: string;
 } {
-  const bounds = weekBoundsForDate(deliveryDate);
+  const day = timestampToDate(deliveryDateOrTs) ?? deliveryDateOrTs.slice(0, 10);
+  const bounds = weekBoundsForDate(day);
   return {
     weekStart: bounds.start,
     weekEnd: bounds.end,
-    monthKey: monthKeyFromDate(deliveryDate),
+    monthKey: monthKeyFromDate(day),
   };
 }

@@ -89,11 +89,12 @@ export function validateDateOutsideRange(
   rangeTo: string,
 ): IssueDraft | null {
   if (!mapped.eligible || !mapped.deliveryDate) return null;
-  if (mapped.deliveryDate < rangeFrom || mapped.deliveryDate > rangeTo) {
+  const day = mapped.deliveryDate.slice(0, 10);
+  if (day < rangeFrom || day > rangeTo) {
     return {
       severity: "Warn",
       rule: "date_outside_range",
-      message: `Delivery date ${mapped.deliveryDate} is outside import range ${rangeFrom}–${rangeTo}.`,
+      message: `Delivery date ${day} is outside import range ${rangeFrom}–${rangeTo}.`,
       ref: mapped.manifestFriendlyId ?? mapped.manifestId,
       manifestId: mapped.manifestId,
     };

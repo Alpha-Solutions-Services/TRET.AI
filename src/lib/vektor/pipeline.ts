@@ -1,5 +1,4 @@
-import { mapManifestToLoad } from "./map";
-import type { LookupMaps } from "./map";
+import { mapManifestToLoad, type LookupMaps } from "./map";
 import {
   matchTruckUnit,
   validateDateOutsideRange,
@@ -9,6 +8,7 @@ import {
   type ImportSettings,
 } from "./validate";
 import type { IssueDraft, MappedLoad, VektorManifest } from "./types";
+import { timestampToDate } from "./dates";
 
 export type PromoteDecision = {
   mapped: MappedLoad;
@@ -45,14 +45,18 @@ export function decidePromotion(
     };
   }
 
+  // truckId → trucks lookup referenceId → match trucks.unit_number exactly
   const truck = matchTruckUnit(mapped.truckUnitNumber, opts.knownTruckUnits);
   if (!truck.matched) {
+    const msg = !mapped.truckId
+      ? "Manifest has no truckId. Row stays in staging."
+      : !mapped.truckUnitNumber
+        ? `No Vektor truck lookup for truckId ${mapped.truckId}. Row stays in staging.`
+        : `No truck with unit_number "${mapped.truckUnitNumber}" (from Vektor referenceId). Row stays in staging.`;
     issues.push({
       severity: "Warn",
       rule: "truck_unmatched",
-      message: truck.unit
-        ? `No truck with unit_number "${truck.unit}". Row stays in staging.`
-        : "Manifest has no truck unit number. Row stays in staging.",
+      message: msg,
       ref: mapped.manifestFriendlyId ?? mapped.manifestId,
       manifestId: mapped.manifestId,
     });
@@ -124,4 +128,9 @@ export function runImportPipeline(
     statusCounts,
     duplicateIssues,
   };
+}
+
+/** Calendar date for range checks (delivery timestamp → day). */
+export function deliveryDay(mapped: MappedLoad): string | null {
+  return timestampToDate(mapped.deliveryDate);
 }

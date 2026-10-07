@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { LookupMaps, TruckLookupRecord } from "./map";
 import type { VektorManifest } from "./types";
 
 export function loadFixtureManifest(filename: string): VektorManifest {
@@ -8,7 +9,6 @@ export function loadFixtureManifest(filename: string): VektorManifest {
     _lookups?: unknown;
     _comment?: string;
   };
-  // Strip test-only keys
   const { _lookups: _l, _comment: _c, ...manifest } = raw as VektorManifest & {
     _lookups?: unknown;
     _comment?: string;
@@ -16,19 +16,18 @@ export function loadFixtureManifest(filename: string): VektorManifest {
   return manifest as VektorManifest;
 }
 
-export function loadFixtureLookups(filename: string): {
-  drivers: Record<string, string>;
-  brokers: Record<string, string>;
-} {
+export function loadFixtureLookups(filename: string): LookupMaps {
   const path = resolve(process.cwd(), "fixtures", "vektor", filename);
   const raw = JSON.parse(readFileSync(path, "utf8")) as {
     _lookups?: {
       drivers?: Record<string, string>;
       brokers?: Record<string, string>;
+      trucks?: Record<string, TruckLookupRecord>;
     };
   };
   return {
     drivers: raw._lookups?.drivers ?? {},
     brokers: raw._lookups?.brokers ?? {},
+    trucks: raw._lookups?.trucks ?? {},
   };
 }

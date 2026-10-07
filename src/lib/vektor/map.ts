@@ -1,12 +1,19 @@
-import { findStop, resolveStopDate, weekFieldsFromDeliveryDate } from "./dates";
+import { findStop, resolveStopDate, timestampToDate, weekFieldsFromDeliveryDate } from "./dates";
 import { classifyManifestEligibility, eligibilityIssue } from "./eligibility";
 import { decimalStringToCents, decimalStringToMiles } from "./money";
 import type { IssueDraft, MappedLoad, VektorManifest } from "./types";
+
+export type TruckLookupRecord = {
+  truckId: string;
+  referenceId: string;
+};
 
 export type LookupMaps = {
   drivers: Record<string, string>;
   brokers: Record<string, string>;
   customers?: Record<string, string>;
+  /** Keyed by Vektor truckId → referenceId ("02") */
+  trucks?: Record<string, TruckLookupRecord>;
 };
 
 export function mapManifestToLoad(
@@ -21,8 +28,8 @@ export function mapManifestToLoad(
   const pickup = findStop(manifest.stops, "pickup");
   const dropoff = findStop(manifest.stops, "dropoff");
 
-  const pickupDate = resolveStopDate(pickup);
-  const deliveryDate = resolveStopDate(dropoff);
+  const pickupAt = resolveStopDate(pickup);
+  const deliveryAt = resolveStopDate(dropoff);
 
   const orders = manifest.orders ?? [];
   const orderIds = [
@@ -83,15 +90,19 @@ export function mapManifestToLoad(
   const autoEmptyDistanceMi = safeMiles(manifest.autoEmptyDistance);
 
   const week =
-    deliveryDate != null ? weekFieldsFromDeliveryDate(deliveryDate) : null;
+    deliveryAt != null ? weekFieldsFromDeliveryDate(deliveryAt) : null;
 
   const driverId = manifest.primaryDriverId ?? null;
-  const truckUnitNumber = manifest.truck?.unitNumber ?? null;
+  const truckId = manifest.truckId ?? manifest.truck?.truckId ?? null;
+  const truckRef =
+    truckId && lookups.trucks?.[truckId]
+      ? lookups.trucks[truckId]!.referenceId
+      : null;
 
   let eligible = eligibility.importable;
   let skipReason = eligibility.reason;
 
-  if (eligible && !deliveryDate) {
+  if (eligible && !deliveryAt) {
     eligible = false;
     skipReason = "no delivery date";
     issues.push({
@@ -104,18 +115,13 @@ export function mapManifestToLoad(
     });
   }
 
-  if (eligible && orderFriendlyIds.length > 1) {
-    // Still promote with null loadId? Owner said Load ID = OPEN, do not guess.
-    // Promote with null load_id is OK — rate is on manifest. Keep eligible.
-  }
-
   return {
     manifestId: manifest.manifestId,
     orderIds,
     loadId,
     manifestFriendlyId: manifest.friendlyId ?? null,
-    pickupDate,
-    deliveryDate,
+    pickupDate: pickupAt,
+    deliveryDate: deliveryAt,
     weekStart: week?.weekStart ?? null,
     weekEnd: week?.weekEnd ?? null,
     monthKey: week?.monthKey ?? null,
@@ -138,7 +144,8 @@ export function mapManifestToLoad(
     autoEmptyDistanceMi,
     deadheadMiles: emptyDistanceMi,
     rateCents,
-    truckUnitNumber,
+    truckId,
+    truckUnitNumber: truckRef,
     vektorStatus: manifest.status,
     lineageRootManifestId: manifest.lineage?.rootManifestId ?? null,
     lineageParentManifestId: manifest.lineage?.parentManifestId ?? null,
@@ -158,4 +165,9 @@ function safeMiles(value: string | null | undefined): number | null {
   } catch {
     return null;
   }
+}
+
+/** Calendar date for DB date columns. */
+export function mappedDeliveryCalendarDate(mapped: MappedLoad): string | null {
+  return timestampToDate(mapped.deliveryDate);
 }

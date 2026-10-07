@@ -3,9 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { checkAccess } from "@/lib/auth/access";
 import { createClient } from "@/lib/supabase/server";
-import { getVektorEnvConfig, createVektorClient } from "@/lib/vektor/client";
+import {
+  createAdapters,
+  getSelectableAdapter,
+  resolveCrossSourceConflict,
+  type ImportSourceId,
+  type ExistingLoadSnapshot,
+} from "@/lib/vektor/adapters";
+import { timestampToDate } from "@/lib/vektor/dates";
 import { runImportPipeline } from "@/lib/vektor/pipeline";
-import type { VektorManifest } from "@/lib/vektor/types";
 import type { Json } from "@/lib/supabase/database.types";
 
 export type ImportActionResult =
@@ -29,6 +35,34 @@ function defaultRange(lookbackDays: number): { from: string; to: string } {
   return { from: iso(from), to: iso(to) };
 }
 
+async function loadAdapterRegistry(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data: rows } = await supabase
+    .from("import_settings")
+    .select("key, value_text")
+    .in("key", ["import_source", "mcp_verified", "csv_column_mapping"]);
+  const map = new Map((rows ?? []).map((r) => [r.key, r.value_text]));
+  let csvMapping: Record<string, string> | null = null;
+  if (map.get("csv_column_mapping")) {
+    try {
+      csvMapping = JSON.parse(map.get("csv_column_mapping")!) as Record<
+        string,
+        string
+      >;
+    } catch {
+      csvMapping = null;
+    }
+  }
+  const adapters = createAdapters({
+    mcpVerified: map.get("mcp_verified") === "true",
+    mcpHasTokens: false,
+    csvColumnMapping: csvMapping,
+    apiBaseUrl: process.env.VEKTOR_API_BASE_URL ?? "",
+    apiToken: process.env.VEKTOR_API_TOKEN ?? "",
+  });
+  const selected = (map.get("import_source") as ImportSourceId | null) ?? null;
+  return { adapters, selected, adapter: getSelectableAdapter(adapters, selected) };
+}
+
 export async function runVektorImportAction(input?: {
   from?: string;
   to?: string;
@@ -50,37 +84,44 @@ export async function runVektorImportAction(input?: {
     to: input?.to || defaultRange(lookback).to,
   };
 
-  const vektorConfig = getVektorEnvConfig();
-  if (!vektorConfig) {
+  const { adapter, selected } = await loadAdapterRegistry(supabase);
+  if (!adapter || !selected) {
     return {
       ok: false,
       error:
-        "Vektor is not configured. Set VEKTOR_API_BASE_URL and VEKTOR_API_TOKEN in the server env (never in the browser).",
+        "No import source selected, or the selected source is not configured. Open Settings.",
     };
   }
 
-  const { data: run, error: runErr } = await supabase
+  let { data: run, error: runErr } = await supabase
     .from("import_runs")
     .insert({
       status: "running",
       range_from: range.from,
       range_to: range.to,
+      source: selected,
     })
     .select("id")
     .single();
+  // Until additive migration is applied, source column may be missing.
+  if (runErr && /source/i.test(runErr.message)) {
+    ({ data: run, error: runErr } = await supabase
+      .from("import_runs")
+      .insert({
+        status: "running",
+        range_from: range.from,
+        range_to: range.to,
+      })
+      .select("id")
+      .single());
+  }
   if (runErr || !run) {
     return { ok: false, error: runErr?.message ?? "Could not start import run." };
   }
 
   try {
-    const client = createVektorClient(vektorConfig);
-    // OPEN: exact REST list shape. Until confirmed, expect { items: VektorManifest[] } or array.
-    const raw = await client.listDeliveredManifests({
-      from: range.from,
-      to: range.to,
-      perPage: 25,
-    });
-    const manifests = normalizeManifestList(raw);
+    const fetched = await adapter.fetchManifests(range);
+    const manifests = fetched.manifests;
 
     const { data: dropSetting } = await supabase
       .from("import_settings")
@@ -103,11 +144,8 @@ export async function runVektorImportAction(input?: {
     const unitToId = new Map((trucks ?? []).map((t) => [t.unit_number, t.id]));
     const knownUnits = new Set(unitToId.keys());
 
-    // Resolve driver/broker names from staging raw if present; live client lookups OPEN.
-    const lookups = { drivers: {} as Record<string, string>, brokers: {} as Record<string, string> };
-
     const pipeline = runImportPipeline(manifests, {
-      lookups,
+      lookups: fetched.lookups,
       knownTruckUnits: knownUnits,
       rangeFrom: range.from,
       rangeTo: range.to,
@@ -117,7 +155,7 @@ export async function runVektorImportAction(input?: {
 
     if (pipeline.blocked && pipeline.blockIssue) {
       await supabase.from("issues").insert({
-        severity: pipeline.blockIssue.severity,
+        severity: "Block",
         rule: pipeline.blockIssue.rule,
         message: pipeline.blockIssue.message,
         ref: pipeline.blockIssue.ref ?? null,
@@ -159,6 +197,7 @@ export async function runVektorImportAction(input?: {
         {
           import_run_id: run.id,
           manifest_id: mapped.manifestId,
+          manifest_friendly_id: mapped.manifestFriendlyId,
           order_ids: mapped.orderIds,
           raw: manifests.find((m) => m.manifestId === mapped.manifestId) as unknown as Json,
           promote_status: promote ? "promoted" : "rejected",
@@ -168,8 +207,7 @@ export async function runVektorImportAction(input?: {
         { onConflict: "manifest_id" },
       );
 
-      for (const issue of [...issues, ...pipeline.duplicateIssues.filter((i) => i.manifestId === mapped.manifestId || !i.manifestId)]) {
-        if (issue.manifestId && issue.manifestId !== mapped.manifestId) continue;
+      for (const issue of issues) {
         await supabase.from("issues").insert({
           severity: issue.severity,
           rule: issue.rule,
@@ -186,17 +224,77 @@ export async function runVektorImportAction(input?: {
         continue;
       }
 
+      let existingSnap: ExistingLoadSnapshot | null = null;
+      if (mapped.manifestFriendlyId) {
+        const { data: existing } = await supabase
+          .from("loads")
+          .select(
+            "manifest_id, load_id, delivery_date, rate_cents, loaded_distance_mi, deadhead_miles, origin_city, destination_city, import_run_id",
+          )
+          .eq("manifest_friendly_id", mapped.manifestFriendlyId)
+          .maybeSingle();
+        if (existing) {
+          let source: string | null = null;
+          if (existing.import_run_id) {
+            const { data: er } = await supabase
+              .from("import_runs")
+              .select("source")
+              .eq("id", existing.import_run_id)
+              .maybeSingle();
+            source = er?.source ?? null;
+          }
+          existingSnap = {
+            naturalKey: mapped.manifestFriendlyId,
+            manifestId: existing.manifest_id,
+            loadId: existing.load_id,
+            deliveryDate: existing.delivery_date
+              ? `${existing.delivery_date} 00:00:00`
+              : null,
+            rateCents: existing.rate_cents,
+            loadedDistanceMi: existing.loaded_distance_mi,
+            deadheadMiles: existing.deadhead_miles,
+            originCity: existing.origin_city,
+            destinationCity: existing.destination_city,
+            source,
+          };
+        }
+      }
+
+      const conflict = resolveCrossSourceConflict(mapped, existingSnap, selected);
+      if (conflict.issue) {
+        await supabase.from("issues").insert({
+          severity: conflict.issue.severity,
+          rule: conflict.issue.rule,
+          message: conflict.issue.message,
+          ref: conflict.issue.ref ?? null,
+          status: "open",
+          import_run_id: run.id,
+          manifest_id: mapped.manifestId,
+        });
+      }
+      if (conflict.action === "skip_identical") {
+        updated += 0;
+        continue;
+      }
+      if (conflict.action === "warn_differ") {
+        rejected += 1;
+        continue;
+      }
+
       const truckId = mapped.truckUnitNumber
         ? (unitToId.get(mapped.truckUnitNumber) ?? null)
         : null;
+
+      const deliveryDay = timestampToDate(mapped.deliveryDate)!;
+      const pickupDay = timestampToDate(mapped.pickupDate);
 
       const row = {
         manifest_id: mapped.manifestId,
         order_ids: mapped.orderIds,
         load_id: mapped.loadId,
         manifest_friendly_id: mapped.manifestFriendlyId,
-        pickup_date: mapped.pickupDate,
-        delivery_date: mapped.deliveryDate!,
+        pickup_date: pickupDay,
+        delivery_date: deliveryDay,
         week_start: mapped.weekStart!,
         week_end: mapped.weekEnd!,
         month_key: mapped.monthKey!,
@@ -229,7 +327,7 @@ export async function runVektorImportAction(input?: {
         updated_at: new Date().toISOString(),
       };
 
-      const { data: existing } = await supabase
+      const { data: existingByManifest } = await supabase
         .from("loads")
         .select("id")
         .eq("manifest_id", mapped.manifestId)
@@ -251,20 +349,8 @@ export async function runVektorImportAction(input?: {
         });
         continue;
       }
-      if (existing) updated += 1;
+      if (existingByManifest) updated += 1;
       else promoted += 1;
-    }
-
-    // Duplicate issues without per-manifest id
-    for (const issue of pipeline.duplicateIssues.filter((i) => !i.manifestId)) {
-      await supabase.from("issues").insert({
-        severity: issue.severity,
-        rule: issue.rule,
-        message: issue.message,
-        ref: issue.ref ?? null,
-        status: "open",
-        import_run_id: run.id,
-      });
     }
 
     await supabase
@@ -289,34 +375,39 @@ export async function runVektorImportAction(input?: {
       promoted,
       rejected,
       updated,
-      message: `Fetched ${manifests.length}. Promoted ${promoted}, updated ${updated}, rejected ${rejected}.`,
+      message: `Source ${selected}: fetched ${manifests.length}. Promoted ${promoted}, updated ${updated}, rejected ${rejected}.`,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    // Never include token in error text
     const safe = message.replace(/Bearer\s+\S+/gi, "Bearer [redacted]");
+    const needsSignIn =
+      /sign-in|unauthorized|unverified|MCP/i.test(safe) ||
+      /connection needs/i.test(safe);
+
+    await supabase.from("issues").insert({
+      severity: "Block",
+      rule: needsSignIn ? "vektor_auth" : "import_error",
+      message: needsSignIn
+        ? "Vektor connection needs sign-in"
+        : safe,
+      status: "open",
+      import_run_id: run.id,
+    });
+
     await supabase
       .from("import_runs")
       .update({
         status: "failed",
         finished_at: new Date().toISOString(),
-        error_summary: safe,
+        error_summary: needsSignIn
+          ? "Vektor connection needs sign-in"
+          : safe,
       })
       .eq("id", run.id);
     revalidatePath("/imports");
-    return { ok: false, error: safe };
+    return {
+      ok: false,
+      error: needsSignIn ? "Vektor connection needs sign-in" : safe,
+    };
   }
-}
-
-function normalizeManifestList(raw: unknown): VektorManifest[] {
-  if (Array.isArray(raw)) return raw as VektorManifest[];
-  if (raw && typeof raw === "object") {
-    const obj = raw as Record<string, unknown>;
-    if (Array.isArray(obj.items)) return obj.items as VektorManifest[];
-    if (Array.isArray(obj.manifests)) return obj.manifests as VektorManifest[];
-    if (Array.isArray(obj.data)) return obj.data as VektorManifest[];
-  }
-  throw new Error(
-    "Unexpected Vektor list response shape (OPEN: confirm API list path and JSON). Expected an array or { items: [] }.",
-  );
 }

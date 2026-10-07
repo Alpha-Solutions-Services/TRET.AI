@@ -13,7 +13,7 @@
   "ratePerDistance": "3.75",
   "primaryDriverId": "dddddddd-dddd-dddd-dddd-dddddddd0002",
   "totalDriverNetAmount": { "amount": 30 },
-  "truck": { "unitNumber": "02", "truckId": "tttttttt-tttt-tttt-tttt-tttttttt0002" },
+  "truckId": "tttttttt-tttt-tttt-tttt-tttttttt0002",
   "tour": {},
   "lineage": {
     "rootManifestId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb1101",
@@ -65,6 +65,12 @@
     },
     "brokers": {
       "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0002": "Test Broker B"
+    },
+    "trucks": {
+      "tttttttt-tttt-tttt-tttt-tttttttt0002": {
+        "referenceId": "02",
+        "truckId": "tttttttt-tttt-tttt-tttt-tttttttt0002"
+      }
     }
   }
 }

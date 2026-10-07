@@ -47,3 +47,7 @@ SECRETS/
 
 .start-out.txt
 .start-err.txt
+
+# Vektor MCP spike tokens / local reports (never commit)
+.vektor-mcp-tokens.json
+.vektor-mcp-spike-report.json

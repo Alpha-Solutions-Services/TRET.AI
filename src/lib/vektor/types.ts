@@ -51,6 +51,8 @@ export type VektorManifest = {
   grossType?: string | null;
   ratePerDistance?: string | null;
   primaryDriverId?: string | null;
+  /** Vektor truck UUID — resolve via trucks lookup to referenceId. */
+  truckId?: string | null;
   truck?: { unitNumber?: string | null; truckId?: string | null } | null;
   tour?: Record<string, unknown> | null;
   lineage?: VektorLineage | null;
@@ -92,6 +94,7 @@ export type MappedLoad = {
   autoEmptyDistanceMi: number | null;
   deadheadMiles: number | null;
   rateCents: number;
+  truckId: string | null;
   truckUnitNumber: string | null;
   vektorStatus: string;
   lineageRootManifestId: string | null;

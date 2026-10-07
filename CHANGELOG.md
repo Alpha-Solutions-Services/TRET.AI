@@ -5,8 +5,12 @@
 - Vektor loads import (manual only): staging → validate → `loads`; idempotent on `manifestId`.
 - Tables (migration not applied until go): `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues` with RLS.
 - Mapping per owner decisions: order friendlyId as Load ID, manifest grossAmount → cents, delivery-date fallback chain, deadhead = emptyDistance, lineage stored, Trip Group not built.
+- Truck match: `truckId` → trucks lookup `referenceId` → exact `trucks.unit_number`.
+- Import adapters: interface + Settings “Import source”; `McpAdapter` (unverified until spike), `CsvExportAdapter` (not configured), `ApiAdapter` stub; cross-source natural key = manifest `friendlyId`.
+- Additive migration (unapplied until go): `import_runs.source`, staging `manifest_friendly_id`, unique loads friendlyId index, adapter settings keys.
+- Sample A real values (1152) + Samples B/C + Vitest.
+- Spike v2 script: `scripts/spike-vektor-mcp-oauth.mjs` (OAuth PKCE + refresh proof; tokens gitignored).
 - Imports page (Import now, default last 14 days) and read-only Loads page (week + truck filters, totals).
-- Fixtures Sample A/B/C + Vitest for exclude deleted/merged, appointment fallback, completion timestamps, truck unit match.
 - No Google Sheets. No scheduler.
 
 ## v0.0.0.3 — 2026-10-06

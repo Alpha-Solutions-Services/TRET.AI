@@ -178,6 +178,8 @@ export type Database = {
           started_at: string;
           finished_at: string | null;
           status: string;
+          /** After additive migration 20261007100000 (unapplied until go). */
+          source?: string | null;
           range_from: string;
           range_to: string;
           rows_fetched: number;
@@ -192,6 +194,7 @@ export type Database = {
           started_at?: string;
           finished_at?: string | null;
           status: string;
+          source?: string | null;
           range_from: string;
           range_to: string;
           rows_fetched?: number;
@@ -206,6 +209,7 @@ export type Database = {
           started_at?: string;
           finished_at?: string | null;
           status?: string;
+          source?: string | null;
           range_from?: string;
           range_to?: string;
           rows_fetched?: number;
@@ -222,6 +226,8 @@ export type Database = {
           id: string;
           import_run_id: string | null;
           manifest_id: string;
+          /** After additive migration 20261007100000 (unapplied until go). */
+          manifest_friendly_id?: string | null;
           order_ids: string[];
           raw: Json;
           promote_status: string;
@@ -233,6 +239,7 @@ export type Database = {
           id?: string;
           import_run_id?: string | null;
           manifest_id: string;
+          manifest_friendly_id?: string | null;
           order_ids?: string[];
           raw: Json;
           promote_status?: string;
@@ -244,6 +251,7 @@ export type Database = {
           id?: string;
           import_run_id?: string | null;
           manifest_id?: string;
+          manifest_friendly_id?: string | null;
           order_ids?: string[];
           raw?: Json;
           promote_status?: string;

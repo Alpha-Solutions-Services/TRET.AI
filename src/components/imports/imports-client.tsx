@@ -19,6 +19,7 @@ type RunRow = {
   started_at: string;
   finished_at: string | null;
   status: string;
+  source?: string | null;
   range_from: string;
   range_to: string;
   rows_fetched: number;
@@ -89,6 +90,7 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
             <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Started</th>
+                <th className="px-4 py-3 font-medium">Source</th>
                 <th className="px-4 py-3 font-medium">Range</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Fetched</th>
@@ -104,6 +106,7 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
                   <td className="px-4 py-3">
                     {new Date(run.started_at).toLocaleString()}
                   </td>
+                  <td className="px-4 py-3">{run.source ?? "—"}</td>
                   <td className="px-4 py-3">
                     {run.range_from} → {run.range_to}
                   </td>
