@@ -117,9 +117,9 @@ export function SheetCompareClient({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <div>
-        <h1 className="text-2xl font-semibold">Sheet vs Vektor</h1>
+        <h1 className="text-[1.75rem]">Sheet vs Vektor</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
           Sheet load records for this week are on top. Vektor load records for the same load numbers are
           below. A highlighted cell means that load is missing on one side, or the rate, delivery date, or

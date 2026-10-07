@@ -876,6 +876,7 @@ export type Database = {
           category: string;
           amount_cents: number;
           note: string | null;
+          qbo_source_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -884,6 +885,7 @@ export type Database = {
           category: string;
           amount_cents: number;
           note?: string | null;
+          qbo_source_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -892,6 +894,7 @@ export type Database = {
           category?: string;
           amount_cents?: number;
           note?: string | null;
+          qbo_source_id?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -977,6 +980,102 @@ export type Database = {
           fee_cents?: number | null;
           fee_bp?: number | null;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      quickbooks_category_map: {
+        Row: {
+          id: string;
+          source_kind: string;
+          source_id: string;
+          source_name: string;
+          category: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          source_kind: string;
+          source_id: string;
+          source_name: string;
+          category: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          source_kind?: string;
+          source_id?: string;
+          source_name?: string;
+          category?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      quickbooks_posting_accounts: {
+        Row: {
+          id: number;
+          fee_debit_account_id: string | null;
+          fee_debit_account_name: string | null;
+          fee_credit_account_id: string | null;
+          fee_credit_account_name: string | null;
+          tolson_debit_account_id: string | null;
+          tolson_debit_account_name: string | null;
+          tolson_credit_account_id: string | null;
+          tolson_credit_account_name: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          fee_debit_account_id?: string | null;
+          fee_debit_account_name?: string | null;
+          fee_credit_account_id?: string | null;
+          fee_credit_account_name?: string | null;
+          tolson_debit_account_id?: string | null;
+          tolson_debit_account_name?: string | null;
+          tolson_credit_account_id?: string | null;
+          tolson_credit_account_name?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          fee_debit_account_id?: string | null;
+          fee_debit_account_name?: string | null;
+          fee_credit_account_id?: string | null;
+          fee_credit_account_name?: string | null;
+          tolson_debit_account_id?: string | null;
+          tolson_debit_account_name?: string | null;
+          tolson_credit_account_id?: string | null;
+          tolson_credit_account_name?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      quickbooks_push_log: {
+        Row: {
+          id: string;
+          week_start: string;
+          qbo_id: string;
+          income_cents: number;
+          tolson_cents: number;
+          posted_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          week_start: string;
+          qbo_id: string;
+          income_cents: number;
+          tolson_cents: number;
+          posted_by: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          week_start?: string;
+          qbo_id?: string;
+          income_cents?: number;
+          tolson_cents?: number;
+          posted_by?: string;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -1097,6 +1196,67 @@ export type Database = {
       resolve_issue: {
         Args: { p_issue_id: string };
         Returns: string;
+      };
+      quickbooks_public_status: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      quickbooks_read_connection: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      quickbooks_save_tokens: {
+        Args: {
+          p_realm_id: string;
+          p_access_token_enc: string;
+          p_refresh_token_enc: string;
+          p_expires_at: string;
+          p_refresh_expires_at: string;
+          p_environment: string;
+        };
+        Returns: boolean;
+      };
+      quickbooks_try_begin_refresh: {
+        Args: { p_lease_seconds: number };
+        Returns: boolean;
+      };
+      quickbooks_release_refresh: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      quickbooks_mark_needs_sign_in: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      quickbooks_disconnect: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      quickbooks_oauth_save_pending: {
+        Args: {
+          p_state: string;
+          p_redirect_uri: string;
+          p_expires_at: string;
+        };
+        Returns: boolean;
+      };
+      quickbooks_oauth_take_pending: {
+        Args: { p_state: string };
+        Returns: Json;
+      };
+      quickbooks_existing_source_ids: {
+        Args: { p_ids: string[] };
+        Returns: string[];
+      };
+      import_quickbooks_operating_expense: {
+        Args: {
+          p_expense_date: string;
+          p_category: string;
+          p_amount_cents: number;
+          p_note: string | null;
+          p_qbo_source_id: string;
+        };
+        Returns: Json;
       };
     };
     Enums: {

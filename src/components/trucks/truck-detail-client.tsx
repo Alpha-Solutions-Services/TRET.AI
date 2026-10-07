@@ -285,11 +285,11 @@ export function TruckDetailClient({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {truck.unit_number} — {truck.name}
+          <h1 className="text-[1.75rem]">
+            {truck.unit_number}, {truck.name}
           </h1>
           <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
             {truckClassLabel(truck.truck_class)}
@@ -395,7 +395,7 @@ export function TruckDetailClient({
             {contracts.map((c) => (
               <li
                 key={c.id}
-                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-4 py-3"
+                className="material border border-[var(--color-border)] px-5 py-4"
               >
                 <p className="font-medium">
                   {c.effective_from}
@@ -419,7 +419,7 @@ export function TruckDetailClient({
         )}
       </section>
 
-      <section className="space-y-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] p-4">
+      <section className="material space-y-4 border border-[var(--color-border)] p-6">
         <h2 className="text-lg font-semibold">Test calculator</h2>
         <p className="text-sm text-[var(--color-fg-muted)]">
           Uses the same fee engine as the rest of the app. Does not save anything.
@@ -555,7 +555,7 @@ export function TruckDetailClient({
                             updateRule(kind, { basePercent: e.target.value })
                           }
                           className="h-10 w-full rounded-md border border-[var(--color-border)] px-3"
-                          placeholder="No default — enter a value"
+                          placeholder="No default. Enter a value"
                         />
                         <span className="mt-1 block text-xs text-[var(--color-fg-muted)]">
                           100 = the full gross amount, 95 = 95% of gross

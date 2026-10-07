@@ -28,10 +28,10 @@ export function encryptString(plaintext: string, secret: string): string {
   return Buffer.concat([iv, tag, body]).toString("base64");
 }
 
-export function decryptString(payload: string, secret: string): string {
+export function decryptString(payload: string, secret: string, label = "Vektor"): string {
   const raw = Buffer.from(payload, "base64");
   if (raw.length < 12 + 16 + 1) {
-    throw new Error("Stored Vektor secret could not be read");
+    throw new Error(`Stored ${label} secret could not be read`);
   }
   const iv = raw.subarray(0, 12);
   const tag = raw.subarray(12, 28);

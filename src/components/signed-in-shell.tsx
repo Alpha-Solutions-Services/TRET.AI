@@ -29,18 +29,18 @@ export async function SignedInShell({
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--color-bg)] text-[var(--color-fg)]">
-      <header className="material sticky top-0 z-20 flex items-center justify-between border-b border-[var(--color-border)] px-5 py-3">
+      <header className="material sticky top-0 z-20 flex items-center justify-between border-b border-[var(--color-border)] px-8 py-5">
         <div>
-          <p className="text-lg font-semibold tracking-[-0.03em]">TRET.AI</p>
-          <p className="text-sm text-[var(--color-fg-muted)]">{title}</p>
+          <p className="text-lg font-medium tracking-[-0.03em]">TRET.AI</p>
+          <p className="mt-0.5 text-sm text-[var(--color-fg-muted)]">{title}</p>
         </div>
         <div className="flex items-center gap-3">
           <ThemePicker />
           <SignOutButton />
         </div>
       </header>
-      <div className="mx-auto flex w-full max-w-[1280px] flex-1 gap-6 px-5 py-6">
-        <aside className="w-48 shrink-0">
+      <div className="mx-auto flex w-full max-w-[1120px] flex-1 gap-10 px-8 py-10">
+        <aside className="w-52 shrink-0">
           <AppNav />
         </aside>
         <main className="min-w-0 flex-1">{children}</main>

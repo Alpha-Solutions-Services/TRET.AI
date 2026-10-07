@@ -174,3 +174,20 @@ Do these once (or when credentials change). The app cannot finish login or healt
 2. Until that script has run, Edit truck still saves unit, name, class, owner, and the Google Sheet link. The Tolson fields say the migration has not been applied.
 3. On Edit truck, Tolson payable type is percent of gross or a fixed weekly amount. Leave both blank to count that truck as $0. The form does not fill in a number for you.
 4. Management and the Dashboard management table add those truck amounts for the week. Net subtracts portal expenses and Tolson payable. Legacy kept is income minus Tolson payable.
+
+## 22. QuickBooks Online (v0.0.0.25)
+
+Do this before Connect QuickBooks. The migration is not applied until you say go.
+
+1. In the Supabase SQL editor, run `supabase/migrations/20261007210000_quickbooks.sql`.
+2. It adds the QuickBooks tables. Token tables have Row Level Security and no client policies. Mapping, posting accounts, and push history allow role `owner` or `admin` only.
+3. In the Intuit developer portal, create the app and add the redirect URI below. The click path is in the user guide.
+4. On Vercel (Production and Preview) and in `.env.local`, set names only from `.env.example`:
+   - `INTUIT_CLIENT_ID`
+   - `INTUIT_CLIENT_SECRET`
+   - `INTUIT_REDIRECT_URI` = `https://tret.ai.alphasolutions.software/api/quickbooks/oauth/callback`
+   - `INTUIT_ENVIRONMENT` = `sandbox` or `production` (the same key set you copied)
+   - `QUICKBOOKS_TOKEN_ENCRYPTION_KEY` from `openssl rand -base64 32`
+5. Do not put any of those in a `NEXT_PUBLIC_` variable. Do not commit the values.
+6. Redeploy. Open Integrations as the owner. If the keys are missing, the page says QuickBooks not set up yet.
+7. Connect the Legacy Inc company only. Import and post both wait for a confirm.

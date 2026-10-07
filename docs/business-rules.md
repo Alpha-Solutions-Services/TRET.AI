@@ -69,6 +69,14 @@ This section is the statement close. The Dashboard and Management pages use the 
 - Tolson payable is shown and is not part of that net.
 - A locked week uses the statement snapshot for retained, dispatch, fixed-to-management, and Tolson. Operating expenses stay the current rows for those dates.
 
+## QuickBooks (v0.0.0.25)
+
+- One company. Admins only (`owner` or `admin`).
+- Import writes portal expenses only after confirm, and only for a QuickBooks id that is not already saved.
+- A credit (negative amount) is not a portal expense.
+- The weekly post uses the Management card income and Tolson payable. It is one journal entry. It does not run by itself.
+- Posting again for a week that already has a log row is allowed. The new QuickBooks id is logged too.
+
 ## Issues
 
 - The inbox lists Warn and Block only. Info is not listed.
@@ -98,3 +106,5 @@ Locked Assumption Log defaults are in `docs/decisions.md` (2026-10-07). Still op
 - Bestpass API keys (tolls may stay via Vektor).
 - Two-factor login (MFA).
 - Password reset process.
+- QuickBooks credit memos and vendor credits. Negative amounts are shown and not imported.
+- Whether a second journal entry for the same week should be blocked. This version warns and still posts when the admin confirms.

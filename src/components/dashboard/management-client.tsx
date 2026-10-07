@@ -52,9 +52,9 @@ export function ManagementClient({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <div>
-        <h1 className="text-2xl font-semibold">Management</h1>
+        <h1 className="text-[1.75rem]">Management</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
           Legacy earnings, monthly company expenses, and the management profit and loss. Truck sheet outs stay
           on the main dashboard.
@@ -83,7 +83,7 @@ export function ManagementClient({
 
       <ManagementCards summary={cards} />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         <ChartCard title="Legacy earnings by truck">
           <BarChart
             rows={feeBars}

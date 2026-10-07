@@ -20,11 +20,11 @@ export function ManagementCards({ summary }: { summary: ManagementCardSummary })
   ];
   return (
     <section className="space-y-2">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
-          <div key={card.label} className="material rounded-xl border border-[var(--color-border)] px-4 py-3">
-            <p className="text-xs text-[var(--color-fg-muted)]">{card.label}</p>
-            <p className="mt-1 text-lg font-semibold">{money(card.cents)}</p>
+          <div key={card.label} className="material border border-[var(--color-border)] px-6 py-5">
+            <p className="text-xs tracking-wide text-[var(--color-fg-muted)]">{card.label}</p>
+            <p className="num mt-2 text-2xl font-medium">{money(card.cents)}</p>
           </div>
         ))}
       </div>

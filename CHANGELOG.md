@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.0.25 — 2026-10-07
+
+- QuickBooks Online for the Legacy Inc books only. Admins (role owner or admin) connect one company from Integrations. Env names: `INTUIT_CLIENT_ID`, `INTUIT_CLIENT_SECRET`, `INTUIT_REDIRECT_URI`, `INTUIT_ENVIRONMENT` (`sandbox` or `production`), and `QUICKBOOKS_TOKEN_ENCRYPTION_KEY`. Tokens are encrypted with the same AES helper as Vektor, using the QuickBooks key. Access tokens refresh on their own. If those env names are missing, Integrations says QuickBooks not set up yet.
+- Import pulls Purchase and Bill rows for a date range, maps a vendor or an account to a portal expense category, shows a preview, and writes portal expenses only after confirm. The QuickBooks id blocks a second import of the same line. Credits are shown and not saved.
+- Post previews one week, then sends one journal entry for management fee income and Tolson payable, using four accounts an admin saves. Nothing posts on its own. Each post is logged with the QuickBooks id.
+- Migration `20261007210000_quickbooks.sql` is not applied until the owner says go.
+- Glass Light is softer and calmer: lower saturation, more space, lighter glass, spring motion that turns off when the system asks for less motion, and tabular figures. The other four themes keep their own colors and use the same radius, shadow, type, and motion.
+
 ## v0.0.0.24 — 2026-10-07
 
 - Weekly Asset Management Report stays two Letter pages. Navy and gold header, footer, and KPI cards follow the Legacy template. Page 1 is the identity block, KPI strip, executive summary, load activity, weekly totals, and daily performance. Page 2 is owner earnings, the gross and net cards, asset status, fuel, and compliance. Notes print only when the week has a note. Section headings have space above the cards and tables before them.
