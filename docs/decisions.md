@@ -81,3 +81,11 @@
 | 2026-10-07 | MPG on the PDF uses diesel gallons only | DEF gallons are listed and are not included in MPG. Gallons are not on the locked snapshot; they are read from current fuel rows, which must sum to the statement’s discounted cents. |
 | 2026-10-07 | OPEN: load rows are not in the snapshot | Current loads must sum to the statement gross and miles. If a later edit breaks that, the PDF is refused. |
 | 2026-10-07 | OPEN: 21–27 Sep 2026 owner PDF dollar table | The uploaded handoff still has no dollar table. The v0.0.0.8 fixture remains the reference the PDF is tested against. |
+| 2026-10-07 | Week 21–27 Sep 2026 smoke uses fixtures only | v0.0.0.11 chains import, fixed expenses, the statement, Close, the PDF, Overview, the management P&L, and Issues in Vitest. No live Vektor call. No migration applied. No secret read. |
+| 2026-10-07 | Sample A is statement load 1152 | Promoted manifest 1152 matches `load-02-a`: 220000 cents, 332 loaded miles, 14 deadhead miles, delivery 2026-09-26, unit 02. The other statement loads are not in the Vektor fixtures. |
+| 2026-10-07 | Fuel and toll fixtures are not the statement ledger | The stand-in fuel file and the 66 tolls (32153 cents) stay out of the reference statement. Booking that fuel file onto the statement week blocks Close for units 04–08. Statement fuel is 75000 cents. Statement tolls are 1734 cents. |
+| 2026-10-07 | OPEN: live Vektor dollars for 21–27 Sep 2026 | Still no per-unit fuel table in the handoff. Still no owner PDF dollar table. Compare Vektor before treating a locked week as the owner report. |
+| 2026-10-07 | OPEN: Connect Vektor for this smoke | Not signed in here. `mcp_verified` is unchanged. Live import still waits on Test connection. |
+| 2026-10-07 | OPEN: Legacy logo | No logo file in the repo or the handoff. The PDF still prints “Legacy Inc Global”. |
+| 2026-10-07 | OPEN: trailer, VIN, dispatcher, compliance, operations note | Those fields are not stored. The PDF still prints “Not stored”. Asset partner remains `trucks.owner_name`. |
+| 2026-10-07 | OPEN: Quicken | Format still open. Not built. |

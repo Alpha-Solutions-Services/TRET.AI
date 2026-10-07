@@ -119,6 +119,10 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 4. Close checks are listed for that week. They are not stored. They disappear when the check passes. They have no **Mark resolved** button.
 5. **Mark resolved** asks you to confirm. It changes only that issue’s status. Imported rows stay, and a locked week stays locked.
 
+## Week of 21–27 Sep 2026
+
+The click path, the fixture files, and the automated smoke are in [WEEK-CLOSE-RUNBOOK.md](WEEK-CLOSE-RUNBOOK.md).
+
 Notes:
 
 - Only delivered loads are imported. Deleted or merged-into duplicates are skipped.

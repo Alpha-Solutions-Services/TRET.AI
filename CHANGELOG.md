@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.0.0.11 — 2026-10-07
+
+- Fixture smoke for Monday 2026-09-21 through Sunday 2026-09-27. Vitest imports Sample A/B/C, the fuel stand-in, and the toll fixture, resolves fixed expenses, computes the reference statement, locks it, reads the PDF, then checks Overview, the management P&L, and Issues.
+- Sample A is the same cents and miles as statement load 1152. The fuel stand-in and the 66 tolls are not the statement ledger. Booking that fuel file blocks Close for units 04–08 and refuses the PDF.
+- Runbook: `docs/WEEK-CLOSE-RUNBOOK.md`. No live Vektor call. No migration applied.
+
 ## v0.0.0.10 — 2026-10-07
 
 - Overview for the selected Monday–Sunday week: fleet and unit snapshot from the statement (gross, fees, discounted fuel, tolls, owner fixed, net), open issues, and close status. A locked week uses the snapshot.

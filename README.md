@@ -4,7 +4,7 @@ Accounting and reporting for **Legacy Inc Global** (freight management).
 
 TRET.AI reads loads, fuel, and tolls from Vektor, applies per-truck fee rules, makes weekly owner PDF reports, tracks the management company’s income and expenses, can mirror data to Google Sheets, and can export to Quicken (Windows, QIF). The **database is the source of truth**.
 
-Current version: see the `VERSION` file (now **0.0.0.1**).
+Current version: see the `VERSION` file (now **0.0.0.11**).
 
 ## How to run locally
 
@@ -42,6 +42,7 @@ npm run create-owner
 | [docs/setup.md](docs/setup.md) | Manual setup checklist |
 | [docs/modules.md](docs/modules.md) | Roadmap and status |
 | [docs/versioning.md](docs/versioning.md) | How versions work |
+| [docs/WEEK-CLOSE-RUNBOOK.md](docs/WEEK-CLOSE-RUNBOOK.md) | How to run the week of 21–27 Sep 2026 |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version |
 
 Production domain: `tret.ai.alphasolutions.software`  
