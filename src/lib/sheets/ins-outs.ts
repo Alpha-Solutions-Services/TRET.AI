@@ -36,6 +36,7 @@ export type LedgerLoadRef = {
   loadedMilesHundredths: number | null;
   deadheadMilesHundredths: number | null;
   driverName?: string | null;
+  manifestId: string | null;
 };
 
 export type TruckWeekInsOuts = {
@@ -171,6 +172,7 @@ export function insFromLoadLedger(
       loadedMilesHundredths: row.loadedMilesHundredths,
       deadheadMilesHundredths: row.deadheadMilesHundredths,
       driverName: row.driver,
+      manifestId: row.manifestId,
     });
     if (row.rateCents == null) continue;
     insCents += row.rateCents;

@@ -132,8 +132,11 @@ describe("weekly asset report", () => {
     expect(text).toContain("Executive Summary");
     expect(text).toContain("Weekly Load Activity");
     expect(text).toContain("TBH--1081");
-    expect(text).toContain("Owner Earnings");
-    expect(text).toContain("Fuel Summary and Compliance");
+    expect(text).toContain("Owner Earnings Snapshot");
+    expect(text).toContain("Fuel Summary");
+    expect(text).toContain("Compliance / Maintenance");
+    expect(text).toContain("Escrow Balance (this week)");
+    expect(text).not.toContain("Weekly Escrow");
     expect(text).toContain("John Reed");
     expect(text).toContain("Tolson Blackhawk LLC");
     expect(text).toContain("Claims");
@@ -159,8 +162,18 @@ describe("weekly asset report", () => {
       fuelLog: TRUCK8_FUEL,
       fleet: TRUCK8_FLEET,
       sheetNote: null,
+      manifestRefs: {
+        TBH1188: "1195",
+        TBH1192: "1195",
+      },
     });
     expect(report.grossCents).toBe(700_000);
+    expect(report.loadedMilesHundredths).toBe(207_500);
+    expect(report.loads.find((load) => load.loadId === "TBH--1192")?.manifestRole).toBe("partial");
+    expect(report.loads.find((load) => load.loadId === "TBH--1188")?.manifestRole).toBe("primary");
+    expect(report.escrowCardLabel).toBe("Escrow Balance (this week)");
+    expect(report.escrowCents).toBe(20_000);
+    expect(report.escrowBalanceCents).toBeNull();
     expect(report.loadCount).toBe(4);
     expect(report.driver).toBe("Brison Hunter");
     expect(report.expenseCents).toBe(360_454);
@@ -192,7 +205,7 @@ describe("weekly asset report", () => {
     expect(report.driverQualification).toBe("Current");
     expect(report.fuelEconomy).toBe("19.97");
     expect(report.fuelUnitPriceCents).toBe(555);
-    expect(report.fuelPerMileCents).toBe(14);
+    expect(report.fuelPerMileCents).toBe(20);
     expect(report.notes).toEqual([]);
     expect(report.notes.join(" ")).not.toContain(DEFAULT_DISPATCHER);
     const bytes = await renderAssetReportPdf(report);
@@ -205,9 +218,16 @@ describe("weekly asset report", () => {
     expect(text).not.toContain("because the truck record");
     expect(text).not.toContain("Notes");
     expect(text).not.toContain("$4,051.77");
+    expect(text).toContain("Manifest 1195");
+    expect(text).toContain("partial");
+    expect(text).toContain("2,075.00");
+    expect(text).toContain("Escrow Balance (this week)");
+    expect(text).toContain("$200.00");
+    expect(text).not.toContain("Weekly Escrow");
     expect(text).not.toContain("MC Lease");
     expect(text).not.toContain("Not stored");
     expect(text).not.toContain("447.23");
+    expect(text).not.toContain("2,999.00");
   });
 
   it("reads trailer, VIN, and dispatcher from a fleet label block and from performance columns", () => {

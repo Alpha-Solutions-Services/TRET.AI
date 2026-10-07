@@ -1,8 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { canonicalLoadId } from "@/lib/loads/load-id";
+import { countedLoadedHundredths, layoutManifestGroups } from "@/lib/loads/manifest-miles";
+import { centsToDollarString } from "@/lib/money/cents";
+import { centsPerLoadedMile, formatMilesHundredths } from "@/lib/reports/format";
+import { milesValueToHundredths } from "@/lib/statements/miles";
 
 export type LoadListRow = {
   id: string;
@@ -21,15 +25,25 @@ export type LoadListRow = {
   deadhead_miles: number | null;
   rate_cents: number;
   truck_unit_number: string | null;
+  source_manifest_ref?: string | null;
 };
 
 function dollars(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  return `$${centsToDollarString(cents)}`;
 }
 
 function place(city: string | null, state: string | null): string {
-  if (!city && !state) return "—";
+  if (!city && !state) return "Blank";
   return [city, state].filter(Boolean).join(", ");
+}
+
+function hundredths(value: number | null): number {
+  if (value == null) return 0;
+  try {
+    return milesValueToHundredths(value);
+  } catch {
+    return 0;
+  }
 }
 
 export function LoadsClient({
@@ -49,19 +63,26 @@ export function LoadsClient({
   );
 
   const filtered = useMemo(() => {
-    return loads.filter((row) => {
+    const rows = loads.filter((row) => {
       if (row.week_start !== weekStart) return false;
       if (truck && row.truck_unit_number !== truck) return false;
       return true;
     });
+    return layoutManifestGroups(
+      rows.map((row) => ({
+        ...row,
+        manifestRef: row.source_manifest_ref ?? null,
+        rankHundredths: hundredths(row.loaded_distance_mi),
+      })),
+    );
   }, [loads, weekStart, truck]);
 
   const totals = useMemo(() => {
     return filtered.reduce(
       (acc, row) => {
         acc.rateCents += row.rate_cents;
-        acc.loaded += row.loaded_distance_mi ?? 0;
-        acc.deadhead += row.deadhead_miles ?? 0;
+        acc.loaded += countedLoadedHundredths(row.manifestRole, hundredths(row.loaded_distance_mi));
+        acc.deadhead += hundredths(row.deadhead_miles);
         return acc;
       },
       { rateCents: 0, loaded: 0, deadhead: 0 },
@@ -79,7 +100,7 @@ export function LoadsClient({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Loads</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Read-only. Week is Monday–Sunday from delivery date.
+          Read-only. Week is Monday to Sunday from delivery date. Loads that share a Vektor manifest stay together. Loaded miles count once for that manifest.
         </p>
       </div>
 
@@ -115,7 +136,7 @@ export function LoadsClient({
           </select>
         </label>
         <p className="text-sm text-[var(--color-fg-muted)]">
-          Showing {weekStart} → {weekEnd}
+          Showing {weekStart} to {weekEnd}
         </p>
       </div>
 
@@ -132,7 +153,7 @@ export function LoadsClient({
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
               <tr>
-                <th className="px-3 py-3 font-medium">Load ID</th>
+                <th className="px-3 py-3 font-medium whitespace-nowrap">Load ID</th>
                 <th className="px-3 py-3 font-medium">Delivery</th>
                 <th className="px-3 py-3 font-medium">Truck</th>
                 <th className="px-3 py-3 font-medium">Driver</th>
@@ -146,30 +167,42 @@ export function LoadsClient({
             </thead>
             <tbody>
               {filtered.map((row) => (
-                <tr key={row.id} className="border-b border-[var(--color-border)]">
-                  <td className="px-3 py-2">{row.load_id ? canonicalLoadId(row.load_id) : "Blank"}</td>
-                  <td className="px-3 py-2">{row.delivery_date}</td>
-                  <td className="px-3 py-2">{row.truck_unit_number ?? "—"}</td>
-                  <td className="px-3 py-2">{row.driver_name ?? "—"}</td>
-                  <td className="px-3 py-2">{row.broker_name ?? "—"}</td>
-                  <td className="px-3 py-2">
-                    {place(row.origin_city, row.origin_state)}
-                  </td>
-                  <td className="px-3 py-2">
-                    {place(row.destination_city, row.destination_state)}
-                  </td>
-                  <td className="px-3 py-2">{row.loaded_distance_mi ?? "—"}</td>
-                  <td className="px-3 py-2">{row.deadhead_miles ?? "—"}</td>
-                  <td className="px-3 py-2">{dollars(row.rate_cents)}</td>
-                </tr>
+                <Fragment key={row.id}>
+                  {row.manifestHeader && row.manifestRef ? (
+                    <tr className="border-b border-[var(--color-border)] bg-[var(--color-muted)]">
+                      <td className="px-3 py-2 font-medium" colSpan={10}>
+                        Manifest {row.manifestRef}
+                      </td>
+                    </tr>
+                  ) : null}
+                  <tr className="border-b border-[var(--color-border)]">
+                    <td className="whitespace-nowrap px-3 py-2">{row.load_id ? canonicalLoadId(row.load_id) : "Blank"}</td>
+                    <td className="whitespace-nowrap px-3 py-2 num">{row.delivery_date}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{row.truck_unit_number ?? "Blank"}</td>
+                    <td className="px-3 py-2">{row.driver_name ?? "Blank"}</td>
+                    <td className="px-3 py-2">{row.broker_name ?? "Blank"}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{place(row.origin_city, row.origin_state)}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{place(row.destination_city, row.destination_state)}</td>
+                    <td className="whitespace-nowrap px-3 py-2 num">
+                      {row.manifestRole === "partial" ? "partial" : formatMilesHundredths(hundredths(row.loaded_distance_mi))}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 num">
+                      {row.deadhead_miles == null ? "Blank" : formatMilesHundredths(hundredths(row.deadhead_miles))}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 num">{dollars(row.rate_cents)}</td>
+                  </tr>
+                </Fragment>
               ))}
               <tr className="bg-[var(--color-muted)] font-medium">
                 <td className="px-3 py-3" colSpan={7}>
-                  Totals ({filtered.length} loads)
+                  Totals ({filtered.length} loads). Rate per dispatch mile{" "}
+                  {totals.loaded + totals.deadhead === 0
+                    ? "n/a"
+                    : dollars(centsPerLoadedMile(totals.rateCents, totals.loaded + totals.deadhead) ?? 0)}
                 </td>
-                <td className="px-3 py-3">{totals.loaded.toFixed(2)}</td>
-                <td className="px-3 py-3">{totals.deadhead.toFixed(2)}</td>
-                <td className="px-3 py-3">{dollars(totals.rateCents)}</td>
+                <td className="whitespace-nowrap px-3 py-3 num">{formatMilesHundredths(totals.loaded)}</td>
+                <td className="whitespace-nowrap px-3 py-3 num">{formatMilesHundredths(totals.deadhead)}</td>
+                <td className="whitespace-nowrap px-3 py-3 num">{dollars(totals.rateCents)}</td>
               </tr>
             </tbody>
           </table>

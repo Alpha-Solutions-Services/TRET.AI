@@ -8,13 +8,18 @@ export const dynamic = "force-dynamic";
 
 async function LoadsContent() {
   const supabase = await createClient();
-  const { data: loads, error } = await supabase
+  const columns =
+    "id, load_id, manifest_friendly_id, delivery_date, week_start, pickup_date, driver_name, broker_name, origin_city, origin_state, destination_city, destination_state, loaded_distance_mi, deadhead_miles, rate_cents, truck_unit_number";
+  let { data: loads, error } = await supabase
     .from("loads")
-    .select(
-      "id, load_id, manifest_friendly_id, delivery_date, week_start, pickup_date, driver_name, broker_name, origin_city, origin_state, destination_city, destination_state, loaded_distance_mi, deadhead_miles, rate_cents, truck_unit_number",
-    )
+    .select(`${columns}, source_manifest_ref`)
     .order("delivery_date", { ascending: false })
     .limit(2000);
+  if (error && /source_manifest_ref|schema cache/i.test(error.message)) {
+    const again = await supabase.from("loads").select(columns).order("delivery_date", { ascending: false }).limit(2000);
+    loads = (again.data ?? []).map((row) => ({ ...row, source_manifest_ref: null }));
+    error = again.error;
+  }
 
   if (error) {
     return (

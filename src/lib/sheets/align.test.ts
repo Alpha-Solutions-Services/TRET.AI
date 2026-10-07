@@ -113,4 +113,53 @@ describe("sheet and Vektor alignment", () => {
     expect(rows[0]?.highlights).toEqual([]);
     expect(rows[0]?.notes.join(" ")).toContain("manifest date");
   });
+
+  it("groups two loads on one Vektor manifest and counts loaded miles once", () => {
+    const rows = alignSheetAndVektor({
+      weekStart: "2026-10-05",
+      sheet: [
+        {
+          unitNumber: "8",
+          loadId: "TBH1188",
+          deliveryDay: "2026-10-08",
+          rateCents: 180_000,
+          loadedMilesHundredths: 116_500,
+          deadheadMilesHundredths: 15_300,
+        },
+        {
+          unitNumber: "8",
+          loadId: "TBH1192",
+          deliveryDay: "2026-10-08",
+          rateCents: 170_000,
+          loadedMilesHundredths: 92_400,
+          deadheadMilesHundredths: 0,
+        },
+      ],
+      vektor: [
+        {
+          unitNumber: "8",
+          loadId: "TBH--1188",
+          deliveryDay: "2026-10-08",
+          rateCents: 180_000,
+          loadedMilesHundredths: 116_500,
+          deadheadMilesHundredths: 15_300,
+          manifestRef: "1195",
+        },
+        {
+          unitNumber: "8",
+          loadId: "TBH--1192",
+          deliveryDay: "2026-10-08",
+          rateCents: 170_000,
+          loadedMilesHundredths: 92_400,
+          deadheadMilesHundredths: 0,
+          manifestRef: "1195",
+        },
+      ],
+    });
+    expect(rows.map((row) => [row.loadId, row.manifestRole, row.manifestRef])).toEqual([
+      ["TBH--1188", "primary", "1195"],
+      ["TBH--1192", "partial", "1195"],
+    ]);
+    expect(rows[0]?.manifestHeader).toBe(true);
+  });
 });
