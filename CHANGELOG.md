@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.0.24 — 2026-10-07
+
+- Weekly Asset Management Report stays two Letter pages. Navy and gold header, footer, and KPI cards follow the Legacy template. Page 1 is the identity block, KPI strip, executive summary, load activity, weekly totals, and daily performance. Page 2 is owner earnings, the gross and net cards, asset status, fuel, compliance, and notes.
+- MC Lease is removed from that PDF. Truck Pymts and Trailer Pymts are not owner-expense lines and are not folded into another line. Total truck expenses and net owner earnings are recalculated without them. The MC Lease note is gone. Dashboard Outs still include those payment lines.
+- Trailer, VIN, and dispatcher are read from Fleet Directory, Weekly Expenses, and the Load Ledger when those columns or label pairs exist. `trucks` has no trailer or VIN column, so there is no new migration. A missing dispatcher prints Legacy Dispatch Team, with one note that the value was filled in.
+- On-time, loads accepted, loads delivered, claims, cargo damage, service failures, and cancellation use sheet columns when they exist. Otherwise a completed week uses the load count, 100% on time when no late flag is stored, and zero for claims, damage, failures, and cancellation. An Active truck with no status columns prints Ready, Good, Positive, Good, and Current. The PDF does not print "Not stored".
+- Management fee, driver compensation, and factoring labels stay on the program rates (10%, 20%, and 1.75%) unless the sheet has a percent column. The blank template's 15% and 2.65% are not used.
+- No new migration.
+
 ## v0.0.0.23 — 2026-10-07
 
 - Management cards and the Dashboard management P&L were reading the statement. Week 2026-10-05 has sheet loads and portal fees, and the statement for that week is empty, so Income, Expenses, Net, and Tolson payable stayed at $0.00 while the fee chart showed the loads. Income is now the summed management fee on this week's sheet loads. An own truck sends that whole fee to Tolson Blackhawk LLC. A third-party truck splits the fee ten fifteenths to Tolson and five fifteenths to Legacy. Net is income minus portal expenses. Tolson payable sits beside net.

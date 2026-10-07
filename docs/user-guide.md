@@ -163,7 +163,7 @@ The footer is one short line under the page: whether the Google service account 
 4. The expense columns are the weekly lines: driver compensation, management fee, truck and trailer payments, dispatch, factoring, fuel, insurance, escrow, ELD, yard, GPS, toll pass, toll fees, and permits. If the Weekly Expenses header is missing, the columns switch to the Mgmt Expenses list (Vektor Fee through Spare Expense 5). Portal monthly Legacy expenses are a separate list and are not added into Outs.
 5. The **Fleet** row adds the readable sheets. A truck that was not read is left out of that total. The note on the row says why. Click it, or **Copy**, to copy the real cause.
 6. **Legacy earnings** is the management fee on each load for that week, per truck and for the fleet.
-7. **Download report** saves a Weekly Asset Management Report PDF for that truck and week. It uses the Load Ledger, Weekly Expenses, Fuel Log, and Fleet Directory on the sheet, plus fuel and toll rows in the database when the sheet fuel or toll cells are blank.
+7. **Download report** saves a two-page Weekly Asset Management Report PDF for that truck and week. It uses the Load Ledger, Weekly Expenses, Fuel Log, and Fleet Directory on the sheet, plus fuel and toll rows in the database when the sheet fuel or toll cells are blank. Trailer, VIN, and dispatcher print when the sheet has them. Owner expenses on that PDF do not include truck or trailer payments.
 8. This page does not change statements or the sheet. Promoting loads is a separate Import step.
 
 ## Sheet vs Vektor

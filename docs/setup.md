@@ -144,7 +144,7 @@ Do these once (or when credentials change). The app cannot finish login or healt
 1. No new migration.
 2. Optional server variable `VEKTOR_API_MANIFESTS_PATH`. Leave it empty until Vektor confirms the list path. `VEKTOR_API_BASE_URL` and `VEKTOR_API_TOKEN` turn on the REST source. That path never calls MCP.
 3. In **Settings**, read the four sources and save the one you want. CSV and Google Sheet Load Ledger work without Vektor keys. MCP stays listed and is labeled broken on filters proto.
-4. On **Ins and Outs**, **Download report** builds the Weekly Asset Management Report for that truck and week. Dispatcher, on-time, and compliance print Not stored. MC Lease adds Truck Pymts and Trailer Pymts.
+4. On **Ins and Outs**, **Download report** builds the two-page Weekly Asset Management Report for that truck and week. Truck Pymts and Trailer Pymts are left off owner expenses. A missing dispatcher prints Legacy Dispatch Team.
 
 ## 18. Service account key and the footer (v0.0.0.18)
 
@@ -161,3 +161,9 @@ Do these once (or when credentials change). The app cannot finish login or healt
 2. It adds `legacy_org_settings` (default management fee, 10 percent), `legacy_truck_week_fees`, and `legacy_load_fees`. All three have Row Level Security. Signed-in allowed users can read. Writes go through functions. It also adds `update_mgmt_operating_expense`.
 3. Until that script has run, Ins and Outs still shows a 10 percent fee and does not store edits. Settings says the migration has not been applied. Legacy expenses still list rows from the v0.0.0.6 table.
 4. No new environment variables. The footer is one short line under the page. It is not fixed to the screen.
+
+## 20. Weekly asset report layout (v0.0.0.24)
+
+1. No new migration. `trucks` does not gain trailer, VIN, or dispatcher columns.
+2. Download report on Ins and Outs is still two Letter pages. Owner expenses omit Truck Pymts and Trailer Pymts. Dashboard Outs still include those lines.
+3. Trailer, VIN, and dispatcher print when Fleet Directory, Weekly Expenses, or the Load Ledger has them. If dispatcher is missing, the PDF prints Legacy Dispatch Team and one note.

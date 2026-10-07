@@ -85,9 +85,10 @@ Locked Assumption Log defaults are in `docs/decisions.md` (2026-10-07). Still op
 - The owner statement dollar table for 21–27 Sep 2026 was not in the uploaded handoff. `fixtures/statements/week-2026-09-21.json` is the close reference until a live compare. The PDF smoke uses those cents. Unit 02 net is 134686 cents. Unit 03 net is 305630 cents. Fleet net is 440316 cents.
 - Connect Vektor. The v0.0.0.11 smoke does not sign in and does not set `mcp_verified`. The owner still connects once in Settings and passes Test connection before a live import.
 - There is no Legacy logo file. The PDF prints the name Legacy Inc Global.
-- Trailer, dispatcher, compliance items, and an operations note are not stored. The statement PDF and the asset report print “Not stored”. VIN is printed when Fleet Directory has it. Asset partner is `trucks.owner_name`.
+- The weekly statement PDF still prints “Not stored” for trailer, VIN, dispatcher, compliance, and the operations note.
+- The Weekly Asset Management Report reads trailer, VIN, dispatcher, and status from the truck sheet when those fields are present. Asset partner is `trucks.owner_name`. There is no trailer or VIN column on `trucks`. A missing dispatcher prints Legacy Dispatch Team, with one note. That report does not print “Not stored”.
 - Vektor REST list path. Probes are documented in decisions. Set `VEKTOR_API_MANIFESTS_PATH` when Vektor confirms it.
-- MC Lease on the asset report is Truck Pymts plus Trailer Pymts until the owner says to split them.
+- Truck Pymts and Trailer Pymts are not lines on the asset report. They are not combined into MC Lease.
 - A separate PDF file per truck is OPEN. This version downloads one week file.
 - The locked snapshot does not store load rows. Current loads must still sum to the snapshot or the PDF is refused.
 - Whether an import may keep updating source rows inside a locked week. The snapshot itself does not change. Default: source updates are still allowed.
