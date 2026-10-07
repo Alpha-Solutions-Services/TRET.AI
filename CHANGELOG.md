@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.0.0.16 — 2026-10-07
+
+- Import loads failed proto decode on every manifest filter, including an empty object. Compact arguments `{"filters":{...}}` put `{` at column 12. Vektor reports `proto: syntax error (line 1:12): unexpected token {`. That token is what a string field rejects. `filters` is now a JSON string. A raw array is still not sent, because the server expands it to unknown arguments `filters[0].field`.
+- Probes that remain, each JSON-encoded once: `first_stop_appointment_start_date` `{from, to}`, the schema date field, a schema array `{field, from, to}` when the schema describes an array, `firstStopAppointmentStartDate` `{from, to}`, `firstStopAppointmentStartDate` `{gte, lte}`, `deliveryDate` `{from, to}`, that same camelCase field as an array, `{}`, then an empty string. Fuel and toll list calls use the same string envelope.
+- A tool error still fails the run. Notes name the filter and the error. If a call returns rows, delivered manifests still promote into `loads`. An empty success records the filters tried and the payload shape.
+- Ins and Outs page at `/ins-outs`. Per active truck, for the selected week: sheet load earnings (Ins) and Mgmt Expenses (Outs) with fleet totals. Categories: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5. Overview still shows the shorter table and links here. No new migration.
+
 ## v0.0.0.15 — 2026-10-07
 
 - Import loads failed with MCP error -32602. An empty-list fallback sent `filters` as an array of `{field, from, to}`. Vektor reports that as unknown arguments `filters[0].field`, `filters[0].from`, and `filters[0].to`.

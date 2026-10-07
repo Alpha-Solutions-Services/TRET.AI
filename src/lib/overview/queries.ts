@@ -4,10 +4,9 @@ import { buildWeekSnapshot, type WeekSnapshot } from "@/lib/overview/snapshot";
 import { listOperatingExpenses } from "@/lib/operating-expenses/queries";
 import { buildInbox, countOpenIssues } from "@/lib/issues/inbox";
 import { listImportIssues } from "@/lib/issues/queries";
-import { loadTruckWeekInsOuts } from "@/lib/sheets/read";
+import { loadActiveTruckInsOuts } from "@/lib/sheets/load-week";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { loadStatements, resolveWeekStart } from "@/lib/statements/queries";
-import { listTrucks } from "@/lib/trucks/queries";
 
 export type OverviewPageData = {
   weekStart: string;
@@ -28,25 +27,8 @@ async function loadInsOuts(
   weekStart: string,
   weekEnd: string,
 ): Promise<{ insOuts: TruckWeekInsOuts[]; insOutsError: string | null }> {
-  try {
-    const { trucks } = await listTrucks();
-    const active = trucks.filter((truck) => truck.active);
-    const insOuts = await loadTruckWeekInsOuts(
-      active.map((truck) => ({
-        unitNumber: truck.unit_number,
-        truckName: truck.name,
-        googleSheetUrl: truck.google_sheet_url,
-      })),
-      weekStart,
-      weekEnd,
-    );
-    return { insOuts, insOutsError: null };
-  } catch (err) {
-    return {
-      insOuts: [],
-      insOutsError: err instanceof Error ? err.message : "Ins and Outs could not be loaded.",
-    };
-  }
+  const loaded = await loadActiveTruckInsOuts(weekStart, weekEnd);
+  return { insOuts: loaded.rows, insOutsError: loaded.error };
 }
 
 export async function loadOverview(weekRaw: string | undefined): Promise<OverviewPageData> {

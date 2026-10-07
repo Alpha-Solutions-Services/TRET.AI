@@ -53,6 +53,12 @@ describe("manifest payload parsing", () => {
   });
 });
 
+function logicalFilters(value: unknown): unknown {
+  expect(typeof value).toBe("string");
+  if (value === "") return "";
+  return JSON.parse(value as string);
+}
+
 describe("empty Vektor list probe", () => {
   it("uses the schema date field when the snake_case filter returns nothing", async () => {
     const calls: unknown[] = [];
@@ -81,17 +87,23 @@ describe("empty Vektor list probe", () => {
       callTool: async (name, args) => {
         if (name !== "core_Manifests_Get") return {};
         calls.push(args.filters);
-        const filters = args.filters as Record<string, unknown>;
-        if (filters.firstStopAppointmentStartDate) {
+        expect(JSON.stringify(args)[11]).toBe('"');
+        const filters = logicalFilters(args.filters);
+        if (
+          filters &&
+          typeof filters === "object" &&
+          !Array.isArray(filters) &&
+          "firstStopAppointmentStartDate" in filters
+        ) {
           return { manifests: [delivered("manifest-live")] };
         }
         return { manifests: [] };
       },
     });
-    expect(calls[0]).toEqual({
+    expect(logicalFilters(calls[0])).toEqual({
       first_stop_appointment_start_date: { from: "2026-09-21", to: "2026-10-14" },
     });
-    expect(calls[1]).toEqual({
+    expect(logicalFilters(calls[1])).toEqual({
       firstStopAppointmentStartDate: { from: "2026-09-21", to: "2026-10-14" },
     });
     expect(fetched.manifests.map((row) => row.manifestId)).toEqual(["manifest-live"]);
@@ -105,8 +117,10 @@ describe("empty Vektor list probe", () => {
       to: "2026-10-07",
       callTool: async (name, args) => {
         if (name !== "core_Manifests_Get") return {};
-        const filters = args.filters as Record<string, unknown>;
-        if (Object.keys(filters).length === 0) return { manifests: [delivered("manifest-open")] };
+        const filters = logicalFilters(args.filters);
+        if (filters && typeof filters === "object" && !Array.isArray(filters) && Object.keys(filters).length === 0) {
+          return { manifests: [delivered("manifest-open")] };
+        }
         return { isError: true, content: [{ type: "text", text: "unknown filter field" }] };
       },
     });
@@ -174,22 +188,50 @@ describe("empty Vektor list probe", () => {
       callTool: async (name, args) => {
         if (name !== "core_Manifests_Get") return {};
         calls.push(args);
-        expect(Array.isArray(args.filters)).toBe(false);
-        for (const key of Object.keys(args)) {
-          expect(key).not.toMatch(/\[/);
-        }
-        const filters = args.filters as Record<string, unknown>;
-        const range = filters.firstStopAppointmentStartDate as { from?: string } | undefined;
+        expect(typeof args.filters).toBe("string");
+        expect(JSON.stringify(args).includes('"filters":[')).toBe(false);
+        expect(JSON.stringify(args).includes('"filters":{')).toBe(false);
+        const filters = logicalFilters(args.filters);
+        const record =
+          filters && typeof filters === "object" && !Array.isArray(filters)
+            ? (filters as Record<string, { from?: string } | undefined>)
+            : null;
+        const range = record?.firstStopAppointmentStartDate;
         if (range?.from) return { manifests: [delivered("manifest-live")] };
         return { manifests: [] };
       },
     });
     expect(calls.length).toBeGreaterThan(1);
-    expect(
-      calls.some((args) => Array.isArray(args.filters) || JSON.stringify(args).includes('"field"')),
-    ).toBe(false);
+    expect(calls.some((args) => Array.isArray(args.filters) || JSON.stringify(args).includes('"filters":['))).toBe(
+      false,
+    );
     expect(fetched.manifests.map((row) => row.manifestId)).toEqual(["manifest-live"]);
     expect(fetched.report?.keptForImport).toBe(1);
     expect(fetched.report?.filterLabel).toBe("schema firstStopAppointmentStartDate");
+  });
+
+  it("uses a JSON string array when object filters are tool errors and promotes the delivered row", async () => {
+    const fetched = await fetchManifestsFromTools({
+      from: "2026-10-05",
+      to: "2026-10-07",
+      callTool: async (name, args) => {
+        if (name !== "core_Manifests_Get") return {};
+        expect(typeof args.filters).toBe("string");
+        expect(JSON.stringify(args)[11]).toBe('"');
+        const parsed = logicalFilters(args.filters);
+        const first = Array.isArray(parsed) ? (parsed[0] as { field?: string } | undefined) : undefined;
+        if (first?.field === "firstStopAppointmentStartDate") {
+          return { manifests: [delivered("manifest-array")] };
+        }
+        return {
+          isError: true,
+          content: [{ type: "text", text: "proto: syntax error (line 1:12): unexpected token {" }],
+        };
+      },
+    });
+    expect(fetched.manifests.map((row) => row.manifestId)).toEqual(["manifest-array"]);
+    expect(fetched.manifests[0]?.status).toBe("STATUS_DELIVERED");
+    expect(fetched.report?.keptForImport).toBe(1);
+    expect(fetched.report?.filterLabel).toBe("firstStopAppointmentStartDate array");
   });
 });

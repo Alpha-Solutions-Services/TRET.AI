@@ -8,7 +8,7 @@ import {
   buildTrucksGetByIdsArgs,
 } from "./args";
 import { IdCache } from "./cache";
-import { defaultManifestFilters, manifestFilterProbes } from "./filters";
+import { defaultManifestFilters, filtersSchemaType, manifestFilterProbes } from "./filters";
 import {
   manifestsFromPayload,
   mcpToolErrorText,
@@ -121,7 +121,8 @@ export async function fetchManifestsFromTools(opts: {
   let chosen = primary;
   let first = await readManifestPage(opts.callTool, primary.filters, 1);
   let sawSuccessfulCall = !first.errorText;
-  if (first.errorText) notes.push(first.errorText);
+  let schemaType: string | null = null;
+  if (first.errorText) notes.push(`${primary.label}: ${first.errorText}`);
 
   if (first.manifests.length === 0) {
     let schema: unknown;
@@ -129,8 +130,13 @@ export async function fetchManifestsFromTools(opts: {
       try {
         const tools = await opts.listTools();
         schema = tools.find((tool) => tool.name === "core_Manifests_Get")?.inputSchema;
+        schemaType = filtersSchemaType(schema);
         if (!schema) {
           notes.push("tools/list did not include an input schema for core_Manifests_Get.");
+        } else if (schemaType) {
+          notes.push(`Schema filters type: ${schemaType}.`);
+        } else {
+          notes.push("tools/list schema did not name a filters type.");
         }
       } catch (err) {
         notes.push(redactNote(err instanceof Error ? err.message : String(err)));
@@ -156,7 +162,10 @@ export async function fetchManifestsFromTools(opts: {
 
   if (first.manifests.length === 0 && !sawSuccessfulCall) {
     throw new Error(
-      notes.join(" ") || "Vektor did not return a manifest list. The import did not record a successful empty run.",
+      [
+        "Vektor rejected the manifest list. Filters are a JSON string. A nested object fails proto decode with unexpected token { at column 12.",
+        ...notes,
+      ].join(" "),
     );
   }
 
@@ -243,7 +252,8 @@ export async function fetchManifestsFromTools(opts: {
     first.manifests.length === 0 ? `Payload: ${summarizePayloadShape(first.payload)}.` : null;
   const triedNote =
     first.manifests.length === 0 ? `Tried filters: ${triedLabels.join(", ")}.` : null;
-  const payloadNote = [...notes, triedNote, shape]
+  const wireNote = first.manifests.length === 0 ? "Wire: JSON string." : null;
+  const payloadNote = [...notes, wireNote, triedNote, shape]
     .filter((part): part is string => Boolean(part))
     .join(" ")
     .trim();

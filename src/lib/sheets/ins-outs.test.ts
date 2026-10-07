@@ -1,12 +1,21 @@
 import { generateKeyPairSync } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: () => undefined }),
+}));
 import { parseCsv } from "@/lib/fuel-tolls/csv";
 import {
+  MGMT_EXPENSE_CATEGORIES,
   buildTruckWeekInsOuts,
+  fleetInsOutsTotals,
   insFromLoadLedger,
   outsFromMgmtExpenses,
   sheetAmountToCents,
 } from "@/lib/sheets/ins-outs";
+import { InsOutsClient } from "@/components/ins-outs/ins-outs-client";
 import { loadTruckWeekInsOuts } from "@/lib/sheets/read";
 
 const WEEK = { weekStart: "2026-10-05", weekEnd: "2026-10-11" };
@@ -60,6 +69,76 @@ describe("sheet Ins and Outs", () => {
     });
     expect(row.netCents).toBe(562_000);
     expect(row.readable).toBe(true);
+  });
+
+  it("totals readable trucks and lists every management category", () => {
+    const ledger = parseCsv(LEDGER);
+    const expenses = parseCsv(EXPENSES);
+    const readable = buildTruckWeekInsOuts({
+      unitNumber: "3",
+      truckName: "John Reed",
+      ...WEEK,
+      loadLedger: ledger,
+      mgmtExpenses: expenses,
+      note: null,
+    });
+    const unread = buildTruckWeekInsOuts({
+      unitNumber: "4",
+      truckName: "No sheet",
+      ...WEEK,
+      loadLedger: null,
+      mgmtExpenses: null,
+      note: "No Google Sheet link. Paste it on Trucks.",
+    });
+    const fleet = fleetInsOutsTotals([readable, unread]);
+    expect(fleet.readableCount).toBe(1);
+    expect(fleet.loadCount).toBe(2);
+    expect(fleet.insCents).toBe(595_000);
+    expect(fleet.outsCents).toBe(33_000);
+    expect(fleet.netCents).toBe(562_000);
+    expect(fleet.categories).toHaveLength(MGMT_EXPENSE_CATEGORIES.length);
+    expect(fleet.categories.find((row) => row.category === "Vektor Fee")?.cents).toBe(3_000);
+    expect(fleet.categories.find((row) => row.category === "Spare Expense 5")?.cents).toBe(0);
+  });
+
+  it("renders per-truck categories and a fleet total without an em dash", () => {
+    const ledger = parseCsv(LEDGER);
+    const expenses = parseCsv(EXPENSES);
+    const readable = buildTruckWeekInsOuts({
+      unitNumber: "3",
+      truckName: "John Reed",
+      ...WEEK,
+      loadLedger: ledger,
+      mgmtExpenses: expenses,
+      note: null,
+    });
+    const unread = buildTruckWeekInsOuts({
+      unitNumber: "4",
+      truckName: "No sheet",
+      ...WEEK,
+      loadLedger: null,
+      mgmtExpenses: null,
+      note: "No Google Sheet link. Paste it on Trucks.",
+    });
+    const html = renderToStaticMarkup(
+      createElement(InsOutsClient, {
+        weekStart: WEEK.weekStart,
+        weekEnd: WEEK.weekEnd,
+        rows: [readable, unread],
+        error: null,
+      }),
+    );
+    expect(html).toContain("Legacy Inc income and outgoing");
+    expect(html).toContain("Showing 2026-10-05 through 2026-10-11");
+    expect(html).toContain("Spare Expense 5");
+    expect(html).toContain("Vektor Fee");
+    expect(html).toContain("John Reed");
+    expect(html).toContain("Unread");
+    expect(html).toContain("Fleet");
+    expect(html).toContain("$5950.00");
+    expect(html).toContain("$330.00");
+    expect(html).not.toContain("\u2014");
+    expect(html).not.toContain("\u2013");
   });
 });
 

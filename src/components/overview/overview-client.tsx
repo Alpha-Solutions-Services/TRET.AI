@@ -99,7 +99,7 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
       ) : null}
 
       {data.snapshot ? <SnapshotTable snapshot={data.snapshot} /> : null}
-      <InsOutsTable rows={data.insOuts} error={data.insOutsError} />
+      <InsOutsTable rows={data.insOuts} error={data.insOutsError} weekStart={data.weekStart} />
       {data.pnl ? (
         <PnlTable pnl={data.pnl} operatingExpensesReady={data.operatingExpensesReady} />
       ) : null}
@@ -115,7 +115,15 @@ function categoryLine(row: TruckWeekInsOuts): string {
   return parts.join(", ");
 }
 
-function InsOutsTable({ rows, error }: { rows: TruckWeekInsOuts[]; error: string | null }) {
+function InsOutsTable({
+  rows,
+  error,
+  weekStart,
+}: {
+  rows: TruckWeekInsOuts[];
+  error: string | null;
+  weekStart: string;
+}) {
   const fleet = rows.filter((row) => row.readable).reduce(
     (sum, row) => ({
       insCents: sum.insCents + row.insCents,
@@ -184,7 +192,14 @@ function InsOutsTable({ rows, error }: { rows: TruckWeekInsOuts[]; error: string
       <p className="max-w-3xl text-sm text-[var(--color-fg-muted)]">
         Ins are load earnings from each truck Google Sheet load ledger (Rate, by delivery date). Outs are
         management expenses dated this week: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary,
-        MVR, Drug Test, and Spare Expense 1 through 5. Loads in the ledger still come from Vektor.
+        MVR, Drug Test, and Spare Expense 1 through 5. Loads in the ledger still come from Vektor.{" "}
+        <Link
+          href={`/ins-outs?week=${weekStart}`}
+          className="font-medium text-[var(--color-accent)] no-underline hover:underline"
+        >
+          Open the Ins and Outs page
+        </Link>
+        .
       </p>
     </section>
   );
