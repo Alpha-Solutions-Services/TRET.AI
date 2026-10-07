@@ -86,7 +86,7 @@ If Connect Vektor reports that the database migration or `VEKTOR_TOKEN_ENCRYPTIO
 2. Connect Vektor and pass Test connection (above).
 3. Open **Imports**.
 4. Set the date range (defaults to the last 14 days) and click **Import loads**.
-5. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts and any plain-language error. A zero-row result is stated in that message; a sign-in failure is a Failed run, not a silent zero.
+5. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts. A zero-row result is written in Notes, including which list filter was used and the payload shape (keys and counts only). A sign-in failure is a Failed run, not a silent zero.
 6. Open **Loads** to review promoted rows. Filter by week (Monday–Sunday) and truck. Totals are at the bottom.
 
 ## Import fuel and tolls
@@ -121,6 +121,8 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 4. Close status says Open or Locked.
 5. **Open issues** shows the count and opens Issues for that week.
 6. Management P&L is under the snapshot. Income is Legacy retained on managed trucks and the dispatch fee. Expenses are fixed costs charged to management and operating expenses dated in that week. Tolson payable is listed and is not in the net.
+7. **Ins and Outs** is one row per active truck. Ins are load earnings from that truck’s Google Sheet load ledger (the Rate column, loads whose delivery date is in the week). Outs are the Mgmt Expenses rows dated in the week: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5.
+8. If a truck says Unread, paste the sheet link on **Trucks** and share the sheet so anyone with the link can view, or share it with the Google service account from the setup guide. A blank expense amount is not counted. The import does not write these sheets.
 
 ## Issues
 

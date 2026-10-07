@@ -3,15 +3,18 @@ import type { VektorManifest } from "../types";
 import { assertMcpToolAllowed } from "./allowlist";
 import {
   VEKTOR_LIST_PER_PAGE,
-  buildManifestsGetArgs,
+  buildManifestListArgs,
   buildOrderDetailsGetArgs,
   buildTrucksGetByIdsArgs,
 } from "./args";
 import { IdCache } from "./cache";
+import { defaultManifestFilters, manifestFilterProbes } from "./filters";
 import {
   manifestsFromPayload,
+  mcpToolErrorText,
   nextPageToken,
   partyName,
+  summarizePayloadShape,
   trucksFromPayload,
   unwrapToolPayload,
 } from "./parse";
@@ -19,6 +22,12 @@ import { withRetry, withTimeout } from "./retry";
 import { expandFirstStopWindow, summarizeManifestWindow } from "./window";
 
 export type ToolCaller = (name: string, args: Record<string, unknown>) => Promise<unknown>;
+
+export type ListedTool = {
+  name: string;
+  description?: string;
+  inputSchema?: unknown;
+};
 
 const MAX_PAGES = 40;
 
@@ -66,27 +75,90 @@ function rememberParties(
   }
 }
 
+type PageHit = {
+  manifests: VektorManifest[];
+  payload: unknown;
+  errorText: string | null;
+};
+
+function redactNote(text: string): string {
+  return text.replace(/Bearer\s+\S+/gi, "Bearer [redacted]").slice(0, 400);
+}
+
+async function readManifestPage(
+  callTool: ToolCaller,
+  filters: unknown,
+  page: number,
+): Promise<PageHit> {
+  assertMcpToolAllowed("core_Manifests_Get");
+  const raw = await withRetry(() =>
+    withTimeout(
+      callTool("core_Manifests_Get", buildManifestListArgs(filters, page)),
+    ),
+  );
+  const errorText = mcpToolErrorText(raw);
+  const payload = unwrapToolPayload(raw);
+  return {
+    manifests: errorText ? [] : manifestsFromPayload(payload),
+    payload,
+    errorText: errorText ? redactNote(errorText) : null,
+  };
+}
+
 export async function fetchManifestsFromTools(opts: {
   from: string;
   to: string;
   callTool: ToolCaller;
+  listTools?: () => Promise<ListedTool[]>;
 }): Promise<FetchManifestsResult> {
   const window = expandFirstStopWindow(opts.from, opts.to);
   const manifests: VektorManifest[] = [];
   const seenIds = new Set<string>();
   const seenTokens = new Set<string>();
+  const notes: string[] = [];
+  const primary = defaultManifestFilters(window.queryFrom, window.queryTo);
+  let chosen = primary;
+  let first = await readManifestPage(opts.callTool, primary.filters, 1);
+  let sawSuccessfulCall = !first.errorText;
+  if (first.errorText) notes.push(first.errorText);
 
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const payload = await callAllowlisted(
-      opts.callTool,
-      "core_Manifests_Get",
-      buildManifestsGetArgs({
-        queryFrom: window.queryFrom,
-        queryTo: window.queryTo,
-        page,
-      }),
+  if (first.manifests.length === 0) {
+    let schema: unknown;
+    if (opts.listTools) {
+      try {
+        const tools = await opts.listTools();
+        schema = tools.find((tool) => tool.name === "core_Manifests_Get")?.inputSchema;
+        if (!schema) {
+          notes.push("tools/list did not include an input schema for core_Manifests_Get.");
+        }
+      } catch (err) {
+        notes.push(redactNote(err instanceof Error ? err.message : String(err)));
+      }
+    }
+    for (const probe of manifestFilterProbes({
+      queryFrom: window.queryFrom,
+      queryTo: window.queryTo,
+      schema,
+      alreadyTried: primary.filters,
+    })) {
+      const hit = await readManifestPage(opts.callTool, probe.filters, 1);
+      if (hit.errorText) notes.push(`${probe.label}: ${hit.errorText}`);
+      else sawSuccessfulCall = true;
+      if (hit.manifests.length === 0) continue;
+      chosen = probe;
+      first = hit;
+      notes.push(`Date filter ${primary.label} returned no manifests. Used ${probe.label}.`);
+      break;
+    }
+  }
+
+  if (first.manifests.length === 0 && !sawSuccessfulCall) {
+    throw new Error(
+      notes.join(" ") || "Vektor did not return a manifest list. The import did not record a successful empty run.",
     );
-    const batch = manifestsFromPayload(payload);
+  }
+
+  const take = (batch: VektorManifest[]): number => {
     let added = 0;
     for (const manifest of batch) {
       if (seenIds.has(manifest.manifestId)) continue;
@@ -94,10 +166,27 @@ export async function fetchManifestsFromTools(opts: {
       manifests.push(manifest);
       added += 1;
     }
-    const next = nextPageToken(payload);
-    if (added === 0) break;
-    if (batch.length < VEKTOR_LIST_PER_PAGE && (!next || seenTokens.has(next))) break;
-    if (next) seenTokens.add(next);
+    return added;
+  };
+
+  const firstAdded = take(first.manifests);
+  const firstNext = nextPageToken(first.payload);
+  const shortFirst =
+    first.manifests.length < VEKTOR_LIST_PER_PAGE && (!firstNext || seenTokens.has(firstNext));
+  if (firstNext) seenTokens.add(firstNext);
+  if (firstAdded > 0 && !shortFirst) {
+    for (let page = 2; page <= MAX_PAGES; page++) {
+      const hit = await readManifestPage(opts.callTool, chosen.filters, page);
+      if (hit.errorText) {
+        notes.push(hit.errorText);
+        break;
+      }
+      const added = take(hit.manifests);
+      const next = nextPageToken(hit.payload);
+      if (added === 0) break;
+      if (hit.manifests.length < VEKTOR_LIST_PER_PAGE && (!next || seenTokens.has(next))) break;
+      if (next) seenTokens.add(next);
+    }
   }
 
   for (const manifest of manifests) {
@@ -148,6 +237,11 @@ export async function fetchManifestsFromTools(opts: {
   }
 
   const { kept, report } = summarizeManifestWindow(manifests, opts.from, opts.to);
+  const shape =
+    first.manifests.length === 0 ? `Payload: ${summarizePayloadShape(first.payload)}.` : null;
+  const payloadNote = [...notes, shape].filter((part): part is string => Boolean(part)).join(" ").trim();
+  report.filterLabel = chosen.label;
+  report.payloadNote = payloadNote ? payloadNote.slice(0, 800) : null;
   const driverMap: Record<string, string> = {};
   for (const [id, name] of drivers.entries()) driverMap[id] = name;
   const brokerMap: Record<string, string> = {};

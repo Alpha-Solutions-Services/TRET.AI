@@ -56,7 +56,8 @@ export async function loadImportRegistry(
       return withVektorMcp({
         accessToken,
         clientInformation: connection.clientInformation,
-        run: ({ callTool }) => fetchManifestsFromTools({ ...input, callTool }),
+        run: ({ callTool, listTools }) =>
+          fetchManifestsFromTools({ ...input, callTool, listTools }),
       });
     };
   }

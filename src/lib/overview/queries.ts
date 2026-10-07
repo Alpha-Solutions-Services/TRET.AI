@@ -1,9 +1,13 @@
+import { weekBoundsForDate } from "@/lib/fee-engine";
 import { buildManagementPnl, type ManagementPnl } from "@/lib/overview/pnl";
 import { buildWeekSnapshot, type WeekSnapshot } from "@/lib/overview/snapshot";
 import { listOperatingExpenses } from "@/lib/operating-expenses/queries";
 import { buildInbox, countOpenIssues } from "@/lib/issues/inbox";
 import { listImportIssues } from "@/lib/issues/queries";
+import { loadTruckWeekInsOuts } from "@/lib/sheets/read";
+import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { loadStatements, resolveWeekStart } from "@/lib/statements/queries";
+import { listTrucks } from "@/lib/trucks/queries";
 
 export type OverviewPageData = {
   weekStart: string;
@@ -16,14 +20,43 @@ export type OverviewPageData = {
   pnl: ManagementPnl | null;
   openIssueCount: number | null;
   operatingExpensesReady: boolean;
+  insOuts: TruckWeekInsOuts[];
+  insOutsError: string | null;
 };
+
+async function loadInsOuts(
+  weekStart: string,
+  weekEnd: string,
+): Promise<{ insOuts: TruckWeekInsOuts[]; insOutsError: string | null }> {
+  try {
+    const { trucks } = await listTrucks();
+    const active = trucks.filter((truck) => truck.active);
+    const insOuts = await loadTruckWeekInsOuts(
+      active.map((truck) => ({
+        unitNumber: truck.unit_number,
+        truckName: truck.name,
+        googleSheetUrl: truck.google_sheet_url,
+      })),
+      weekStart,
+      weekEnd,
+    );
+    return { insOuts, insOutsError: null };
+  } catch (err) {
+    return {
+      insOuts: [],
+      insOutsError: err instanceof Error ? err.message : "Ins and Outs could not be loaded.",
+    };
+  }
+}
 
 export async function loadOverview(weekRaw: string | undefined): Promise<OverviewPageData> {
   const weekStart = resolveWeekStart(weekRaw);
-  const [statements, expenses, issues] = await Promise.all([
+  const bounds = weekBoundsForDate(weekStart);
+  const [statements, expenses, issues, ins] = await Promise.all([
     loadStatements(weekStart),
     listOperatingExpenses(),
     listImportIssues(),
+    loadInsOuts(bounds.start, bounds.end),
   ]);
 
   const base = {
@@ -32,6 +65,8 @@ export async function loadOverview(weekRaw: string | undefined): Promise<Overvie
     locked: statements.locked,
     closedAt: statements.closedAt,
     operatingExpensesReady: expenses.ready,
+    insOuts: ins.insOuts,
+    insOutsError: ins.insOutsError,
   };
 
   if (statements.error) {

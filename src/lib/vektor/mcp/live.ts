@@ -5,7 +5,7 @@ import type { OAuthClientInformationMixed } from "@modelcontextprotocol/sdk/shar
 import { VEKTOR_MCP_URL, vektorClientMetadata } from "../oauth/flow";
 import { NeedsSignInError, safeErrorMessage } from "../oauth/needs-sign-in";
 import { MCP_CONNECTION_TOOLS, assertMcpToolAllowed } from "./allowlist";
-import type { ToolCaller } from "./fetch-manifests";
+import type { ListedTool, ToolCaller } from "./fetch-manifests";
 import { buildManifestsGetArgs } from "./args";
 import { withRetry, withTimeout } from "./retry";
 
@@ -53,7 +53,11 @@ function asAuthFailure(err: unknown): never {
 export async function withVektorMcp<T>(opts: {
   accessToken: string;
   clientInformation: OAuthClientInformationMixed | null;
-  run: (tools: { callTool: ToolCaller; listToolNames: () => Promise<string[]> }) => Promise<T>;
+  run: (tools: {
+    callTool: ToolCaller;
+    listToolNames: () => Promise<string[]>;
+    listTools: () => Promise<ListedTool[]>;
+  }) => Promise<T>;
 }): Promise<T> {
   const client = new Client({ name: "tret-ai", version: "0.0.0.5" });
   const transport = new StreamableHTTPClientTransport(new URL(VEKTOR_MCP_URL), {
@@ -71,12 +75,17 @@ export async function withVektorMcp<T>(opts: {
         asAuthFailure(err);
       }
     };
-    const listToolNames = async () => {
-      const names: string[] = [];
+    let cachedTools: ListedTool[] | null = null;
+    const listTools = async (): Promise<ListedTool[]> => {
+      if (cachedTools) return cachedTools;
+      const tools: ListedTool[] = [];
       let cursor: string | undefined;
       const seen = new Set<string>();
       for (let page = 0; page < 40; page++) {
-        let listed: { tools?: Array<{ name: string }>; nextCursor?: string };
+        let listed: {
+          tools?: Array<{ name: string; description?: string; inputSchema?: unknown }>;
+          nextCursor?: string;
+        };
         try {
           listed = await withRetry(() =>
             withTimeout(client.listTools(cursor ? { cursor } : undefined)),
@@ -84,15 +93,23 @@ export async function withVektorMcp<T>(opts: {
         } catch (err) {
           asAuthFailure(err);
         }
-        for (const tool of listed.tools ?? []) names.push(tool.name);
+        for (const tool of listed.tools ?? []) {
+          tools.push({
+            name: tool.name,
+            description: tool.description,
+            inputSchema: tool.inputSchema,
+          });
+        }
         const next = listed.nextCursor;
         if (!next || seen.has(next)) break;
         seen.add(next);
         cursor = next;
       }
-      return names;
+      cachedTools = tools;
+      return tools;
     };
-    return await opts.run({ callTool, listToolNames });
+    const listToolNames = async () => (await listTools()).map((tool) => tool.name);
+    return await opts.run({ callTool, listToolNames, listTools });
   } finally {
     await client.close().catch(() => undefined);
   }

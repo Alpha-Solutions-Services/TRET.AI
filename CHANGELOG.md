@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.0.0.14 — 2026-10-07
+
+- Import loads: a successful Vektor call with zero rows was the unconfirmed date filter `filters.first_stop_appointment_start_date`. The list now reads the `core_Manifests_Get` input schema when that page is empty, tries the schema date field and camelCase delivery filters, and if only an unfiltered list has rows, keeps manifests by delivery date. An empty result stores payload keys and counts on the run and in Notes. Tool errors are no longer counted as an empty list. An empty `structuredContent` no longer hides rows that arrived in the text body.
+- Promoted manifests still land in `loads` on `manifest_id`. The import does not write Google Sheets.
+- Overview Ins and Outs, per active truck, for the selected Monday–Sunday week. Ins are the sheet load ledger Rate (integer cents) for deliveries in the week. Outs are Mgmt Expenses dated in the week: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5. Blank amounts are skipped.
+- Sheet reads use a public CSV export, or `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` when the sheet is private. `GOOGLE_SHEETS_API_KEY` is optional for sheets that are already public. No new migration.
+
 ## v0.0.0.13 — 2026-10-07
 
 - Trucks list and truck page: **Edit** opens the same side panel as Add truck and saves unit number, name, class, and owner. Trucks are still never deleted.

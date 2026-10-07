@@ -58,6 +58,10 @@ export type ImportWindowReport = {
   deliveredByDeliveryDate: number;
   keptForImport: number;
   statusCounts: Record<string, number>;
+  /** Which list filter actually returned rows, or the one that was tried last. */
+  filterLabel?: string;
+  /** Operator note when the list was empty or a different filter was used. Keys and counts only. */
+  payloadNote?: string | null;
 };
 
 export function summarizeManifestWindow(
@@ -115,8 +119,14 @@ export function formatImportResultMessage(input: {
   ];
   if (input.report) {
     parts.push(
-      `Query window ${input.report.queryFrom} to ${input.report.queryTo} (first-stop filter, delivery week ${input.report.rangeFrom} to ${input.report.rangeTo}). Delivered by first-stop date: ${input.report.deliveredByFirstStopDate}. Delivered by delivery date: ${input.report.deliveredByDeliveryDate}.`,
+      `Query window ${input.report.queryFrom} to ${input.report.queryTo} (delivery week ${input.report.rangeFrom} to ${input.report.rangeTo}). Delivered by first-stop date: ${input.report.deliveredByFirstStopDate}. Delivered by delivery date: ${input.report.deliveredByDeliveryDate}.`,
     );
+    if (input.report.filterLabel) {
+      parts.push(`List filter: ${input.report.filterLabel}.`);
+    }
+    if (input.report.payloadNote) {
+      parts.push(input.report.payloadNote);
+    }
   }
   if (input.fetched === 0) {
     parts.push("No manifests were returned for this range. The import did not silently record zero rows.");

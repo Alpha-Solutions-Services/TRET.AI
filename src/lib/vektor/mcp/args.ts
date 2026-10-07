@@ -12,8 +12,8 @@
 
 export const VEKTOR_LIST_PER_PAGE = 100;
 
-function listEnvelope(
-  filters: Record<string, unknown>,
+export function buildManifestListArgs(
+  filters: unknown,
   page: number | undefined,
 ): Record<string, unknown> {
   return {
@@ -28,7 +28,7 @@ export function buildManifestsGetArgs(input: {
   queryTo: string;
   page?: number;
 }): Record<string, unknown> {
-  return listEnvelope(
+  return buildManifestListArgs(
     {
       first_stop_appointment_start_date: {
         from: input.queryFrom,
@@ -57,7 +57,7 @@ export function buildTransactionDateArgs(input: {
   to: string;
   page?: number;
 }): Record<string, unknown> {
-  return listEnvelope(
+  return buildManifestListArgs(
     {
       transaction_date: {
         from: input.from,
