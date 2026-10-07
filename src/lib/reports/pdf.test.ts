@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildWeekStatements } from "@/lib/statements/engine";
 import type { WeekStatementInput } from "@/lib/statements/types";
+import { readAppVersion } from "@/lib/version";
 import { weeklyStatementPdf } from "./build";
 import { centsPerLoadedMile, formatDieselMpg, formatStatementDollars } from "./format";
 import { ReportBlockedError, prepareWeeklyReport } from "./prepare";
@@ -152,7 +153,7 @@ describe("weekly statement PDF", () => {
     expect(text).toContain("Maintenance Escrow Weekly");
     expect(text).toContain("Yard Fee");
     expect(text).toContain("Not stored");
-    expect(text).toContain("TRET.AI v0.0.0.10");
+    expect(text).toContain(`TRET.AI v${readAppVersion()}`);
     expect(text.replace(/\s+/g, " ")).toContain("not deducted again");
     expect(text).not.toContain("$228.00");
   });

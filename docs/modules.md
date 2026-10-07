@@ -12,6 +12,7 @@
 | 5b | Weekly owner PDF (v0.0.0.9) | Done |
 | 5c | Overview and management P&L (v0.0.0.10) | Done |
 | 6 | Issues inbox (v0.0.0.10). AI (`llm-gateway`) is not started | Inbox done |
+| 6b | Fixture week 21–27 Sep 2026 smoke (v0.0.0.11) | Done |
 | 7 | Tolson payable payments, recurring charges, Quicken export | Not started |
 | 8 | Google Sheets sync | Not started |
 | 9 | Dashboard polish and extra automation | Not started |
