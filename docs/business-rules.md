@@ -10,6 +10,10 @@
 - Dispatch fee is a per-truck rate (currently 5.5% or 5%) and can change per truck.
 - If the database and a Google Sheet disagree on the same data, the database wins and an issue is flagged; nothing is overwritten silently.
 - An approved week is locked; later fixes are adjustment entries.
+- A new fee rate version starts on a Monday.
+- Fixed weekly expenses are per truck and per kind, stored as integer cents, effective from a Monday. `charged_to` is `owner` (the default) or `management`.
+- A per-week override replaces that kind’s amount and `charged_to` for one Monday–Sunday week.
+- Management-company operating expenses are typed in by hand: date, category, amount in cents, and an optional note. They are not truck fixed expenses.
 
 ## Fee model (engine)
 
@@ -22,6 +26,7 @@
   - `9500` = apply the rate to 95% of gross
   - On $5,800.00 gross, dispatch 5.5% on full gross = $319.00; 5.5% on a 95% base = $303.05. The engine does what the rule says; which base is correct for each truck is OPEN.
 - Contract lookup for a calendar date returns exactly one contract (inclusive dates). Error if none or more than one.
+- Fixed-expense lookup for a Monday returns the week override when one exists, otherwise exactly one version that covers that Monday. Error if none or more than one version covers it.
 - Factoring-based fee bases (for example “after factoring”) are **not** supported until confirmed (OPEN).
 
 ## OPEN

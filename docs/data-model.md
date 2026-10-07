@@ -46,12 +46,12 @@ One fee line on a contract. Each fee kind appears at most once per contract. The
 
 ## change_log (from v0.0.0.3)
 
-Audit trail. Every truck create / activate / deactivate and every rate-version create / delete writes a row: who, when, action, and optional before/after JSON.
+Audit trail. Truck create / activate / deactivate, rate-version create / delete, fixed-expense version and override changes, and operating-expense create / delete each write a row: who, when, action, and optional before/after JSON.
 
 | Column | Meaning |
 |--------|---------|
 | id | Internal id |
-| entity_type | `truck` or `fee_contract` |
+| entity_type | `truck`, `fee_contract`, `truck_fixed_expense`, `truck_fixed_expense_override`, or `mgmt_operating_expense` |
 | entity_id | Id of the truck or contract |
 | action | What happened (for example `create_truck`, `create_rate_version`) |
 | actor_email | Signed-in user who made the change |
@@ -75,8 +75,56 @@ Audit trail. Every truck create / activate / deactivate and every rate-version c
 - **vektor_mcp_connection** — one row of encrypted Vektor OAuth client data and tokens. Not readable by the browser.
 - **vektor_oauth_pending** — one-time encrypted PKCE verifier while Connect Vektor is in progress.
 
+## truck_fixed_expenses (v0.0.0.6)
+
+One weekly amount for one truck and one expense kind. Start and end dates are inclusive. End may be empty (still open). The database rejects two rows for the same truck and kind whose date ranges overlap. `effective_from` must be a Monday. Creating a new version closes the previous open version of that kind the day before the new Monday.
+
+| Column | Meaning |
+|--------|---------|
+| id | Internal id |
+| truck_id | Which truck |
+| kind | One of the ten fixed expense kinds |
+| weekly_amount_cents | Weekly amount in integer cents |
+| charged_to | `owner` (default) or `management` |
+| effective_from | First day (a Monday, inclusive) |
+| effective_to | Last day (inclusive); empty means open-ended |
+| note | Optional note |
+
+Kinds: Maintenance Escrow Weekly, ELD Fee, Yard Fee, GPS Tracker, Insurance, Truck Payments, Trailer Payments, Toll Pass, Permits, Misc.
+
+## truck_fixed_expense_overrides (v0.0.0.6)
+
+Replaces the version for one truck, one kind, and one week. `week_start` is the Monday. At most one override per truck, kind, and week.
+
+| Column | Meaning |
+|--------|---------|
+| week_start | Monday the week starts |
+| amount_cents | Amount for that week, in integer cents |
+| charged_to | `owner` or `management` |
+
+## mgmt_operating_expenses (v0.0.0.6)
+
+Manual management-company costs. Not a profit and loss statement.
+
+| Column | Meaning |
+|--------|---------|
+| expense_date | Calendar date |
+| category | Short label, up to 80 characters |
+| amount_cents | Amount in integer cents |
+| note | Optional note |
+
+## Database functions (v0.0.0.6)
+
+- `assert_effective_monday` — rejects a date that is not a Monday.
+- `create_fee_rate_version` — same as v0.0.0.3, and now calls `assert_effective_monday`. Existing fee rows are not rechecked.
+- `create_fixed_expense_version` / `delete_latest_fixed_expense_version` — same close-and-replace pattern as rate versions, per kind. Delete is refused once weekly statements exist for the truck.
+- `upsert_fixed_expense_override` / `delete_fixed_expense_override` — one week.
+- `create_mgmt_operating_expense` / `delete_mgmt_operating_expense` — manual operating costs.
+
+Each write function checks `allowed_users` and writes `change_log`. `change_log.entity_type` may now also be `truck_fixed_expense`, `truck_fixed_expense_override`, or `mgmt_operating_expense`.
+
 ## Access (RLS)
 
-`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, and `issues` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read (and write where policies allow). Rate-version RPCs are security definer and still check `allowed_users`.
+`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, and `mgmt_operating_expenses` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`.
 
 `vektor_mcp_connection` and `vektor_oauth_pending` have Row Level Security on and no policies. `anon` and `authenticated` have no table grants. Allowed users touch ciphertext only through security-definer functions. The encryption key stays in server env.

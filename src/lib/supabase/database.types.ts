@@ -16,6 +16,20 @@ export type FeeRuleKind =
   | "TOLSON_PAYABLE"
   | "LEGACY_RETAINED";
 
+export type FixedExpenseKind =
+  | "MAINTENANCE_ESCROW_WEEKLY"
+  | "ELD_FEE"
+  | "YARD_FEE"
+  | "GPS_TRACKER"
+  | "INSURANCE"
+  | "TRUCK_PAYMENTS"
+  | "TRAILER_PAYMENTS"
+  | "TOLL_PASS"
+  | "PERMITS"
+  | "MISC";
+
+export type ChargedTo = "owner" | "management";
+
 export type Database = {
   public: {
     Tables: {
@@ -420,6 +434,102 @@ export type Database = {
         };
         Relationships: [];
       };
+      truck_fixed_expenses: {
+        Row: {
+          id: string;
+          truck_id: string;
+          kind: FixedExpenseKind;
+          weekly_amount_cents: number;
+          charged_to: ChargedTo;
+          effective_from: string;
+          effective_to: string | null;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          truck_id: string;
+          kind: FixedExpenseKind;
+          weekly_amount_cents: number;
+          charged_to?: ChargedTo;
+          effective_from: string;
+          effective_to?: string | null;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          truck_id?: string;
+          kind?: FixedExpenseKind;
+          weekly_amount_cents?: number;
+          charged_to?: ChargedTo;
+          effective_from?: string;
+          effective_to?: string | null;
+          note?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      truck_fixed_expense_overrides: {
+        Row: {
+          id: string;
+          truck_id: string;
+          kind: FixedExpenseKind;
+          week_start: string;
+          amount_cents: number;
+          charged_to: ChargedTo;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          truck_id: string;
+          kind: FixedExpenseKind;
+          week_start: string;
+          amount_cents: number;
+          charged_to?: ChargedTo;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          truck_id?: string;
+          kind?: FixedExpenseKind;
+          week_start?: string;
+          amount_cents?: number;
+          charged_to?: ChargedTo;
+          note?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      mgmt_operating_expenses: {
+        Row: {
+          id: string;
+          expense_date: string;
+          category: string;
+          amount_cents: number;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          expense_date: string;
+          category: string;
+          amount_cents: number;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          expense_date?: string;
+          category?: string;
+          amount_cents?: number;
+          note?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -440,10 +550,55 @@ export type Database = {
         Args: { p_truck_id: string };
         Returns: boolean;
       };
+      create_fixed_expense_version: {
+        Args: {
+          p_truck_id: string;
+          p_kind: string;
+          p_effective_from: string;
+          p_weekly_amount_cents: number;
+          p_charged_to: string;
+          p_note: string | null;
+        };
+        Returns: string;
+      };
+      delete_latest_fixed_expense_version: {
+        Args: { p_truck_id: string; p_kind: string };
+        Returns: string;
+      };
+      upsert_fixed_expense_override: {
+        Args: {
+          p_truck_id: string;
+          p_kind: string;
+          p_week_start: string;
+          p_amount_cents: number;
+          p_charged_to: string;
+          p_note: string | null;
+        };
+        Returns: string;
+      };
+      delete_fixed_expense_override: {
+        Args: { p_truck_id: string; p_kind: string; p_week_start: string };
+        Returns: string;
+      };
+      create_mgmt_operating_expense: {
+        Args: {
+          p_expense_date: string;
+          p_category: string;
+          p_amount_cents: number;
+          p_note: string | null;
+        };
+        Returns: string;
+      };
+      delete_mgmt_operating_expense: {
+        Args: { p_id: string };
+        Returns: string;
+      };
     };
     Enums: {
       truck_class: TruckClass;
       fee_rule_kind: FeeRuleKind;
+      fixed_expense_kind: FixedExpenseKind;
+      charged_to: ChargedTo;
     };
     CompositeTypes: Record<string, never>;
   };
