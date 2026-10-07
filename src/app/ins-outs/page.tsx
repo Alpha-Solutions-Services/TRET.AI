@@ -3,6 +3,8 @@ import { InsOutsClient } from "@/components/ins-outs/ins-outs-client";
 import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { weekBoundsForDate } from "@/lib/fee-engine";
+import { buildLegacyEarnings } from "@/lib/legacy/fees";
+import { loadLegacyFeeState } from "@/lib/legacy/queries";
 import { loadInsOutsWeek } from "@/lib/sheets/load-week";
 import { resolveWeekStart } from "@/lib/statements/queries";
 
@@ -20,7 +22,16 @@ function PageSkeleton() {
 async function InsOutsContent({ week }: { week: string | undefined }) {
   const weekStart = resolveWeekStart(week);
   const bounds = weekBoundsForDate(weekStart);
-  const loaded = await loadInsOutsWeek(bounds.start, bounds.end);
+  const [loaded, fees] = await Promise.all([
+    loadInsOutsWeek(bounds.start, bounds.end),
+    loadLegacyFeeState(bounds.start),
+  ]);
+  const earnings = buildLegacyEarnings({
+    trucks: loaded.rows,
+    orgFeeBp: fees.orgFeeBp,
+    truckWeeks: fees.truckWeeks,
+    loadFees: fees.loadFees,
+  });
   return (
     <InsOutsClient
       weekStart={bounds.start}
@@ -30,6 +41,12 @@ async function InsOutsContent({ week }: { week: string | undefined }) {
       sheetEnvMissing={loaded.sheetEnvMissing}
       mismatchCount={loaded.mismatchCount}
       mismatchError={loaded.mismatchError}
+      legacy={{
+        earnings,
+        ready: fees.ready,
+        error: fees.error,
+        orgFeeBp: fees.orgFeeBp,
+      }}
     />
   );
 }

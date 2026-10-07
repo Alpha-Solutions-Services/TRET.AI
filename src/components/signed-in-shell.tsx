@@ -27,7 +27,7 @@ export async function SignedInShell({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-bg)] pb-44 text-[var(--color-fg)]">
+    <div className="flex min-h-screen flex-col bg-[var(--color-bg)] text-[var(--color-fg)]">
       <header className="material sticky top-0 z-20 flex items-center justify-between border-b border-[var(--color-border)] px-5 py-3">
         <div>
           <p className="text-lg font-semibold tracking-[-0.03em]">TRET.AI</p>

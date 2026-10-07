@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { resolveIssueAction } from "@/app/issues/actions";
+import { CopyableError } from "@/components/copyable-error";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
 import { useToast } from "@/components/ui/toast";
@@ -16,7 +17,19 @@ import {
   type IssueSeverityFilter,
   type IssueStatusFilter,
 } from "@/lib/issues/inbox";
+import { issueRuleLabel, presentIssue } from "@/lib/issues/present-issue";
 import type { IssuesPageData } from "@/lib/issues/queries";
+
+function IssueCell({ message, rule }: { message: string; rule: string }) {
+  const presented = presentIssue(message, rule);
+  const label = issueRuleLabel(rule);
+  return (
+    <div className="max-w-md">
+      <CopyableError headline={presented.headline} detail={presented.detail} showDetail={false} />
+      {label ? <p className="mt-1 text-xs text-[var(--color-fg-muted)]">{label}</p> : null}
+    </div>
+  );
+}
 
 function shiftWeek(weekStart: string, delta: number): string {
   const date = new Date(`${weekStart}T00:00:00Z`);
@@ -139,7 +152,7 @@ export function IssuesClient({
       </div>
 
       <p className="text-sm text-[var(--color-fg-muted)]">
-        Showing {data.weekStart} → {data.weekEnd}
+        Showing {data.weekStart} through {data.weekEnd}
       </p>
 
       {data.error ? (
@@ -178,8 +191,7 @@ export function IssuesClient({
                   <td className="px-3 py-2">{row.source === "close" ? "Close check" : "Import"}</td>
                   <td className="px-3 py-2">{row.status === "open" ? "Open" : "Resolved"}</td>
                   <td className="px-3 py-2">
-                    <p>{row.message}</p>
-                    <p className="text-[var(--color-fg-muted)]">{row.rule}</p>
+                    <IssueCell message={row.message} rule={row.rule} />
                   </td>
                   <td className="px-3 py-2">
                     {canResolveIssue(row) ? (
@@ -192,7 +204,7 @@ export function IssuesClient({
                         Mark resolved
                       </Button>
                     ) : (
-                      <span className="text-[var(--color-fg-muted)]">—</span>
+                      <span className="text-[var(--color-fg-muted)]">None</span>
                     )}
                   </td>
                 </tr>

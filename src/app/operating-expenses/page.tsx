@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { OperatingExpensesClient } from "@/components/operating-expenses/operating-expenses-client";
 import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
+import { currentMonthUtc, parseMonth } from "@/lib/legacy/expenses";
 import { listOperatingExpenses } from "@/lib/operating-expenses/queries";
 
 export const dynamic = "force-dynamic";
@@ -15,16 +16,22 @@ function PageSkeleton() {
   );
 }
 
-async function OperatingExpensesContent() {
-  const list = await listOperatingExpenses();
-  return <OperatingExpensesClient list={list} />;
+async function OperatingExpensesContent({ month }: { month: string }) {
+  const list = await listOperatingExpenses(month);
+  return <OperatingExpensesClient list={list} month={month} />;
 }
 
-export default function OperatingExpensesPage() {
+export default async function OperatingExpensesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
+  const params = await searchParams;
+  const month = parseMonth(params.month) ?? currentMonthUtc();
   return (
-    <SignedInShell title="Operating expenses">
+    <SignedInShell title="Legacy expenses">
       <Suspense fallback={<PageSkeleton />}>
-        <OperatingExpensesContent />
+        <OperatingExpensesContent month={month} />
       </Suspense>
     </SignedInShell>
   );

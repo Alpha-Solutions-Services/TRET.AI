@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.0.0.20 — 2026-10-07
+
+- Legacy earnings are a management fee on each truck load. The org default is 10 percent (1000 basis points), editable in Settings. A truck can use a different percent for one Monday week. A load can save a percent or a dollar amount. A saved amount stays put when the sheet rate changes. A saved percent is applied to the current sheet rate. Legacy earnings are the sum of those fees, per truck and for the fleet. Saving needs migration `20261007180000_legacy_management_fees.sql`. Until it is applied, the page still shows the 10 percent default and does not store edits.
+- Legacy expenses (the operating expenses page) lists one month at a time, with a total. Categories are the sheet list: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5. Staff can add, edit, and delete. The date's month is the month the row belongs to. These portal rows are not added into truck sheet outs.
+- The signed-in footer is one short line in normal page flow: a sheet account check and `TRET.AI v0.0.0.20`. It is not fixed to the screen.
+- Issues show a short plain headline. A Vektor proto or JSON dump stays on Copy. An empty close week says "This week has nothing to close yet."
+
 ## v0.0.0.19 — 2026-10-07
 
 - The production build failed because the footer is a client component and it imported `src/lib/version.ts`. That module reads the VERSION file with `node:fs` and `node:path`. Webpack does not bundle those in the browser.

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { checkAccess } from "@/lib/auth/access";
+import { tryPercentStringToBp } from "@/lib/fees/percent";
 import { createClient } from "@/lib/supabase/server";
 import type { ImportSourceId } from "@/lib/vektor/adapters";
 import { loadImportRegistry } from "@/lib/vektor/import-registry";
@@ -183,4 +184,17 @@ export async function testVektorConnectionAction(): Promise<SettingsActionResult
     }
     return { ok: false, error: safeErrorMessage(err) };
   }
+}
+
+export async function setLegacyManagementFeeAction(percent: string): Promise<SettingsActionResult> {
+  const access = await checkAccess();
+  if (access.status !== "allowed") return { ok: false, error: "You must be signed in." };
+  const parsed = tryPercentStringToBp(percent);
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_legacy_management_fee_bp", { p_fee_bp: parsed.bp });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/settings");
+  revalidatePath("/ins-outs");
+  return { ok: true };
 }

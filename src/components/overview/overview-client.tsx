@@ -8,9 +8,7 @@ import type { OverviewPageData } from "@/lib/overview/queries";
 import type { ManagementPnl } from "@/lib/overview/pnl";
 import type { SnapshotRow } from "@/lib/overview/snapshot";
 import { CopyableError } from "@/components/copyable-error";
-import { PageGuidance } from "@/components/page-guidance";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
-import { sheetPageGuidance } from "@/lib/footer-copy";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 
 function money(cents: number): string {
@@ -33,7 +31,6 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
 
   return (
     <div className="space-y-6">
-      <PageGuidance text={sheetPageGuidance(data.insOuts, data.insOutsError)} />
       <div>
         <h1 className="text-2xl font-semibold">Overview</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
@@ -219,9 +216,8 @@ function InsOutsTable({
         </table>
       </div>
       <p className="max-w-3xl text-sm text-[var(--color-fg-muted)]">
-        Ins are load earnings from each truck Google Sheet load ledger (Rate, by delivery date). Outs are
-        management expenses dated this week: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary,
-        MVR, Drug Test, and Spare Expense 1 through 5. Loads in the ledger still come from Vektor.{" "}
+        Ins are load rates from each truck Google Sheet. Outs are that sheet&apos;s expense rows for the week.
+        Monthly Legacy company expenses are on Legacy expenses and are not added into these outs.{" "}
         <Link
           href={`/ins-outs?week=${weekStart}`}
           className="font-medium text-[var(--color-accent)] no-underline hover:underline"
