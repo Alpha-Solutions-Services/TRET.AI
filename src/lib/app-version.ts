@@ -3,7 +3,7 @@
  * Keep this string equal to the VERSION file.
  * package.json stays 0.0.0 because npm cannot store a 4-part version.
  */
-export const APP_VERSION = "0.0.0.27";
+export const APP_VERSION = "0.0.0.28";
 
 export function formatFooterLabel(version: string = APP_VERSION): string {
   return `TRET.AI v${version}`;

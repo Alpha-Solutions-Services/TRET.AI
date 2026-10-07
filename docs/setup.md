@@ -162,10 +162,10 @@ Do these once (or when credentials change). The app cannot finish login or healt
 3. Until that script has run, Ins and Outs still shows a 10 percent fee and does not store edits. Settings says the migration has not been applied. Legacy expenses still list rows from the v0.0.0.6 table.
 4. No new environment variables. The footer is one short line under the page. It is not fixed to the screen.
 
-## 20. Weekly asset report layout (v0.0.0.27)
+## 20. Weekly asset report layout (v0.0.0.28)
 
-1. No new migration. `trucks` does not gain trailer, VIN, or dispatcher columns.
-2. Download report on Ins and Outs is four landscape pages that follow the Legacy template, including the executive cover. Owner expenses omit Truck Pymts and Trailer Pymts. Dashboard Outs still include those lines. Escrow prints as Escrow Balance (this week) unless the sheet has an Escrow Balance column. Shared manifests count loaded miles once. No new migration.
+1. `trucks` does not gain trailer, VIN, or dispatcher columns. Migration `supabase/migrations/20261007230000_v28_backfill_manifest_refs.sql` fills a blank `loads.source_manifest_ref` from the Oct 5 to 7 Vektor export. Do not apply it until the owner says go. It does not insert rows and does not change a manifest that is already set.
+2. Download report on Ins and Outs is four landscape pages that follow the Legacy template, including the executive cover. Owner expenses omit Truck Pymts and Trailer Pymts. Dashboard Outs still include those lines. The weekly escrow line is Maintenance Escrow Weekly. The escrow card stays Escrow Balance, or Escrow Balance (this week) when the sheet has no running balance. Shared trips count loaded miles from the sheet Primary row. Trip M-1195 is the same group as Vektor manifest 1195. The Vektor manifest is the fallback when the sheet has no Primary flag. The match uses letters and digits and includes a Vektor row with no delivery date.
 3. Trailer, VIN, and dispatcher print when Fleet Directory, Weekly Expenses, or the Load Ledger has them. If dispatcher is missing, the PDF prints Legacy Dispatch Team and does not add a note. Driver prints the full truck or owner name when the sheet only has the first name.
 
 ## 21. Tolson payable on the truck (v0.0.0.24)

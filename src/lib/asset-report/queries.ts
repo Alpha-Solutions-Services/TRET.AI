@@ -1,7 +1,7 @@
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { buildAssetReport } from "@/lib/asset-report/build";
 import { renderAssetReportPdf } from "@/lib/asset-report/pdf";
-import { loadMatchKey } from "@/lib/loads/load-id";
+import { manifestRefsByLoad } from "@/lib/asset-report/manifest-refs";
 import { loadTruckWorkbook } from "@/lib/sheets/read";
 import { unitKey } from "@/lib/sheets/mismatch";
 import { createClient } from "@/lib/supabase/server";
@@ -33,31 +33,19 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
     dbFuelCents: extras.fuelCents,
     dbGallonsMilli: extras.gallonsMilli,
     dbTollCents: extras.tollCents,
-    manifestRefs: await loadManifestRefs(truck.unit_number, bounds.start, bounds.end),
+    manifestRefs: await loadManifestRefs(truck.unit_number),
   });
   return renderAssetReportPdf(report);
 }
 
-async function loadManifestRefs(
-  unitNumber: string,
-  weekStart: string,
-  weekEnd: string,
-): Promise<Record<string, string>> {
+async function loadManifestRefs(unitNumber: string): Promise<Record<string, string>> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("loads")
-      .select("load_id, source_manifest_ref, truck_unit_number, delivery_date")
-      .gte("delivery_date", weekStart)
-      .lte("delivery_date", weekEnd);
+      .select("load_id, source_manifest_ref, truck_unit_number, delivery_date");
     if (error || !data) return {};
-    const map: Record<string, string> = {};
-    for (const row of data) {
-      if (!row.load_id || !row.source_manifest_ref || !row.truck_unit_number) continue;
-      if (unitKey(row.truck_unit_number) !== unitKey(unitNumber)) continue;
-      map[loadMatchKey(row.load_id)] = row.source_manifest_ref.trim();
-    }
-    return map;
+    return manifestRefsByLoad(data, unitNumber);
   } catch {
     return {};
   }

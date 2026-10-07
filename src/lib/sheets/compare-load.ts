@@ -108,7 +108,8 @@ export async function loadSheetCompare(input: {
         driverName: load.driverName,
         deliveryDateKind: null,
         pickupDateKind: null,
-        manifestRef: load.manifestId,
+        manifestRef: load.tripGroup || load.manifestId,
+        sheetPrimary: load.sheetPrimary,
       });
     }
   }

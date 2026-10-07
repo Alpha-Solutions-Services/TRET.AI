@@ -2,6 +2,7 @@ import { inflateSync } from "node:zlib";
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import { buildAssetReport, DEFAULT_DISPATCHER } from "./build";
+import { manifestRefsByLoad } from "./manifest-refs";
 import { PAGE_H, PAGE_W, renderAssetReportPdf } from "./pdf";
 
 const WEEK = { weekStart: "2026-08-31", weekEnd: "2026-09-06" };
@@ -129,6 +130,7 @@ describe("weekly asset report", () => {
     const text = pdfText(bytes);
     expect(text).toContain("TOTALS");
     expect(text).toContain("TBH--1081");
+    expect(text).toContain("Maintenance Escrow Weekly");
     expect(text).toContain("Escrow Balance (this week)");
     expect(text).not.toContain("Weekly Escrow");
     expect(text).toContain("John Reed");
@@ -217,6 +219,7 @@ describe("weekly asset report", () => {
     expect(text).toContain("Manifest 1195");
     expect(text).toContain("partial");
     expect(text).toContain("2,075.00");
+    expect(text).toContain("Maintenance Escrow Weekly");
     expect(text).toContain("Escrow Balance (this week)");
     expect(text).toContain("$200.00");
     expect(text).not.toContain("Weekly Escrow");
@@ -224,6 +227,70 @@ describe("weekly asset report", () => {
     expect(text).not.toContain("Not stored");
     expect(text).not.toContain("447.23");
     expect(text).not.toContain("2,999.00");
+  });
+
+  it("counts week 41 loaded miles from the sheet Primary row on trip M-1195", async () => {
+    const ledger = [
+      ["Primary Driver", "Brison", "Truck #", "8", "Status", "Active"],
+      ["Delivery Date", "Load ID", "Rate", "Loaded Miles", "Deadhead Miles", "Broker/Customer", "Origin", "Destination", "Trip Group", "Primary", "Truck Miles"],
+      ["10/05/2026", "TBH--1179", "$2,400.00", "596", "78", "LANDSTAR TRANSPORTATION LOGISTICS, INC", "Spring Hill, TN", "Kansas City, KS", "M-1179", "Yes", "596"],
+      ["10/06/2026", "TBH--1184", "$1,100.00", "314", "10", "TALLGRASS FREIGHT COMPANY", "Kansas City, MO", "Stillwater, OK", "M-1184", "Yes", "314"],
+      ["10/08/2026", "TBH--1188", "$1,800.00", "1,165", "153", "TOTAL QUALITY LOGISTICS LLC", "Afton, OK", "Richmond, VA", "M-1195", "Yes", "1,165"],
+      ["10/08/2026", "TBH--1192", "$1,700.00", "924", "0", "NEW ERA LOGISTICS INC (NEW ERA LOGISTICS)", "Tulsa, OK", "Greenville, SC", "M-1195", "", "0"],
+      ["10/08/2026", "TBH--1195", "$900.00", "384", "0", "LANDSTAR TRANSPORTATION LOGISTICS, INC", "Chester, SC", "Fredericksburg, VA", "M-1195", "", "0"],
+    ];
+    const weekly = [
+      ["Week Start Date", "Driver Compensation", "Driver Compensation %", "Management Fee", "Management Fee %", "Dispatch Fee", "Factoring Fee", "Factoring Fee %", "Fuel", "Insurance", "Maintenance Escrow Weekly", "Escrow Balance", "ELD Fee", "Yard Parking", "GPS Tracker", "Toll Pass", "Toll Fees", "Permit Fees"],
+      ["10/05/2026", "$1,580.00", "20%", "$790.00", "10%", "$395.00", "$138.25", "1.75%", "$1,161.83", "$288.71", "$0.00", "$200.00", "$47.25", "$12.93", "$8.50", "$0.00", "$18.06", "$0.00"],
+    ];
+    const fuel = [
+      ["Date", "Gallons", "Total Cost", "Miles"],
+      ["10/06/2026", "208.870", "$1,161.83", "1641.93"],
+    ];
+    const refs = manifestRefsByLoad(
+      [
+        { load_id: "TBH--1192", source_manifest_ref: "9999", truck_unit_number: "8", delivery_date: "2026-10-08" },
+      ],
+      "8",
+    );
+    const report = buildAssetReport({
+      ...TRUCK8_WEEK,
+      unitNumber: "8",
+      truckName: "Brison Hunter",
+      ownerName: "Brison Hunter",
+      ledger,
+      weekly,
+      fuelLog: fuel,
+      fleet: TRUCK8_FLEET,
+      sheetNote: null,
+      manifestRefs: refs,
+    });
+    expect(report.grossCents).toBe(790_000);
+    expect(report.loadCount).toBe(5);
+    expect(report.loads.find((load) => load.loadId === "TBH--1188")?.manifestRole).toBe("primary");
+    expect(report.loads.find((load) => load.loadId === "TBH--1192")?.manifestRole).toBe("partial");
+    expect(report.loads.find((load) => load.loadId === "TBH--1195")?.manifestRole).toBe("partial");
+    expect(report.loadedMilesHundredths).toBe(207_500);
+    expect(report.deadheadMilesHundredths).toBe(24_100);
+    expect(report.dispatchMilesHundredths).toBe(231_600);
+    expect(report.ratePerMileCents).toBe(341);
+    expect(report.revenuePerLoadCents).toBe(158_000);
+    expect(report.fuelPerMileCents).toBe(50);
+    expect(report.fuelEconomy).toBe("7.86");
+    expect(report.expenseCents).toBe(444_053);
+    expect(report.netCents).toBe(345_947);
+    expect(report.rightExpenses.find((line) => line.label === "Maintenance Escrow Weekly")?.cents).toBe(0);
+    expect(report.escrowCardLabel).toBe("Escrow Balance");
+    expect(report.escrowBalanceCents).toBe(20_000);
+    expect(report.rightExpenses.map((line) => line.label)).not.toContain("Escrow Balance (this week)");
+    const bytes = await renderAssetReportPdf(report);
+    const text = pdfText(bytes);
+    expect(text).toContain("Maintenance Escrow Weekly");
+    expect(text).toContain("partial");
+    expect(text).toContain("2,075.00");
+    expect(text).toContain("$3.41");
+    expect(text).toContain("$0.50");
+    expect(text).not.toContain("3,383.00");
   });
 
   it("reads trailer, VIN, and dispatcher from a fleet label block and from performance columns", () => {

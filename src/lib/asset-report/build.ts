@@ -1,6 +1,6 @@
 import { roundHalfUpDivide } from "@/lib/fee-engine/money";
 import { canonicalLoadId, loadMatchKey } from "@/lib/loads/load-id";
-import { countedLoadedHundredths, layoutManifestGroups, type ManifestRole } from "@/lib/loads/manifest-miles";
+import { countedLoadedHundredths, layoutManifestGroups, manifestGroupKey, type ManifestRole } from "@/lib/loads/manifest-miles";
 import {
   centsPerLoad,
   centsPerLoadedMile,
@@ -527,8 +527,9 @@ export function buildAssetReport(input: {
     weekLoads
       .filter((row) => row.rateCents != null)
       .map((row) => {
-        const fromSheet = row.manifestId?.trim() || null;
-        const fromVektor = manifestForLoad(input.manifestRefs, row.loadId);
+        const fromTrip = manifestGroupKey(row.tripGroup);
+        const fromSheet = manifestGroupKey(row.manifestId);
+        const fromVektor = manifestGroupKey(manifestForLoad(input.manifestRefs, row.loadId));
         const loadedHundredths = row.loadedMilesHundredths ?? 0;
         return {
           loadId: row.loadId,
@@ -539,12 +540,14 @@ export function buildAssetReport(input: {
           loadedHundredths,
           deadheadHundredths: row.deadheadMilesHundredths ?? 0,
           rateCents: row.rateCents ?? 0,
-          manifestRef: fromSheet || fromVektor,
+          manifestRef: fromTrip || fromSheet || fromVektor,
+          sheetPrimary: row.sheetPrimary,
           rankHundredths: loadedHundredths,
         };
       }),
   ).map((row) => {
-    const { rankHundredths, ...load } = row;
+    const { rankHundredths, sheetPrimary, ...load } = row;
+    void sheetPrimary;
     void rankHundredths;
     return load;
   });
@@ -606,7 +609,7 @@ export function buildAssetReport(input: {
     { label: "Insurance", cents: lines.insurance },
   ];
   const rightExpenses: AssetExpenseLine[] = [
-    { label: "Escrow Balance (this week)", cents: lines.escrow },
+    { label: "Maintenance Escrow Weekly", cents: lines.escrow },
     { label: "ELD Fee", cents: lines.eld },
     { label: "Yard Parking", cents: lines.yard },
     { label: "GPS Tracker", cents: lines.gps },

@@ -31,6 +31,9 @@ const UNIT = [
   "truck reference id",
 ];
 const MANIFEST = ["manifest id", "manifestid", "manifest_id"];
+const TRIP = ["trip group", "trip group id", "trip", "trip #", "trip id"];
+const PRIMARY = ["primary", "primary load"];
+const TRUCK_MILES = ["truck miles"];
 const STATUS = ["status"];
 
 export type LedgerLoadRow = {
@@ -46,6 +49,12 @@ export type LedgerLoadRow = {
   driver: string | null;
   unitNumber: string | null;
   manifestId: string | null;
+  /** Sheet trip group, such as M-1195. Null when that column is blank or missing. */
+  tripGroup: string | null;
+  /** True when Primary is Yes. False when that cell is blank. Null when the column is missing. */
+  sheetPrimary: boolean | null;
+  /** Column AL. Zero on a non-primary row. Not added into loaded miles. */
+  truckMilesHundredths: number | null;
   status: string | null;
   /** order: the delivery column. fallback: Destination Datetime. */
   deliverySource: "column" | "fallback" | null;
@@ -65,6 +74,15 @@ export type ParsedLoadLedger = {
 function cell(row: string[], index: number): string {
   if (index < 0) return "";
   return row[index] ?? "";
+}
+
+function primaryFlag(raw: string, columnPresent: boolean): boolean | null {
+  if (!columnPresent) return null;
+  const text = cleanCell(raw).toLowerCase();
+  if (!text || text === "-" || text === "n/a") return false;
+  if (text === "yes" || text === "y" || text === "true" || text === "1" || text === "primary") return true;
+  if (text === "no" || text === "n" || text === "false" || text === "0") return false;
+  return false;
 }
 
 function textOrNull(raw: string): string | null {
@@ -123,6 +141,9 @@ export function parseLoadLedger(
   const brokerCol = columnIndex(header, BROKER);
   const unitCol = columnIndex(header, UNIT);
   const manifestCol = columnIndex(header, MANIFEST);
+  const tripCol = columnIndex(header, TRIP);
+  const primaryCol = columnIndex(header, PRIMARY);
+  const truckMilesCol = columnIndex(header, TRUCK_MILES);
   const statusCol = columnIndex(header, STATUS);
   const rows: LedgerLoadRow[] = [];
   for (const row of grid.slice(headerIndex + 1)) {
@@ -145,6 +166,9 @@ export function parseLoadLedger(
       driver: textOrNull(cell(row, driverCol)),
       unitNumber: textOrNull(cell(row, unitCol)),
       manifestId: textOrNull(cell(row, manifestCol)),
+      tripGroup: textOrNull(cell(row, tripCol)),
+      sheetPrimary: primaryFlag(cell(row, primaryCol), primaryCol >= 0),
+      truckMilesHundredths: truckMilesCol >= 0 ? milesToHundredths(cell(row, truckMilesCol)) : null,
       status: textOrNull(cell(row, statusCol)),
       deliverySource: primaryDay ? "column" : fallbackDay ? "fallback" : null,
     });

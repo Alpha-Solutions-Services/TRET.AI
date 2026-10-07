@@ -2,8 +2,14 @@ export type ManifestRole = "solo" | "primary" | "partial";
 
 export type ManifestGroupInput = {
   manifestRef: string | null;
-  /** Loaded miles used to choose the full load. Integer hundredths. */
+  /** Loaded miles used to choose the full load when the sheet has no Primary flag. Integer hundredths. */
   rankHundredths: number;
+  /**
+   * Sheet Primary column. True is the full load.
+   * False is a non-primary row on that trip.
+   * Null means the sheet did not say, so the most loaded miles wins.
+   */
+  sheetPrimary?: boolean | null;
 };
 
 export type ManifestGroupFields = {
@@ -13,16 +19,37 @@ export type ManifestGroupFields = {
   manifestHeader: boolean;
 };
 
-function cleanRef(ref: string | null | undefined): string | null {
+/** Trip M-1195 and Vektor manifest 1195 are the same group. */
+export function manifestGroupKey(ref: string | null | undefined): string | null {
   const text = (ref ?? "").trim();
-  return text || null;
+  if (!text) return null;
+  const trip = /^m[-\s]?(\d+)$/i.exec(text);
+  if (trip?.[1]) return trip[1];
+  return text;
+}
+
+function cleanRef(ref: string | null | undefined): string | null {
+  return manifestGroupKey(ref);
+}
+
+function choosePrimary<T extends ManifestGroupInput>(rows: readonly T[], indexes: readonly number[]): number {
+  const flagged = indexes.filter((index) => rows[index]?.sheetPrimary === true);
+  if (flagged.length > 0) return flagged[0]!;
+  let best = indexes[0]!;
+  for (const index of indexes) {
+    const row = rows[index]!;
+    const winner = rows[best]!;
+    if (row.rankHundredths > winner.rankHundredths) best = index;
+  }
+  return best;
 }
 
 /**
- * Loads that share a manifest stay together.
- * The load with the most loaded miles is the full load. Its miles count once.
- * The others are partials and contribute no loaded miles.
- * A tie uses the earlier row.
+ * Loads that share a trip or a Vektor manifest stay together.
+ * A sheet Primary flag chooses the full load. Its loaded miles count once.
+ * When no row is marked primary, the load with the most loaded miles is the full load.
+ * The others are partials and contribute no loaded miles. Revenue is unchanged.
+ * A tie, or two Primary flags, uses the earlier row.
  */
 export function layoutManifestGroups<T extends ManifestGroupInput>(rows: T[]): Array<T & ManifestGroupFields> {
   const groups = new Map<string, number[]>();
@@ -37,13 +64,7 @@ export function layoutManifestGroups<T extends ManifestGroupInput>(rows: T[]): A
   const primaryIndex = new Map<string, number>();
   for (const [ref, indexes] of groups) {
     if (indexes.length < 2) continue;
-    let best = indexes[0]!;
-    for (const index of indexes) {
-      const row = rows[index]!;
-      const winner = rows[best]!;
-      if (row.rankHundredths > winner.rankHundredths) best = index;
-    }
-    primaryIndex.set(ref, best);
+    primaryIndex.set(ref, choosePrimary(rows, indexes));
   }
 
   const emitted = new Set<number>();

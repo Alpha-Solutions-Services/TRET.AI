@@ -29,7 +29,7 @@ export const WEEKLY_EXPENSE_LINES = [
   { label: "Factoring fee", names: ["factoring fee"] },
   { label: "Fuel", names: ["fuel"] },
   { label: "Insurance", names: ["insurance"] },
-  { label: "Escrow Balance (this week)", names: ["maintenance escrow weekly", "weekly escrow", "escrow balance"] },
+  { label: "Maintenance Escrow Weekly", names: ["maintenance escrow weekly", "weekly escrow", "escrow balance"] },
   { label: "ELD fee", names: ["eld fee"] },
   { label: "Yard fee", names: ["yard fee", "yard parking"] },
   { label: "GPS tracker", names: ["gps tracker"] },
