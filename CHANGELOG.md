@@ -5,6 +5,7 @@
 - The Weekly Asset Management Report uses the Legacy template's landscape pages (960 by 540). Page 1 is the executive cover, with the navy header, the reporting-period box, and the truck artwork. The load ledger, owner earnings, and executive summary follow on the next pages in the template's order. MC Lease stays off. The PDF does not print "Not stored". A missing dispatcher still prints Legacy Dispatch Team. The operations note prints only when there is a note.
 - Weekly Escrow is now Escrow Balance. TRET does not store a running escrow balance, so the report card and the Ins and Outs column say Escrow Balance (this week) and show this week's escrow. A sheet column named Escrow Balance, when present, fills the card with that running balance.
 - Loads that share a Vektor manifest are grouped on the weekly report, on Loads, and on Sheet vs Vektor. Loaded miles count once, from the load with the most loaded miles. The other loads show as partial and do not add to loaded miles or to rate per mile. Revenue still adds every load. When the sheet has no manifest column, the Vektor manifest is used.
+- The report header box shows only this week's dates. The load table prints TOTALS under the last load, with no blank row. Owner expenses and the executive expense list leave out the empty MC Lease row.
 
 ## v0.0.0.26 — 2026-10-07
 

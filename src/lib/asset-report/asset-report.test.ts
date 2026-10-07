@@ -127,6 +127,7 @@ describe("weekly asset report", () => {
     expect(report.notes.join(" ")).not.toContain("MC Lease");
     const bytes = await renderAssetReportPdf(report);
     const text = pdfText(bytes);
+    expect(text).toContain("TOTALS");
     expect(text).toContain("TBH--1081");
     expect(text).toContain("Escrow Balance (this week)");
     expect(text).not.toContain("Weekly Escrow");
@@ -212,6 +213,7 @@ describe("weekly asset report", () => {
     expect(text).not.toContain("because the truck record");
     expect(text).not.toContain("Notes");
     expect(text).not.toContain("$4,051.77");
+    expect(text).toContain("TOTALS");
     expect(text).toContain("Manifest 1195");
     expect(text).toContain("partial");
     expect(text).toContain("2,075.00");

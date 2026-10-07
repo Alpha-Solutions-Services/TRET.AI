@@ -16,6 +16,8 @@ const ZEBRA_A: RGB = rgb(224 / 255, 235 / 255, 245 / 255);
 const ZEBRA_B: RGB = rgb(209 / 255, 222 / 255, 235 / 255);
 const ROW: RGB = rgb(221 / 255, 232 / 255, 243 / 255);
 const CARD: RGB = rgb(240 / 255, 244 / 255, 248 / 255);
+const BOX_FILL: RGB = rgb(238 / 255, 242 / 255, 247 / 255);
+const PERIOD_BOX: Box = { x: 748, y: 12, w: 188, h: 32 };
 
 type Box = { x: number; y: number; w: number; h: number };
 type Align = "left" | "right" | "center";
@@ -81,6 +83,10 @@ function fill(
   textIn(page, box, text, font, size, color, align);
 }
 
+function drawPeriod(page: PDFPage, bold: PDFFont, period: string): void {
+  fill(page, PERIOD_BOX, period, bold, 10, INK, "center", BOX_FILL);
+}
+
 function mpg(value: string): string {
   if (!value || value === "n/a") return "n/a";
   return value.endsWith("MPG") ? value : `${value} MPG`;
@@ -143,13 +149,13 @@ function drawCover(
   page.drawImage(header, { x: 0, y: PAGE_H - headerH, width: PAGE_W, height: headerH });
   page.drawImage(art, { x: 0, y: footerH, width: PAGE_W, height: PAGE_H - headerH - footerH });
   page.drawImage(footer, { x: 0, y: 0, width: PAGE_W, height: footerH });
-  fill(page, { x: 735, y: 5, w: 214, h: 45 }, report.periodLabel, bold, 11, INK, "center");
+  drawPeriod(page, bold, report.periodLabel);
 }
 
 function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: PDFFont, report: AssetReport): void {
   const page = doc.addPage([PAGE_W, PAGE_H]);
   page.drawImage(background, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
-  fill(page, { x: 735, y: 5, w: 214, h: 45 }, report.periodLabel, bold, 11, INK, "center");
+  drawPeriod(page, bold, report.periodLabel);
   // The page image is a filled example. Cover that text, then draw this truck.
   paint(page, { x: 60, y: 98, w: 600, h: 84 }, WHITE);
   textIn(page, { x: 70, y: 102, w: 110, h: 16 }, "Reporting Period:", bold, 7.4, INK, "left");
@@ -180,25 +186,26 @@ function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: 
     { x: 537.7, w: 58.6, align: "right", size: 6.2 },
     { x: 597.7, w: 62.6, align: "right", size: 6.2 },
   ];
-  const rowY = [220, 248, 276, 304, 332];
-  for (let index = 0; index < rowY.length; index += 1) {
-    const y = rowY[index] ?? 0;
+  const rowH = 27.6;
+  const rowTop = 220;
+  const shown = report.loads.slice(0, 5);
+  for (let index = 0; index < shown.length; index += 1) {
+    const y = rowTop + index * rowH;
     const backgroundColor = index % 2 === 0 ? ZEBRA_A : ZEBRA_B;
-    const load = report.loads[index];
-    const loaded = !load ? "" : load.manifestRole === "partial" ? "partial" : milesLabel(load.loadedHundredths);
-    const manifest = load?.manifestRef ? `Manifest ${load.manifestRef}` : "";
-    const values = load
-      ? [
-          load.loadId,
-          load.date,
-          load.broker,
-          load.origin,
-          load.destination,
-          loaded,
-          milesLabel(load.deadheadHundredths),
-          money(load.rateCents),
-        ]
-      : ["", "", "", "", "", "", "", ""];
+    const load = shown[index];
+    if (!load) continue;
+    const loaded = load.manifestRole === "partial" ? "partial" : milesLabel(load.loadedHundredths);
+    const manifest = load.manifestRef ? `Manifest ${load.manifestRef}` : "";
+    const values = [
+      load.loadId,
+      load.date,
+      load.broker,
+      load.origin,
+      load.destination,
+      loaded,
+      milesLabel(load.deadheadHundredths),
+      money(load.rateCents),
+    ];
     columns.forEach((column, columnIndex) => {
       const box = { x: column.x, y, w: column.w, h: 27.6 };
       paint(page, box, backgroundColor);
@@ -212,15 +219,20 @@ function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: 
     });
   }
 
-  const totalY = 360;
+  const totalY = rowTop + shown.length * rowH;
+  paint(page, { x: 55.7, y: totalY, w: 604.6, h: rowH }, ZEBRA_B);
+  textIn(page, { x: 55.7, y: totalY, w: 73.6, h: rowH }, "TOTALS", bold, 6.4, BLACK, "left");
   const totals = [
     { x: 477.7, w: 58.6, text: milesLabel(report.loadedMilesHundredths) },
     { x: 537.7, w: 58.6, text: milesLabel(report.deadheadMilesHundredths) },
     { x: 597.7, w: 62.6, text: money(report.grossCents) },
   ];
   for (const total of totals) {
-    fill(page, { x: total.x, y: totalY, w: total.w, h: 27.6 }, total.text, bold, 6.4, BLACK, "right", ZEBRA_B);
+    textIn(page, { x: total.x, y: totalY, w: total.w, h: rowH }, total.text, bold, 6.4, BLACK, "right");
   }
+  const tableEnd = 395;
+  const afterTotals = totalY + rowH;
+  if (afterTotals < tableEnd) paint(page, { x: 58, y: afterTotals, w: 602, h: tableEnd - afterTotals }, WHITE);
 
   const weeklyY = [222, 246, 270, 294, 318, 342, 366, 390, 414];
   const weeklyLabels = [
@@ -285,35 +297,15 @@ function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: 
 function drawEarnings(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: PDFFont, report: AssetReport): void {
   const page = doc.addPage([PAGE_W, PAGE_H]);
   page.drawImage(background, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
-  fill(page, { x: 735, y: 5, w: 214, h: 45 }, report.periodLabel, bold, 11, INK, "center");
+  drawPeriod(page, bold, report.periodLabel);
   paint(page, { x: 28, y: 112, w: 910, h: 390 }, WHITE);
   const who = `${report.assetPartner} | Truck ${report.unitNumber} | ${report.periodLabel}`;
   fill(page, { x: 35, y: 116, w: 520, h: 18 }, who, font, 8, INK, "left");
 
-  const leftY = [160, 187, 214, 241, 268, 295, 322];
-  const leftLabels = [
-    report.leftExpenses[0]?.label ?? "",
-    report.leftExpenses[1]?.label ?? "",
-    "",
-    report.leftExpenses[2]?.label ?? "",
-    report.leftExpenses[3]?.label ?? "",
-    report.leftExpenses[4]?.label ?? "",
-    report.leftExpenses[5]?.label ?? "",
-  ];
-  const leftAmounts = [
-    report.leftExpenses[0]?.cents,
-    report.leftExpenses[1]?.cents,
-    null,
-    report.leftExpenses[2]?.cents,
-    report.leftExpenses[3]?.cents,
-    report.leftExpenses[4]?.cents,
-    report.leftExpenses[5]?.cents,
-  ];
-  leftY.forEach((y, index) => {
-    paint(page, { x: 36, y, w: 330, h: 18 }, WHITE);
-    textIn(page, { x: 40, y, w: 320, h: 18 }, leftLabels[index] ?? "", font, 7.4, INK, "left");
-    const cents = leftAmounts[index];
-    fill(page, { x: 370, y, w: 88, h: 18 }, cents == null ? "" : money(cents), bold, 7.5, INK, "right", WHITE);
+  report.leftExpenses.forEach((line, index) => {
+    const y = 160 + index * 27;
+    textIn(page, { x: 40, y, w: 320, h: 18 }, line.label, font, 7.4, INK, "left");
+    textIn(page, { x: 370, y, w: 88, h: 18 }, money(line.cents), bold, 7.5, INK, "right");
   });
 
   const rightY = [160, 187, 214, 241, 268, 295, 322];
@@ -347,7 +339,7 @@ function drawEarnings(doc: PDFDocument, background: PDFImage, font: PDFFont, bol
 function drawSummary(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: PDFFont, report: AssetReport): void {
   const page = doc.addPage([PAGE_W, PAGE_H]);
   page.drawImage(background, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
-  fill(page, { x: 735, y: 5, w: 214, h: 45 }, report.periodLabel, bold, 11, INK, "center");
+  drawPeriod(page, bold, report.periodLabel);
   paint(page, { x: 20, y: 118, w: 920, h: 385 }, WHITE);
 
   paint(page, { x: 25, y: 124, w: 910, h: 58 }, CARD);
@@ -426,55 +418,18 @@ function drawSummary(doc: PDFDocument, background: PDFImage, font: PDFFont, bold
     );
   });
 
-  const expenseY = [220, 236, 252, 268, 284, 300, 316, 332, 348, 364, 380, 396, 412, 428, 444];
-  const expenseLabels = [
-    report.leftExpenses[0]?.label ?? "",
-    report.leftExpenses[1]?.label ?? "",
-    "",
-    report.leftExpenses[2]?.label ?? "",
-    report.leftExpenses[3]?.label ?? "",
-    report.leftExpenses[4]?.label ?? "",
-    report.leftExpenses[5]?.label ?? "",
-    report.rightExpenses[0]?.label ?? "",
-    report.rightExpenses[1]?.label ?? "",
-    report.rightExpenses[2]?.label ?? "",
-    report.rightExpenses[3]?.label ?? "",
-    report.rightExpenses[4]?.label ?? "",
-    report.rightExpenses[5]?.label ?? "",
-    report.rightExpenses[6]?.label ?? "",
-    "Total Truck Expenses",
+  const expenseLines = [
+    ...report.leftExpenses,
+    ...report.rightExpenses,
+    { label: "Total Truck Expenses", cents: report.expenseCents },
   ];
-  const expenseAmounts: Array<number | null> = [
-    report.leftExpenses[0]?.cents ?? null,
-    report.leftExpenses[1]?.cents ?? null,
-    null,
-    report.leftExpenses[2]?.cents ?? null,
-    report.leftExpenses[3]?.cents ?? null,
-    report.leftExpenses[4]?.cents ?? null,
-    report.leftExpenses[5]?.cents ?? null,
-    report.rightExpenses[0]?.cents ?? null,
-    report.rightExpenses[1]?.cents ?? null,
-    report.rightExpenses[2]?.cents ?? null,
-    report.rightExpenses[3]?.cents ?? null,
-    report.rightExpenses[4]?.cents ?? null,
-    report.rightExpenses[5]?.cents ?? null,
-    report.rightExpenses[6]?.cents ?? null,
-    report.expenseCents,
-  ];
-  expenseY.forEach((y, index) => {
-    paint(page, { x: 404, y, w: 118, h: 13.2 }, ROW);
-    textIn(page, { x: 406, y, w: 114, h: 13.2 }, expenseLabels[index] ?? "", index === expenseY.length - 1 ? bold : font, 4.6, BLACK, "left");
-    const cents = expenseAmounts[index];
-    fill(
-      page,
-      { x: 525, y, w: 79.5, h: 13.2 },
-      cents == null ? "" : money(cents),
-      index === expenseY.length - 1 ? bold : font,
-      4.6,
-      BLACK,
-      "right",
-      ROW,
-    );
+  const expenseY = expenseLines.map((_, index) => 220 + index * 16);
+  expenseLines.forEach((line, index) => {
+    const y = expenseY[index] ?? 0;
+    const strong = index === expenseLines.length - 1;
+    paint(page, { x: 404, y, w: 118, h: 15 }, ROW);
+    textIn(page, { x: 406, y, w: 114, h: 15 }, line.label, strong ? bold : font, 5, BLACK, "left");
+    fill(page, { x: 525, y, w: 79.5, h: 15 }, money(line.cents), strong ? bold : font, 5, BLACK, "right", ROW);
   });
 
   const fuelLabels = ["Fuel Purchased", "Fuel Cost", "Avg Unit Price", "Fuel Economy", "Fuel Cost / Mile", "Dispatch Miles"];
