@@ -183,6 +183,47 @@ export function outsFromMgmtExpenses(
   return { outsCents, categories };
 }
 
+export function fleetInsOutsTotals(rows: TruckWeekInsOuts[]): {
+  loadCount: number;
+  insCents: number;
+  outsCents: number;
+  netCents: number;
+  categories: ExpenseCategoryTotal[];
+  readableCount: number;
+} {
+  const totals = new Map<string, number>();
+  let insCents = 0;
+  let outsCents = 0;
+  let loadCount = 0;
+  let readableCount = 0;
+  for (const row of rows) {
+    if (!row.readable) continue;
+    readableCount += 1;
+    insCents += row.insCents;
+    outsCents += row.outsCents;
+    loadCount += row.loadCount;
+    for (const category of row.categories) {
+      totals.set(category.category, (totals.get(category.category) ?? 0) + category.cents);
+    }
+  }
+  const categories: ExpenseCategoryTotal[] = MGMT_EXPENSE_CATEGORIES.map((category) => ({
+    category,
+    cents: totals.get(category) ?? 0,
+  }));
+  for (const [category, cents] of totals) {
+    if (categories.some((row) => row.category === category)) continue;
+    categories.push({ category, cents });
+  }
+  return {
+    loadCount,
+    insCents,
+    outsCents,
+    netCents: insCents - outsCents,
+    categories,
+    readableCount,
+  };
+}
+
 export function buildTruckWeekInsOuts(input: {
   unitNumber: string;
   truckName: string;

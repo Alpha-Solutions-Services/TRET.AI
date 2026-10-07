@@ -1,0 +1,165 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { weekBoundsForDate } from "@/lib/fee-engine";
+import { centsToDollarString } from "@/lib/money/cents";
+import {
+  MGMT_EXPENSE_CATEGORIES,
+  fleetInsOutsTotals,
+  type TruckWeekInsOuts,
+} from "@/lib/sheets/ins-outs";
+
+function money(cents: number): string {
+  if (cents < 0) return `-$${centsToDollarString(-cents)}`;
+  return `$${centsToDollarString(cents)}`;
+}
+
+function shiftWeek(weekStart: string, delta: number): string {
+  const date = new Date(`${weekStart}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + delta * 7);
+  return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
+}
+
+function categoryCents(row: TruckWeekInsOuts, category: string): number {
+  return row.categories.find((item) => item.category === category)?.cents ?? 0;
+}
+
+export function InsOutsClient({
+  weekStart,
+  weekEnd,
+  rows,
+  error,
+}: {
+  weekStart: string;
+  weekEnd: string;
+  rows: TruckWeekInsOuts[];
+  error: string | null;
+}) {
+  const router = useRouter();
+  const fleet = fleetInsOutsTotals(rows);
+  const columnCount = 6 + MGMT_EXPENSE_CATEGORIES.length;
+
+  function openWeek(next: string) {
+    router.push(`/ins-outs?week=${next}`);
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Legacy Inc income and outgoing</h1>
+        <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
+          Ins and outs for each active truck in the selected Monday to Sunday week. Ins are load earnings
+          from that truck&apos;s Google Sheet load ledger (the Rate column, by delivery date). Outs are Mgmt
+          Expenses dated in the week: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR,
+          Drug Test, and Spare Expense 1 through 5. Fleet totals include readable sheets only.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <button
+          type="button"
+          onClick={() => openWeek(shiftWeek(weekStart, -1))}
+          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+        >
+          Previous week
+        </button>
+        <label className="text-sm">
+          <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
+          <input
+            type="date"
+            value={weekStart}
+            onChange={(event) => {
+              if (!event.target.value) return;
+              try {
+                openWeek(weekBoundsForDate(event.target.value).start);
+              } catch {
+                return;
+              }
+            }}
+            className="h-10 rounded-md border border-[var(--color-border)] px-3"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() => openWeek(shiftWeek(weekStart, 1))}
+          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+        >
+          Next week
+        </button>
+        <p className="text-sm text-[var(--color-fg-muted)]">
+          Showing {weekStart} through {weekEnd}
+        </p>
+      </div>
+
+      <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+        <table className="min-w-full text-left text-sm">
+          <caption className="px-3 py-3 text-left font-medium">Ins and Outs</caption>
+          <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
+            <tr>
+              <th className="px-3 py-3 font-medium">Unit</th>
+              <th className="px-3 py-3 font-medium">Loads</th>
+              <th className="px-3 py-3 font-medium">Ins</th>
+              {MGMT_EXPENSE_CATEGORIES.map((category) => (
+                <th key={category} className="px-3 py-3 font-medium whitespace-nowrap">
+                  {category}
+                </th>
+              ))}
+              <th className="px-3 py-3 font-medium">Outs</th>
+              <th className="px-3 py-3 font-medium">Net</th>
+              <th className="px-3 py-3 font-medium">Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {error ? (
+              <tr>
+                <td className="px-3 py-3 text-red-700" colSpan={columnCount} role="alert">
+                  {error}
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td className="px-3 py-3 text-[var(--color-fg-muted)]" colSpan={columnCount}>
+                  No active trucks.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.unitNumber} className="border-b border-[var(--color-border)]">
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {row.unitNumber}
+                    <span className="block text-xs text-[var(--color-fg-muted)]">{row.truckName}</span>
+                  </td>
+                  <td className="px-3 py-2">{row.readable ? row.loadCount : "Unread"}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.insCents) : "Unread"}</td>
+                  {MGMT_EXPENSE_CATEGORIES.map((category) => (
+                    <td key={category} className="px-3 py-2 whitespace-nowrap">
+                      {row.readable ? money(categoryCents(row, category)) : ""}
+                    </td>
+                  ))}
+                  <td className="px-3 py-2">{row.readable ? money(row.outsCents) : "Unread"}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.netCents) : "Unread"}</td>
+                  <td className="max-w-xs px-3 py-2 text-[var(--color-fg-muted)]">{row.note ?? ""}</td>
+                </tr>
+              ))
+            )}
+            {!error && fleet.readableCount > 0 ? (
+              <tr className="bg-[var(--color-muted)] font-medium">
+                <td className="px-3 py-2">Fleet</td>
+                <td className="px-3 py-2">{fleet.loadCount}</td>
+                <td className="px-3 py-2">{money(fleet.insCents)}</td>
+                {MGMT_EXPENSE_CATEGORIES.map((category) => (
+                  <td key={category} className="px-3 py-2 whitespace-nowrap">
+                    {money(fleet.categories.find((item) => item.category === category)?.cents ?? 0)}
+                  </td>
+                ))}
+                <td className="px-3 py-2">{money(fleet.outsCents)}</td>
+                <td className="px-3 py-2">{money(fleet.netCents)}</td>
+                <td className="px-3 py-2 text-[var(--color-fg-muted)]">Readable sheets only</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

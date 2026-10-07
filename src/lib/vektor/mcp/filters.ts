@@ -2,22 +2,27 @@
  * Date filters for core_Manifests_Get.
  *
  * v0.0.0.12 nested first_stop_appointment_start_date under filters because
- * the live error only named rejected top-level keys. That object map is
- * accepted: an empty list, not an argument error.
+ * the live error only named rejected top-level keys. That object map came
+ * back as an empty list, not an argument error.
  *
- * v0.0.0.14 added a fallback that sent filters as an array of
- * { field, from, to }. Live import then failed with MCP -32602 unknown
- * arguments filters[0].field, filters[0].from, and filters[0].to.
- * Accepted top-level arguments are still only aggregationKeys, filters,
- * page, perPage, sortDirection, and sortKey.
+ * v0.0.0.14 sent filters as an array of { field, from, to }. Live import
+ * failed with MCP -32602 unknown arguments filters[0].field, filters[0].from,
+ * and filters[0].to. Accepted top-level arguments are still only
+ * aggregationKeys, filters, page, perPage, sortDirection, and sortKey.
  *
- * Every probe is an object map under filters. A schema that describes
- * filters as an array is read only to pick the date field name.
+ * v0.0.0.15 kept object maps, including {}. Live import then failed every
+ * probe with proto: syntax error (line 1:12): unexpected token {. Column 12
+ * of {"filters": is the `{` that opens a nested object. The proto field does
+ * not accept an object, so the wire value is a JSON string (see args.ts).
+ * These candidates are the logical values. The list call stringifies them.
+ * A schema that describes an array contributes a stringified array as well
+ * as an object map built from the date field name.
  */
 
 export type ManifestFilterCandidate = {
   label: string;
-  filters: Record<string, unknown>;
+  /** Logical filter. The list call JSON-encodes this into the filters string. */
+  filters: unknown;
 };
 
 const DATE_KEY_RANK = [
@@ -88,7 +93,17 @@ function objectMap(dateKey: string, childSchema: unknown, from: string, to: stri
   return { [dateKey]: rangeValue(childSchema, from, to) };
 }
 
-/** Object-map filters named by the tool inputSchema. Never an array. */
+/** JSON Schema type of the filters argument, when tools/list provided one. */
+export function filtersSchemaType(schema: unknown): string | null {
+  const record = asRecord(propertiesOf(schema)?.filters);
+  const type = record?.type;
+  if (typeof type === "string" && type.trim()) return type;
+  if (!Array.isArray(type)) return null;
+  const names = type.filter((value): value is string => typeof value === "string" && value.trim() !== "");
+  return names.length > 0 ? names.join("|") : null;
+}
+
+/** Object-map filters named by the tool inputSchema. */
 export function schemaManifestFilters(
   schema: unknown,
   from: string,
@@ -130,6 +145,39 @@ export function schemaManifestFilters(
   return probes;
 }
 
+/**
+ * Array body described by an array schema. Sent only as a JSON string, never
+ * as a raw array (that becomes filters[0].field).
+ */
+export function schemaArrayFilters(
+  schema: unknown,
+  from: string,
+  to: string,
+): ManifestFilterCandidate[] {
+  const filtersSchema = propertiesOf(schema)?.filters;
+  const probes: ManifestFilterCandidate[] = [];
+  const seen = new Set<string>();
+  for (const branch of schemaBranches(filtersSchema)) {
+    const branchRecord = asRecord(branch);
+    const items = asRecord(branchRecord?.items);
+    const itemProps = propertiesOf(items);
+    if (branchRecord?.type !== "array" || !itemProps) continue;
+    const names = dateKeys([
+      ...enumStrings(itemProps.field),
+      ...enumStrings(itemProps.key),
+      ...enumStrings(itemProps.name),
+    ]);
+    for (const dateKey of names) {
+      const filters = [{ field: dateKey, from, to }];
+      const key = JSON.stringify(filters);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      probes.push({ label: `schema array ${dateKey}`, filters });
+    }
+  }
+  return probes;
+}
+
 export function defaultManifestFilters(queryFrom: string, queryTo: string): ManifestFilterCandidate {
   return {
     label: "first_stop_appointment_start_date",
@@ -152,6 +200,7 @@ export function manifestFilterProbes(input: {
 }): ManifestFilterCandidate[] {
   const probes: ManifestFilterCandidate[] = [
     ...schemaManifestFilters(input.schema, input.queryFrom, input.queryTo),
+    ...schemaArrayFilters(input.schema, input.queryFrom, input.queryTo),
     {
       label: "firstStopAppointmentStartDate",
       filters: {
@@ -168,13 +217,23 @@ export function manifestFilterProbes(input: {
       label: "deliveryDate",
       filters: { deliveryDate: { from: input.queryFrom, to: input.queryTo } },
     },
+    {
+      label: "firstStopAppointmentStartDate array",
+      filters: [
+        {
+          field: "firstStopAppointmentStartDate",
+          from: input.queryFrom,
+          to: input.queryTo,
+        },
+      ],
+    },
     { label: "no date filter", filters: {} },
+    { label: "empty string", filters: "" },
   ];
 
   const seen = new Set<string>([stable(input.alreadyTried)]);
   const unique: ManifestFilterCandidate[] = [];
   for (const probe of probes) {
-    if (Array.isArray(probe.filters)) continue;
     const key = stable(probe.filters);
     if (seen.has(key)) continue;
     seen.add(key);

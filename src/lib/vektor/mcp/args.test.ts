@@ -8,6 +8,8 @@ import {
   buildOrderDetailsGetArgs,
   buildTransactionDateArgs,
   buildTrucksGetByIdsArgs,
+  encodeFiltersArgument,
+  filtersWireColumn12,
 } from "./args";
 import { fetchManifestsFromTools } from "./fetch-manifests";
 import { probeVektorConnection } from "./live";
@@ -24,6 +26,11 @@ function expectAcceptedListArgs(args: Record<string, unknown>): void {
   expect(args).not.toHaveProperty("page_token");
   expect(args.page).toEqual(expect.any(Number));
   expect(args.perPage).toBe(VEKTOR_LIST_PER_PAGE);
+  expect(typeof args.filters).toBe("string");
+  expect(Array.isArray(args.filters)).toBe(false);
+  expect(JSON.stringify(args).includes('"filters":{')).toBe(false);
+  expect(JSON.stringify(args).includes('"filters":[')).toBe(false);
+  expect(filtersWireColumn12(args)).toBe('"');
 }
 
 describe("core_Manifests_Get arguments", () => {
@@ -35,24 +42,27 @@ describe("core_Manifests_Get arguments", () => {
     });
     expectAcceptedListArgs(args);
     expect(args).toEqual({
-      filters: {
+      filters: JSON.stringify({
         first_stop_appointment_start_date: {
           from: "2026-09-07",
           to: "2026-10-04",
         },
-      },
+      }),
       page: 2,
       perPage: 100,
     });
+    expect(filtersWireColumn12(args)).toBe('"');
   });
 
-  it("refuses an array of field objects before the call is sent", () => {
-    expect(() =>
-      buildManifestListArgs(
-        [{ field: "firstStopAppointmentStartDate", operator: "between", from: "2026-09-21", to: "2026-10-14" }],
-        1,
-      ),
-    ).toThrow(/object map/);
+  it("encodes an array of field objects as a JSON string", () => {
+    const logical = [
+      { field: "firstStopAppointmentStartDate", from: "2026-09-21", to: "2026-10-14" },
+    ];
+    const args = buildManifestListArgs(logical, 1);
+    expectAcceptedListArgs(args);
+    expect(args.filters).toBe(JSON.stringify(logical));
+    expect(encodeFiltersArgument("")).toBe("");
+    expect(encodeFiltersArgument({})).toBe("{}");
   });
 
   it("starts at page 1 when the caller does not pass a page", () => {
@@ -74,12 +84,12 @@ describe("fuel and toll list arguments", () => {
     });
     expectAcceptedListArgs(args);
     expect(args).toEqual({
-      filters: {
+      filters: JSON.stringify({
         transaction_date: {
           from: "2026-09-21",
           to: "2026-09-27",
         },
-      },
+      }),
       page: 3,
       perPage: 100,
     });
