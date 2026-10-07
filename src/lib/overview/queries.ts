@@ -1,12 +1,15 @@
 import { weekBoundsForDate } from "@/lib/fee-engine";
+import { formatFooterLabel } from "@/lib/app-version";
 import { buildManagementPnl, type ManagementPnl } from "@/lib/overview/pnl";
 import { buildWeekSnapshot, type WeekSnapshot } from "@/lib/overview/snapshot";
 import { listOperatingExpenses } from "@/lib/operating-expenses/queries";
 import { buildInbox, countOpenIssues } from "@/lib/issues/inbox";
 import { listImportIssues } from "@/lib/issues/queries";
+import { sheetsAccountHealth } from "@/lib/sheets/private-key";
 import { loadInsOutsWeek } from "@/lib/sheets/load-week";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { loadStatements, resolveWeekStart } from "@/lib/statements/queries";
+import { readAppVersion } from "@/lib/version";
 
 export type OverviewPageData = {
   weekStart: string;
@@ -24,6 +27,9 @@ export type OverviewPageData = {
   sheetEnvMissing: string[];
   mismatchCount: number | null;
   mismatchError: string | null;
+  versionLabel: string;
+  sheetHealth: string;
+  operatingExpenses: Array<{ expenseDate: string; category: string; amountCents: number }>;
 };
 
 export async function loadOverview(weekRaw: string | undefined): Promise<OverviewPageData> {
@@ -47,6 +53,13 @@ export async function loadOverview(weekRaw: string | undefined): Promise<Overvie
     sheetEnvMissing: ins.sheetEnvMissing,
     mismatchCount: ins.mismatchCount,
     mismatchError: ins.mismatchError,
+    versionLabel: formatFooterLabel(readAppVersion()),
+    sheetHealth: sheetsAccountHealth().summary,
+    operatingExpenses: (expenses.rows ?? []).map((row) => ({
+      expenseDate: row.expense_date,
+      category: row.category,
+      amountCents: row.amount_cents,
+    })),
   };
 
   if (statements.error) {

@@ -18,7 +18,7 @@ export default async function HomePage({
 }) {
   const params = await searchParams;
   return (
-    <SignedInShell title="Overview">
+    <SignedInShell title="Dashboard">
       <Suspense fallback={<OverviewSkeleton />}>
         <OverviewContent week={params.week} />
       </Suspense>

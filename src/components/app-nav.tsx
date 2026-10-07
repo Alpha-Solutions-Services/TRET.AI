@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/", label: "Overview" },
+  { href: "/", label: "Dashboard" },
+  { href: "/management", label: "Management" },
   { href: "/ins-outs", label: "Ins and Outs" },
   { href: "/trucks", label: "Trucks" },
   { href: "/operating-expenses", label: "Legacy expenses" },

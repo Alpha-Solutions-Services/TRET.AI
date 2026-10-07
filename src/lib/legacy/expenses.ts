@@ -40,3 +40,37 @@ export function monthBounds(month: string): { start: string; endExclusive: strin
 export function expenseTotalCents(rows: Array<{ amount_cents: number }>): number {
   return rows.reduce((sum, row) => sum + row.amount_cents, 0);
 }
+
+export type ExpenseMonthPoint = { month: string; cents: number };
+export type ExpenseSlice = { label: string; cents: number };
+
+export function expensesByMonth(
+  rows: Array<{ expenseDate: string; amountCents: number }>,
+): ExpenseMonthPoint[] {
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    const month = row.expenseDate.slice(0, 7);
+    if (!parseMonth(month)) continue;
+    totals.set(month, (totals.get(month) ?? 0) + row.amountCents);
+  }
+  return [...totals.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, cents]) => ({ month, cents }));
+}
+
+export function expensesByCategory(
+  rows: Array<{ expenseDate: string; category: string; amountCents: number }>,
+  month: string,
+): ExpenseSlice[] {
+  const bounds = monthBounds(month);
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    if (row.expenseDate < bounds.start || row.expenseDate >= bounds.endExclusive) continue;
+    const label = canonicalLegacyCategory(row.category) ?? row.category;
+    totals.set(label, (totals.get(label) ?? 0) + row.amountCents);
+  }
+  return [...totals.entries()]
+    .filter(([, cents]) => cents > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, cents]) => ({ label, cents }));
+}

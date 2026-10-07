@@ -63,6 +63,17 @@ describe("sheet Ins and Outs", () => {
     });
     const outs = outsFromMgmtExpenses(expenses, WEEK.weekStart, WEEK.weekEnd);
     expect(outs.outsCents).toBe(33_000);
+    const built = buildTruckWeekInsOuts({
+      unitNumber: "3",
+      truckName: "John Reed",
+      ...WEEK,
+      loadLedger: ledger,
+      mgmtExpenses: expenses,
+      note: null,
+    });
+    expect(built.recentWeeks).toHaveLength(8);
+    expect(built.recentWeeks.at(-1)).toMatchObject({ weekStart: "2026-10-05", insCents: 595_000 });
+    expect(built.recentWeeks.find((week) => week.weekStart === "2026-08-31")?.insCents).toBe(320_000);
     expect(outs.categories).toEqual([
       { category: "Vektor Fee", cents: 3_000 },
       { category: "Job Post", cents: 30_000 },

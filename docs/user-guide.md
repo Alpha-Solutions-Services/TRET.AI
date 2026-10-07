@@ -133,18 +133,26 @@ Importing the same Vektor transaction again updates that row. It does not add a 
 
 A fixed-expense override cannot be saved for a unit and week that is already locked.
 
-## Overview
+## Dashboard
 
-1. Open **Overview**.
-2. Pick the week. The date snaps to the Monday.
-3. The table shows each unit and a fleet row: gross, fees, fuel, tolls, fixed expenses charged to the owner, and net.
-4. Close status says Open or Locked.
-5. **Open issues** shows the count and opens Issues for that week.
-6. Management P&L is under the snapshot. Income is Legacy retained on managed trucks and the dispatch fee. Expenses are fixed costs charged to management and operating expenses dated in that week. Tolson payable is listed and is not in the net.
-7. **Ins and Outs** is one row per active truck. Ins are load earnings from that truck’s Google Sheet load ledger (the Rate column, loads whose delivery date is in the week). Outs add the sheet Mgmt Expenses rows dated in the week. Portal monthly Legacy expenses are not added into those outs.
-8. If a truck cannot be read, the Loads cell shows a short reason (missing link, missing service account, a bad private key, share, or a missing header). Ins, Outs, and Net stay blank for that row. Click the reason, or **Copy**, to copy the real cause. A blank expense amount is not counted. The dashboard read does not write these sheets.
-9. **Open the Ins and Outs page** for the same week with one column per expense. **Sheet mismatches** links to Issues when a sheet Load ID is missing from loads or the rate differs.
-10. The footer is one short line under the page: whether the Google service account is set, and the app version. It does not show secrets and it does not cover the page.
+1. Open **Dashboard**.
+2. The top row shows the version, the sheet account check, open issues, and how many loads the readable sheets have this week.
+3. Charts show Ins and Outs by truck, the last eight weeks from those same sheets, and the sheet expense mix.
+4. The tables below are the statement snapshot, the management profit and loss, and the sheet Ins and Outs.
+
+## Management
+
+1. Open **Management**.
+2. The cards are income, expenses, net, and Tolson payable for the selected week.
+3. Charts show the Legacy fee by truck, portal expenses by month, and this month's category mix.
+4. **Legacy earnings** on this page is where you edit a load fee or a truck week percent.
+5. **Add or edit Legacy expenses** opens the monthly list.
+
+On the Dashboard, pick the week. The date snaps to the Monday. The statement table shows each unit and a fleet row: gross, fees, fuel, tolls, fixed expenses charged to the owner, and net. Close status says Open or Locked. **Open issues** opens Issues for that week. Management profit and loss is under the snapshot. Income is Legacy retained on managed trucks and the dispatch fee. Expenses are fixed costs charged to management and operating expenses dated in that week. Tolson payable is listed and is not in the net.
+
+**Ins and Outs** on the Dashboard is one row per active truck. Ins are load earnings from that truck’s Google Sheet load ledger. Outs add the sheet Mgmt Expenses rows dated in the week. Portal monthly Legacy expenses are not added into those outs. If a truck cannot be read, the Loads cell shows a short reason. Click it, or **Copy**, to copy the real cause. **Sheet mismatches** links to Issues when a sheet Load ID is missing from loads or the rate differs.
+
+The footer is one short line under the page: whether the Google service account is set, and the app version. It does not show secrets and it does not cover the page.
 
 ## Ins and Outs
 
