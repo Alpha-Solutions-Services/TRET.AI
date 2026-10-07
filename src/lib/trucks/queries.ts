@@ -1,7 +1,15 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FeeRuleKind, TruckClass } from "@/lib/fee-engine";
 import { bpToPercentString } from "@/lib/fees/percent";
 import { FEE_KIND_LABELS } from "@/lib/fees/kinds";
+import type { Database } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
+import { isMissingGoogleSheetColumn } from "@/lib/trucks/fields";
+
+const TRUCK_COLUMNS =
+  "id, unit_number, name, truck_class, owner_name, active, google_sheet_url, created_at" as const;
+const TRUCK_COLUMNS_WITHOUT_SHEET =
+  "id, unit_number, name, truck_class, owner_name, active, created_at" as const;
 
 export type TruckRow = {
   id: string;
@@ -9,6 +17,7 @@ export type TruckRow = {
   name: string;
   truck_class: TruckClass;
   owner_name: string | null;
+  google_sheet_url: string | null;
   active: boolean;
   created_at: string;
 };
@@ -40,25 +49,77 @@ export function summarizeRules(rules: FeeRuleRow[]): string {
     .join("; ");
 }
 
-export async function listTrucks(): Promise<TruckRow[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("trucks")
-    .select("id, unit_number, name, truck_class, owner_name, active, created_at")
-    .order("unit_number", { ascending: true });
-  if (error) throw new Error(error.message);
-  return data ?? [];
+type TruckClient = SupabaseClient<Database>;
+
+function withEmptySheet<T extends { google_sheet_url?: string | null }>(
+  row: Omit<T, "google_sheet_url">,
+): T {
+  return { ...row, google_sheet_url: null } as T;
 }
 
-export async function getTruck(id: string): Promise<TruckRow | null> {
+export async function listTrucks(): Promise<{
+  trucks: TruckRow[];
+  googleSheetReady: boolean;
+}> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const withSheet = await supabase
     .from("trucks")
-    .select("id, unit_number, name, truck_class, owner_name, active, created_at")
+    .select(TRUCK_COLUMNS)
+    .order("unit_number", { ascending: true });
+  if (!withSheet.error) {
+    return { trucks: withSheet.data ?? [], googleSheetReady: true };
+  }
+  if (!isMissingGoogleSheetColumn(withSheet.error)) {
+    throw new Error(withSheet.error.message);
+  }
+
+  const withoutSheet = await supabase
+    .from("trucks")
+    .select(TRUCK_COLUMNS_WITHOUT_SHEET)
+    .order("unit_number", { ascending: true });
+  if (withoutSheet.error) throw new Error(withoutSheet.error.message);
+  return {
+    trucks: (withoutSheet.data ?? []).map((row) => withEmptySheet<TruckRow>(row)),
+    googleSheetReady: false,
+  };
+}
+
+export async function getTruck(
+  id: string,
+): Promise<{ truck: TruckRow; googleSheetReady: boolean } | null> {
+  const supabase = await createClient();
+  const loaded = await selectTruckById(supabase, id);
+  return loaded;
+}
+
+export async function selectTruckById(
+  supabase: TruckClient,
+  id: string,
+): Promise<{ truck: TruckRow; googleSheetReady: boolean } | null> {
+  const withSheet = await supabase
+    .from("trucks")
+    .select(TRUCK_COLUMNS)
     .eq("id", id)
     .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data;
+  if (!withSheet.error) {
+    if (!withSheet.data) return null;
+    return { truck: withSheet.data, googleSheetReady: true };
+  }
+  if (!isMissingGoogleSheetColumn(withSheet.error)) {
+    throw new Error(withSheet.error.message);
+  }
+
+  const withoutSheet = await supabase
+    .from("trucks")
+    .select(TRUCK_COLUMNS_WITHOUT_SHEET)
+    .eq("id", id)
+    .maybeSingle();
+  if (withoutSheet.error) throw new Error(withoutSheet.error.message);
+  if (!withoutSheet.data) return null;
+  return {
+    truck: withEmptySheet<TruckRow>(withoutSheet.data),
+    googleSheetReady: false,
+  };
 }
 
 export async function listContractsForTruck(

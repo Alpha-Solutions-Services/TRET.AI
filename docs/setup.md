@@ -119,3 +119,10 @@ Do these once (or when credentials change). The app cannot finish login or healt
 1. In the Supabase SQL editor, run `supabase/migrations/20261007160000_resolve_issue.sql` only when you say go. It does not add a table. It lets **Mark resolved** write `change_log`.
 2. Until that script has run, Overview and Issues still load. **Mark resolved** says the migration has not been applied.
 3. No new environment variables.
+
+## 15. Truck Google Sheet link (v0.0.0.13) — do this before saving a sheet link
+
+1. In the Supabase SQL editor, run `supabase/migrations/20261007170000_truck_google_sheet_url.sql`. Do this only when you are ready (say go).
+2. It adds `trucks.google_sheet_url`. Row Level Security stays as it is. The existing trucks policy covers the new column.
+3. Until that script has run, Edit still saves unit, name, class, and owner. The Google Sheet field says the migration has not been applied.
+4. After it has run, paste each truck’s link on **Trucks → Edit** (or **Add truck**), in the field labeled **Google Sheet**.

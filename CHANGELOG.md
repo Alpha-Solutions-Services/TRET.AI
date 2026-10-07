@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.0.0.13 — 2026-10-07
+
+- Trucks list and truck page: **Edit** opens the same side panel as Add truck and saves unit number, name, class, and owner. Trucks are still never deleted.
+- Optional **Google Sheet** link on the truck. Shown on the list and the truck page, and opened as a link. Paste it on Add truck or Edit.
+- Migration `20261007170000_truck_google_sheet_url.sql` adds `trucks.google_sheet_url`. It is not applied until the owner says go. Until then, the other truck fields still save.
+
 ## v0.0.0.12 — 2026-10-07
 
 - Live Test connection failed because `core_Manifests_Get` sent `first_stop_appointment_start_date`, `page_size`, and `page_token`. Vektor accepts `filters`, `page`, `perPage`, `sortDirection`, `sortKey`, and `aggregationKeys`.

@@ -58,6 +58,7 @@ export type Database = {
           name: string;
           truck_class: TruckClass;
           owner_name: string | null;
+          google_sheet_url: string | null;
           active: boolean;
           created_at: string;
         };
@@ -67,6 +68,7 @@ export type Database = {
           name: string;
           truck_class: TruckClass;
           owner_name?: string | null;
+          google_sheet_url?: string | null;
           active?: boolean;
           created_at?: string;
         };
@@ -76,6 +78,7 @@ export type Database = {
           name?: string;
           truck_class?: TruckClass;
           owner_name?: string | null;
+          google_sheet_url?: string | null;
           active?: boolean;
           created_at?: string;
         };

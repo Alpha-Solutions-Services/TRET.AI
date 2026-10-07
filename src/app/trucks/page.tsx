@@ -22,7 +22,7 @@ function TrucksSkeleton() {
 }
 
 async function TrucksContent() {
-  const trucks = await listTrucks();
+  const { trucks, googleSheetReady } = await listTrucks();
   const feeSummaries: Record<string, string> = {};
   await Promise.all(
     trucks.map(async (truck) => {
@@ -33,7 +33,13 @@ async function TrucksContent() {
         : "No fee rules yet";
     }),
   );
-  return <TrucksClient trucks={trucks} feeSummaries={feeSummaries} />;
+  return (
+    <TrucksClient
+      trucks={trucks}
+      feeSummaries={feeSummaries}
+      googleSheetReady={googleSheetReady}
+    />
+  );
 }
 
 export default function TrucksPage() {
