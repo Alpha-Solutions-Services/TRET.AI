@@ -44,6 +44,20 @@ function paint(page: PDFPage, box: Box, color: RGB): void {
   });
 }
 
+/** Table fills stop on the template border. A box that crosses it is clipped. */
+function paintInside(page: PDFPage, box: Box, color: RGB, limit: Box): void {
+  const x = Math.max(box.x, limit.x);
+  const y = Math.max(box.y, limit.y);
+  const right = Math.min(box.x + box.w, limit.x + limit.w);
+  const bottom = Math.min(box.y + box.h, limit.y + limit.h);
+  if (right <= x || bottom <= y) return;
+  paint(page, { x, y, w: right - x, h: bottom - y }, color);
+}
+
+/** Page 2 table interiors, measured from the Legacy template. */
+const LOAD_TABLE: Box = { x: 57.2, y: 219, w: 601.1, h: 173.4 };
+const SIDE_TABLE: Box = { x: 679, y: 219, w: 278, h: 224.2 };
+
 function textIn(
   page: PDFPage,
   box: Box,
@@ -172,9 +186,8 @@ function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: 
   textIn(page, { x: 320, y: 140, w: 120, h: 16 }, report.vin, font, 7.4, INK, "left");
   textIn(page, { x: 70, y: 160, w: 70, h: 16 }, "Dispatcher:", bold, 7.4, INK, "left");
   textIn(page, { x: 142, y: 160, w: 240, h: 16 }, report.dispatcher, font, 7.4, INK, "left");
-  paint(page, { x: 58, y: 219, w: 602, h: 176 }, ROW);
-  paint(page, { x: 672, y: 219, w: 286, h: 250 }, ROW);
-  paint(page, { x: 48, y: 440, w: 640, h: 66 }, WHITE);
+  paint(page, LOAD_TABLE, ROW);
+  paint(page, SIDE_TABLE, ROW);
 
   const columns: Array<{ x: number; w: number; align: Align; size: number }> = [
     { x: 55.7, w: 73.6, align: "left", size: 6.2 },
@@ -208,7 +221,7 @@ function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: 
     ];
     columns.forEach((column, columnIndex) => {
       const box = { x: column.x, y, w: column.w, h: 27.6 };
-      paint(page, box, backgroundColor);
+      paintInside(page, box, backgroundColor, LOAD_TABLE);
       const value = values[columnIndex] ?? "";
       if (columnIndex === 0 && manifest) {
         textIn(page, { x: box.x, y: box.y + 2, w: box.w, h: 12 }, value, font, column.size, BLACK, "left");
@@ -220,7 +233,7 @@ function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: 
   }
 
   const totalY = rowTop + shown.length * rowH;
-  paint(page, { x: 55.7, y: totalY, w: 604.6, h: rowH }, ZEBRA_B);
+  paintInside(page, { x: 55.7, y: totalY, w: 604.6, h: rowH }, ZEBRA_B, LOAD_TABLE);
   textIn(page, { x: 55.7, y: totalY, w: 73.6, h: rowH }, "TOTALS", bold, 6.4, BLACK, "left");
   const totals = [
     { x: 477.7, w: 58.6, text: milesLabel(report.loadedMilesHundredths) },
@@ -230,10 +243,6 @@ function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: 
   for (const total of totals) {
     textIn(page, { x: total.x, y: totalY, w: total.w, h: rowH }, total.text, bold, 6.4, BLACK, "right");
   }
-  const tableEnd = 395;
-  const afterTotals = totalY + rowH;
-  if (afterTotals < tableEnd) paint(page, { x: 58, y: afterTotals, w: 602, h: tableEnd - afterTotals }, WHITE);
-
   const weeklyY = [222, 246, 270, 294, 318, 342, 366, 390, 414];
   const weeklyLabels = [
     "Gross Freight Revenue",
@@ -259,7 +268,7 @@ function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: 
   ];
   weekly.forEach((value, index) => {
     const y = weeklyY[index] ?? 0;
-    textIn(page, { x: 678, y, w: 100, h: 22 }, weeklyLabels[index] ?? "", font, 5.6, BLACK, "left");
+    textIn(page, { x: 684, y, w: 94, h: 22 }, weeklyLabels[index] ?? "", font, 5.6, BLACK, "left");
     textIn(page, { x: 776, y, w: 48, h: 22 }, value, font, 5.6, BLACK, "right");
   });
   const dailyLabels = [
@@ -290,7 +299,7 @@ function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: 
   if (note) {
     fill(page, { x: 62, y: 476, w: 603, h: 24 }, note, font, 5.5, BLACK, "left", CARD);
   } else {
-    paint(page, { x: 48, y: 458, w: 630, h: 48 }, WHITE);
+    paint(page, { x: 57, y: 448, w: 600, h: 52 }, WHITE);
   }
 }
 

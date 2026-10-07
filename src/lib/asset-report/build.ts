@@ -606,7 +606,7 @@ export function buildAssetReport(input: {
     { label: "Insurance", cents: lines.insurance },
   ];
   const rightExpenses: AssetExpenseLine[] = [
-    { label: "Escrow Balance (this week)", cents: lines.escrow },
+    { label: "Maintenance Escrow Weekly", cents: lines.escrow },
     { label: "ELD Fee", cents: lines.eld },
     { label: "Yard Parking", cents: lines.yard },
     { label: "GPS Tracker", cents: lines.gps },
