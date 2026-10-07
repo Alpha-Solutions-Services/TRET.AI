@@ -1,18 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { buildManagementCards, splitManagementFee } from "./summary";
+import { buildManagementCards, tolsonPayableForTruck } from "./summary";
 
 describe("management card totals", () => {
   it("sets income to the summed sheet fees for the week of 2026-10-05", () => {
     const summary = buildManagementCards({
       expenseMonth: "2026-10",
       fees: [
-        { feeCents: 59_500, truckClass: "legacy_owned" },
-        { feeCents: 25_000, truckClass: "legacy_owned" },
-        { feeCents: 86_000, truckClass: "legacy_owned" },
-        { feeCents: 53_000, truckClass: "legacy_owned" },
-        { feeCents: 36_000, truckClass: "legacy_owned" },
-        { feeCents: 70_000, truckClass: "legacy_owned" },
+        { feeCents: 59_500 },
+        { feeCents: 25_000 },
+        { feeCents: 86_000 },
+        { feeCents: 53_000 },
+        { feeCents: 36_000 },
+        { feeCents: 70_000 },
       ],
+      tolson: [],
       operatingExpenses: [
         { expenseDate: "2026-09-30", amountCents: 10_000 },
         { expenseDate: "2026-10-02", amountCents: 4_000 },
@@ -21,35 +22,43 @@ describe("management card totals", () => {
       ],
     });
     expect(summary.incomeCents).toBe(329_500);
-    expect(summary.tolsonPayableCents).toBe(329_500);
-    expect(summary.legacyKeptCents).toBe(0);
+    expect(summary.tolsonPayableCents).toBe(0);
+    expect(summary.legacyKeptCents).toBe(329_500);
     expect(summary.expenseCents).toBe(5_500);
     expect(summary.netCents).toBe(324_000);
-    expect(summary.netCents).toBe(summary.incomeCents - summary.expenseCents);
-    expect(summary.netCents).not.toBe(summary.incomeCents - summary.expenseCents - summary.tolsonPayableCents);
+    expect(summary.netCents).toBe(summary.incomeCents - summary.expenseCents - summary.tolsonPayableCents);
+    expect(summary.legacyKeptCents).toBe(summary.incomeCents - summary.tolsonPayableCents);
   });
 
-  it("splits a third-party fee ten fifteenths to Tolson and five fifteenths to Legacy", () => {
-    expect(splitManagementFee(150_000, "third_party")).toEqual({
-      tolsonCents: 100_000,
-      legacyKeptCents: 50_000,
-    });
-    expect(splitManagementFee(329_500, "legacy_owned")).toEqual({
-      tolsonCents: 329_500,
-      legacyKeptCents: 0,
-    });
+  it("sums each truck Tolson setting and subtracts it from net", () => {
+    expect(
+      tolsonPayableForTruck({ type: null, value: null, grossCents: 700_000 }),
+    ).toBe(0);
+    expect(
+      tolsonPayableForTruck({ type: "percent_of_gross", value: null, grossCents: 700_000 }),
+    ).toBe(0);
+    expect(
+      tolsonPayableForTruck({ type: "percent_of_gross", value: 1000, grossCents: 700_000 }),
+    ).toBe(70_000);
+    expect(
+      tolsonPayableForTruck({ type: "fixed_weekly", value: 2_500, grossCents: 0 }),
+    ).toBe(2_500);
+
     const summary = buildManagementCards({
       expenseMonth: "2026-10",
-      fees: [
-        { feeCents: 100_000, truckClass: "legacy_owned" },
-        { feeCents: 150_000, truckClass: "third_party" },
+      fees: [{ feeCents: 100_000 }, { feeCents: 150_000 }],
+      tolson: [
+        { type: "percent_of_gross", value: 1000, grossCents: 1_000_000 },
+        { type: null, value: null, grossCents: 500_000 },
+        { type: "fixed_weekly", value: 2_500, grossCents: 0 },
       ],
-      operatingExpenses: [],
+      operatingExpenses: [{ expenseDate: "2026-10-02", amountCents: 4_000 }],
     });
     expect(summary.incomeCents).toBe(250_000);
-    expect(summary.tolsonPayableCents).toBe(200_000);
-    expect(summary.legacyKeptCents).toBe(50_000);
-    expect(summary.expenseCents).toBe(0);
-    expect(summary.netCents).toBe(250_000);
+    expect(summary.tolsonPayableCents).toBe(102_500);
+    expect(summary.legacyKeptCents).toBe(147_500);
+    expect(summary.expenseCents).toBe(4_000);
+    expect(summary.netCents).toBe(143_500);
+    expect(summary.netCents).toBe(summary.incomeCents - summary.expenseCents - summary.tolsonPayableCents);
   });
 });

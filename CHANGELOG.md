@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.0.0.24 — 2026-10-07
+
+- Weekly Asset Management Report stays two Letter pages. Navy and gold header, footer, and KPI cards follow the Legacy template. Page 1 is the identity block, KPI strip, executive summary, load activity, weekly totals, and daily performance. Page 2 is owner earnings, the gross and net cards, asset status, fuel, and compliance. Notes print only when the week has a note. Section headings have space above the cards and tables before them.
+- MC Lease is removed from that PDF. Truck Pymts and Trailer Pymts are not owner-expense lines and are not folded into another line. Total truck expenses and net owner earnings are recalculated without them. The MC Lease note is gone. Dashboard Outs still include those payment lines.
+- Trailer, VIN, and dispatcher are read from Fleet Directory, Weekly Expenses, and the Load Ledger when those columns or label pairs exist. `trucks` has no trailer or VIN column. A missing dispatcher prints Legacy Dispatch Team and does not add a note.
+- The Driver line uses the truck name or owner name when that name continues the first name on the sheet. Truck 8 prints Brison Hunter.
+- On-time, loads accepted, loads delivered, claims, cargo damage, service failures, and cancellation use sheet columns when they exist. Otherwise a completed week uses the load count, 100% on time when no late flag is stored, and zero for claims, damage, failures, and cancellation. An Active truck with no status columns prints Ready, Good, Positive, Good, and Current. The PDF does not print "Not stored".
+- Management fee, driver compensation, and factoring labels stay on the program rates (10%, 20%, and 1.75%) unless the sheet has a percent column. The blank template's 15% and 2.65% are not used.
+- Tolson payable is set per truck on Edit truck: percent of gross, or a fixed weekly amount. Both stay empty until someone sets them. An empty truck counts as $0. Management sums those amounts for the week and lists Tolson payable as its own expense. Net is income minus portal expenses minus Tolson payable. Legacy kept is income minus Tolson payable. Saving the setting needs migration `20261007200000_truck_tolson_payable.sql`. Until it is applied, other truck fields still save.
+- The Dashboard week snapshot uses the same sheet Ins and Outs as the cards. Gross is Ins. Fees, fuel, tolls, and fixed split the Outs. Net is Ins minus Outs. The fleet row is no longer $0.00 when the sheet has money and the statement is empty.
+
 ## v0.0.0.23 — 2026-10-07
 
 - Management cards and the Dashboard management P&L were reading the statement. Week 2026-10-05 has sheet loads and portal fees, and the statement for that week is empty, so Income, Expenses, Net, and Tolson payable stayed at $0.00 while the fee chart showed the loads. Income is now the summed management fee on this week's sheet loads. An own truck sends that whole fee to Tolson Blackhawk LLC. A third-party truck splits the fee ten fifteenths to Tolson and five fifteenths to Legacy. Net is income minus portal expenses. Tolson payable sits beside net.

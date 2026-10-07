@@ -8,6 +8,8 @@ export type Json =
 
 export type TruckClass = "legacy_owned" | "third_party";
 
+export type TolsonPayableType = "percent_of_gross" | "fixed_weekly";
+
 export type FeeRuleKind =
   | "DRIVER_PAY"
   | "MANAGEMENT_FEE"
@@ -59,6 +61,8 @@ export type Database = {
           truck_class: TruckClass;
           owner_name: string | null;
           google_sheet_url: string | null;
+          tolson_payable_type: TolsonPayableType | null;
+          tolson_payable_value: number | null;
           active: boolean;
           created_at: string;
         };
@@ -69,6 +73,8 @@ export type Database = {
           truck_class: TruckClass;
           owner_name?: string | null;
           google_sheet_url?: string | null;
+          tolson_payable_type?: TolsonPayableType | null;
+          tolson_payable_value?: number | null;
           active?: boolean;
           created_at?: string;
         };
@@ -79,6 +85,8 @@ export type Database = {
           truck_class?: TruckClass;
           owner_name?: string | null;
           google_sheet_url?: string | null;
+          tolson_payable_type?: TolsonPayableType | null;
+          tolson_payable_value?: number | null;
           active?: boolean;
           created_at?: string;
         };

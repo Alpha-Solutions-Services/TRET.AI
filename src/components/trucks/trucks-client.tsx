@@ -16,7 +16,12 @@ import {
 import { SidePanel } from "@/components/ui/side-panel";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { GOOGLE_SHEET_MIGRATION_MESSAGE, parseTruckFields } from "@/lib/trucks/fields";
+import {
+  GOOGLE_SHEET_MIGRATION_MESSAGE,
+  TOLSON_MIGRATION_MESSAGE,
+  formatTolsonPayableValue,
+  parseTruckFields,
+} from "@/lib/trucks/fields";
 import { truckClassLabel } from "@/lib/fees/kinds";
 import type { TruckRow } from "@/lib/trucks/queries";
 
@@ -24,6 +29,7 @@ type Props = {
   trucks: TruckRow[];
   feeSummaries: Record<string, string>;
   googleSheetReady: boolean;
+  tolsonReady: boolean;
 };
 
 const emptyForm: TruckFormValues = {
@@ -32,9 +38,23 @@ const emptyForm: TruckFormValues = {
   truckClass: "third_party",
   ownerName: "",
   googleSheetUrl: "",
+  tolsonPayableType: "",
+  tolsonPayableValue: "",
 };
 
-export function TrucksClient({ trucks, feeSummaries, googleSheetReady }: Props) {
+function formFromTruck(truck: TruckRow): TruckFormValues {
+  return {
+    unitNumber: truck.unit_number,
+    name: truck.name,
+    truckClass: truck.truck_class,
+    ownerName: truck.owner_name ?? "",
+    googleSheetUrl: truck.google_sheet_url ?? "",
+    tolsonPayableType: truck.tolson_payable_type ?? "",
+    tolsonPayableValue: formatTolsonPayableValue(truck.tolson_payable_type, truck.tolson_payable_value),
+  };
+}
+
+export function TrucksClient({ trucks, feeSummaries, googleSheetReady, tolsonReady }: Props) {
   const { toast } = useToast();
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -67,13 +87,7 @@ export function TrucksClient({ trucks, feeSummaries, googleSheetReady }: Props) 
 
   function openEdit(truck: TruckRow) {
     setEditingId(truck.id);
-    setValues({
-      unitNumber: truck.unit_number,
-      name: truck.name,
-      truckClass: truck.truck_class,
-      ownerName: truck.owner_name ?? "",
-      googleSheetUrl: truck.google_sheet_url ?? "",
-    });
+    setValues(formFromTruck(truck));
     setFormError(null);
     setPanelOpen(true);
   }
@@ -140,6 +154,11 @@ export function TrucksClient({ trucks, feeSummaries, googleSheetReady }: Props) 
       {!googleSheetReady ? (
         <p className="text-sm text-[var(--color-fg-muted)]" role="status">
           {GOOGLE_SHEET_MIGRATION_MESSAGE} Unit, name, class, and owner can still be edited.
+        </p>
+      ) : null}
+      {!tolsonReady ? (
+        <p className="text-sm text-[var(--color-fg-muted)]" role="status">
+          {TOLSON_MIGRATION_MESSAGE} Other truck fields can still be edited.
         </p>
       ) : null}
 
@@ -239,6 +258,7 @@ export function TrucksClient({ trucks, feeSummaries, googleSheetReady }: Props) 
           formError={formError}
           submitLabel={editingId ? "Save changes" : "Save truck"}
           googleSheetReady={googleSheetReady}
+          tolsonReady={tolsonReady}
         />
       </SidePanel>
     </div>

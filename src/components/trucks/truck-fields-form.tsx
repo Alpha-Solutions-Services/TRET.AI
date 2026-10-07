@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { GOOGLE_SHEET_MIGRATION_MESSAGE } from "@/lib/trucks/fields";
+import { GOOGLE_SHEET_MIGRATION_MESSAGE, TOLSON_MIGRATION_MESSAGE } from "@/lib/trucks/fields";
 import type { TruckClass } from "@/lib/fee-engine";
 
 export type TruckFormValues = {
@@ -10,6 +10,8 @@ export type TruckFormValues = {
   truckClass: TruckClass;
   ownerName: string;
   googleSheetUrl: string;
+  tolsonPayableType: string;
+  tolsonPayableValue: string;
 };
 
 type Props = {
@@ -20,6 +22,7 @@ type Props = {
   formError: string | null;
   submitLabel: string;
   googleSheetReady: boolean;
+  tolsonReady: boolean;
 };
 
 const inputClass = "h-10 w-full rounded-md border border-[var(--color-border)] px-3";
@@ -32,6 +35,7 @@ export function TruckFieldsForm({
   formError,
   submitLabel,
   googleSheetReady,
+  tolsonReady,
 }: Props) {
   return (
     <form className="space-y-4" onSubmit={onSubmit}>
@@ -99,6 +103,42 @@ export function TruckFieldsForm({
           {googleSheetReady
             ? "Paste the Google Sheet or portal sheet link for this truck."
             : GOOGLE_SHEET_MIGRATION_MESSAGE}
+        </span>
+      </label>
+      <label className="block text-sm">
+        <span className="mb-1 block">Tolson payable</span>
+        <select
+          disabled={!tolsonReady || pending}
+          value={values.tolsonPayableType}
+          onChange={(e) =>
+            onChange({
+              tolsonPayableType: e.target.value,
+              tolsonPayableValue: "",
+            })
+          }
+          className={inputClass}
+        >
+          <option value="">Not set</option>
+          <option value="percent_of_gross">Percent of gross</option>
+          <option value="fixed_weekly">Fixed weekly amount</option>
+        </select>
+      </label>
+      <label className="block text-sm">
+        <span className="mb-1 block">Tolson payable value</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          disabled={!tolsonReady || pending || values.tolsonPayableType === ""}
+          value={values.tolsonPayableValue}
+          onChange={(e) => onChange({ tolsonPayableValue: e.target.value })}
+          placeholder="Not set"
+          className={inputClass}
+        />
+        <span className="mt-1 block text-xs text-[var(--color-fg-muted)]">
+          {tolsonReady
+            ? "Leave both blank when this truck has no Tolson payable. Percent of gross uses this week's sheet gross. A fixed weekly amount is dollars for the week. A blank setting counts as $0."
+            : TOLSON_MIGRATION_MESSAGE}
         </span>
       </label>
       {formError ? (

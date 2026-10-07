@@ -22,6 +22,7 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
     weekStart: bounds.start,
     weekEnd: bounds.end,
     unitNumber: truck.unit_number,
+    truckName: truck.name,
     ownerName: truck.owner_name,
     ledger: book.loadLedger,
     weekly: book.weeklyExpenses,

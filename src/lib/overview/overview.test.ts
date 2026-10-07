@@ -9,7 +9,8 @@ import {
   type ImportIssueInput,
 } from "@/lib/issues/inbox";
 import { buildManagementPnl, type PnlOperatingExpense } from "@/lib/overview/pnl";
-import { buildWeekSnapshot } from "@/lib/overview/snapshot";
+import { buildSheetWeekSnapshot, buildWeekSnapshot } from "@/lib/overview/snapshot";
+import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { buildWeekStatements } from "@/lib/statements/engine";
 import type { StatementBlocker, StatementContract, WeekStatementInput } from "@/lib/statements/types";
 
@@ -102,6 +103,54 @@ describe("overview snapshot for 2026-09-21", () => {
     const units = result.units.map((unit) => ({ ...unit }));
     units[0]!.grossCents = 320_000.5;
     expect(() => buildWeekSnapshot(units)).toThrow(/integer/);
+  });
+});
+
+describe("sheet week snapshot", () => {
+  it("uses sheet ins and outs so the fleet row is not zero", () => {
+    const row = (unitNumber: string, insCents: number, categories: Array<{ category: string; cents: number }>): TruckWeekInsOuts => {
+      const outsCents = categories.reduce((sum, category) => sum + category.cents, 0);
+      return {
+        unitNumber,
+        truckName: unitNumber,
+        truckClass: "third_party",
+        insCents,
+        outsCents,
+        netCents: insCents - outsCents,
+        loadCount: 1,
+        categories,
+        outsFromWeekly: true,
+        note: null,
+        noteDetail: null,
+        readable: true,
+        ledgerLoads: [],
+        recentWeeks: [],
+      };
+    };
+    const snapshot = buildSheetWeekSnapshot([
+      row("8", 700_000, [
+        { category: "Driver compensation", cents: 140_000 },
+        { category: "Management fee", cents: 70_000 },
+        { category: "Fuel", cents: 45_659 },
+        { category: "Toll fees", cents: 1_806 },
+        { category: "Insurance", cents: 28_871 },
+      ]),
+      row("3", 2_595_000, [
+        { category: "Driver compensation", cents: 400_000 },
+        { category: "Fuel", cents: 200_000 },
+        { category: "Toll pass", cents: 10_000 },
+        { category: "Truck payments", cents: 1_099_590 },
+      ]),
+    ]);
+    expect(snapshot.fleet.grossCents).toBe(3_295_000);
+    expect(snapshot.fleet.feesCents).toBe(610_000);
+    expect(snapshot.fleet.fuelCents).toBe(245_659);
+    expect(snapshot.fleet.tollsCents).toBe(11_806);
+    expect(snapshot.fleet.fixedCents).toBe(1_128_461);
+    expect(snapshot.fleet.netCents).toBe(1_299_074);
+    expect(snapshot.fleet.grossCents - snapshot.fleet.feesCents - snapshot.fleet.fuelCents - snapshot.fleet.tollsCents - snapshot.fleet.fixedCents).toBe(
+      snapshot.fleet.netCents,
+    );
   });
 });
 

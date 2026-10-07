@@ -5,6 +5,7 @@ import { expenseTotalCents, monthBounds } from "@/lib/legacy/expenses";
 import { buildManagementCards, type ManagementCardSummary } from "@/lib/legacy/summary";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { unitKey } from "@/lib/sheets/mismatch";
+import { listTrucks } from "@/lib/trucks/queries";
 
 export type LegacyFeeState = {
   ready: boolean;
@@ -104,19 +105,24 @@ export async function loadManagementCardSummary(
   trucks: TruckWeekInsOuts[],
   operatingExpenses: Array<{ expenseDate: string; amountCents: number }>,
 ): Promise<ManagementCardSummary> {
-  const fees = await loadLegacyFeeState(weekStart);
+  const [fees, stored] = await Promise.all([loadLegacyFeeState(weekStart), listTrucks()]);
   const earnings = buildLegacyEarnings({
     trucks,
     orgFeeBp: fees.orgFeeBp,
     truckWeeks: fees.truckWeeks,
     loadFees: fees.loadFees,
   });
-  const classByUnit = new Map(trucks.map((truck) => [unitKey(truck.unitNumber), truck.truckClass]));
+  const byUnit = new Map(stored.trucks.map((truck) => [unitKey(truck.unit_number), truck]));
   return buildManagementCards({
-    fees: earnings.trucks.map((truck) => ({
-      feeCents: truck.feeCents,
-      truckClass: classByUnit.get(truck.unitKey) ?? "legacy_owned",
-    })),
+    fees: earnings.trucks.map((truck) => ({ feeCents: truck.feeCents })),
+    tolson: trucks.map((truck) => {
+      const row = byUnit.get(unitKey(truck.unitNumber));
+      return {
+        type: row?.tolson_payable_type ?? null,
+        value: row?.tolson_payable_value ?? null,
+        grossCents: truck.readable ? truck.insCents : 0,
+      };
+    }),
     operatingExpenses,
     expenseMonth: weekStart.slice(0, 7),
   });

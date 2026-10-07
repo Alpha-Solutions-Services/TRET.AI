@@ -8,7 +8,7 @@ function money(cents: number): string {
 
 export function managementSummaryCopy(summary: ManagementCardSummary): string {
   const month = expenseMonthLabel(summary.expenseMonth);
-  return `Income is the management fee on this week's sheet loads. Expenses are Legacy company costs dated in ${month}. The card shows the whole month, because those costs are entered by month. Net is income minus that month. Tolson payable is the share owed to Tolson Blackhawk LLC and sits beside net. An own truck sends the whole fee to Tolson. A third-party truck sends ten fifteenths of the fee to Tolson, and Legacy keeps five fifteenths. That split is already inside income.`;
+  return `Income is the management fee on this week's sheet loads. Expenses are Legacy company costs dated in ${month}. The card shows the whole month, because those costs are entered by month. Tolson payable is the sum of each truck setting for this week and counts as an expense. A blank setting is $0. Net is income minus portal expenses minus Tolson payable. Legacy kept is income minus Tolson payable.`;
 }
 
 export function ManagementCards({ summary }: { summary: ManagementCardSummary }) {
@@ -37,9 +37,9 @@ export function ManagementSummaryTable({ summary }: { summary: ManagementCardSum
   const lines: Array<{ label: string; cents: number; strong?: boolean }> = [
     { label: "Income (management fees this week)", cents: summary.incomeCents, strong: true },
     { label: "Expenses (portal costs this month)", cents: summary.expenseCents, strong: true },
+    { label: "Tolson payable", cents: summary.tolsonPayableCents, strong: true },
     { label: "Net", cents: summary.netCents, strong: true },
-    { label: "Tolson payable (beside net)", cents: summary.tolsonPayableCents },
-    { label: "Legacy kept on third-party trucks", cents: summary.legacyKeptCents },
+    { label: "Legacy kept", cents: summary.legacyKeptCents },
   ];
   return (
     <section className="space-y-2">
