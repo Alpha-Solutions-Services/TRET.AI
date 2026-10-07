@@ -22,7 +22,7 @@ The **database** is always the source of truth. If a sheet disagrees with the da
 
 ## Current version
 
-`VERSION` is the source of truth. v0.0.0.11 runs the week of 21–27 Sep 2026 as a fixture smoke. See [modules.md](modules.md) and [WEEK-CLOSE-RUNBOOK.md](WEEK-CLOSE-RUNBOOK.md).
+`VERSION` is the source of truth. v0.0.0.12 sends Vektor list calls with `filters`, `page`, and `perPage` so Test connection can pass. v0.0.0.11 runs the week of 21–27 Sep 2026 as a fixture smoke. See [modules.md](modules.md) and [WEEK-CLOSE-RUNBOOK.md](WEEK-CLOSE-RUNBOOK.md).
 
 ## What v0.0.0.1 included
 

@@ -7,7 +7,7 @@ import {
   MCP_TOLLS_STATS_TOOL,
   assertMcpToolAllowed,
 } from "./allowlist";
-import { buildTransactionDateArgs, buildTrucksGetByIdsArgs } from "./args";
+import { VEKTOR_LIST_PER_PAGE, buildTransactionDateArgs, buildTrucksGetByIdsArgs } from "./args";
 import { nextPageToken, trucksFromPayload, unwrapToolPayload } from "./parse";
 import { withRetry, withTimeout } from "./retry";
 import type { ToolCaller } from "./fetch-manifests";
@@ -38,19 +38,22 @@ async function listPages(
   arrayKeys: string[],
 ): Promise<unknown[]> {
   const rows: unknown[] = [];
-  let pageToken = "";
-  const seen = new Set<string>();
-  for (let page = 0; page < MAX_PAGES; page++) {
+  const seenPages = new Set<string>();
+  const seenTokens = new Set<string>();
+  for (let page = 1; page <= MAX_PAGES; page++) {
     const payload = await callAllowlisted(
       callTool,
       tool,
-      buildTransactionDateArgs({ from, to, pageToken }),
+      buildTransactionDateArgs({ from, to, page }),
     );
-    rows.push(...recordsFromPayload(payload, arrayKeys));
-    const next = nextPageToken(payload) ?? "";
-    if (!next || seen.has(next)) break;
-    seen.add(next);
-    pageToken = next;
+    const batch = recordsFromPayload(payload, arrayKeys);
+    const fingerprint = JSON.stringify(batch);
+    if (batch.length === 0 || seenPages.has(fingerprint)) break;
+    seenPages.add(fingerprint);
+    rows.push(...batch);
+    const next = nextPageToken(payload);
+    if (batch.length < VEKTOR_LIST_PER_PAGE && (!next || seenTokens.has(next))) break;
+    if (next) seenTokens.add(next);
   }
   return rows;
 }
