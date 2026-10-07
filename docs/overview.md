@@ -22,7 +22,7 @@ The **database** is always the source of truth. If a sheet disagrees with the da
 
 ## Current version
 
-`VERSION` is the source of truth. v0.0.0.6 adds fixed weekly expenses per truck and a manual list of management-company operating expenses. See [modules.md](modules.md).
+`VERSION` is the source of truth. v0.0.0.7 imports fuel and tolls from Vektor (MCP, with CSV as the fallback) into staging, then into `fuel_transactions` and `toll_transactions`. See [modules.md](modules.md).
 
 ## What v0.0.0.1 included
 

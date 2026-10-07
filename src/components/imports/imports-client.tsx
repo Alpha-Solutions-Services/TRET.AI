@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { runFuelAndTollsImportAction } from "@/app/imports/fuel-toll-actions";
 import { runVektorImportAction } from "@/app/imports/actions";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -20,6 +21,7 @@ type RunRow = {
   finished_at: string | null;
   status: string;
   source?: string | null;
+  kind?: string | null;
   range_from: string;
   range_to: string;
   rows_fetched: number;
@@ -36,6 +38,18 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
   const initial = defaultRange();
   const [from, setFrom] = useState(initial.from);
   const [to, setTo] = useState(initial.to);
+  const [fuelCsv, setFuelCsv] = useState<string | null>(null);
+  const [tollCsv, setTollCsv] = useState<string | null>(null);
+
+  function readFile(file: File | undefined, setText: (value: string | null) => void) {
+    if (!file) {
+      setText(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setText(typeof reader.result === "string" ? reader.result : null);
+    reader.readAsText(file);
+  }
 
   function onImport() {
     startTransition(async () => {
@@ -49,12 +63,30 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
     });
   }
 
+  function onImportFuelTolls() {
+    startTransition(async () => {
+      const result = await runFuelAndTollsImportAction({
+        from,
+        to,
+        fuelCsvText: fuelCsv,
+        tollCsvText: tollCsv,
+      });
+      if (!result.ok) {
+        toast(result.error, "error");
+        router.refresh();
+        return;
+      }
+      toast(result.message, result.blocked ? "error" : "success");
+      router.refresh();
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Imports</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Manual Vektor load import only. No scheduler in this version. Does not write to Google Sheets.
+          Manual import only. Loads, fuel, and tolls. No scheduler. Does not write to Google Sheets.
         </p>
       </div>
 
@@ -78,8 +110,29 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
           />
         </label>
         <Button disabled={pending} onClick={onImport}>
-          {pending ? "Importing…" : "Import now"}
+          {pending ? "Importing…" : "Import loads"}
         </Button>
+        <Button disabled={pending} onClick={onImportFuelTolls}>
+          {pending ? "Importing…" : "Import fuel and tolls"}
+        </Button>
+        <label className="text-sm">
+          <span className="mb-1 block text-[var(--color-fg-muted)]">Fuel CSV (fallback)</span>
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            onChange={(e) => readFile(e.target.files?.[0], setFuelCsv)}
+            className="block text-sm"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-[var(--color-fg-muted)]">Tolls CSV (fallback)</span>
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            onChange={(e) => readFile(e.target.files?.[0], setTollCsv)}
+            className="block text-sm"
+          />
+        </label>
       </div>
 
       {runs.length === 0 ? (
@@ -90,6 +143,7 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
             <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Started</th>
+                <th className="px-4 py-3 font-medium">Kind</th>
                 <th className="px-4 py-3 font-medium">Source</th>
                 <th className="px-4 py-3 font-medium">Range</th>
                 <th className="px-4 py-3 font-medium">Status</th>
@@ -106,6 +160,7 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
                   <td className="px-4 py-3">
                     {new Date(run.started_at).toLocaleString()}
                   </td>
+                  <td className="px-4 py-3">{run.kind ?? "loads"}</td>
                   <td className="px-4 py-3">{run.source ?? "—"}</td>
                   <td className="px-4 py-3">
                     {run.range_from} → {run.range_to}

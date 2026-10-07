@@ -1,0 +1,479 @@
+{
+  "weekStart": "2026-09-21",
+  "weekEnd": "2026-09-27",
+  "expectedCount": 66,
+  "expectedAmountCents": 32153,
+  "trucks": {
+    "vektor-truck-02": "02",
+    "vektor-truck-03": "03",
+    "vektor-truck-04": "04",
+    "vektor-truck-05": "05",
+    "vektor-truck-06": "06",
+    "vektor-truck-07": "07",
+    "vektor-truck-08": "08"
+  },
+  "transactions": [
+    {
+      "transactionId": "toll-001",
+      "truckId": "vektor-truck-02",
+      "transactedAt": "2026-09-23 08:00:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-002",
+      "truckId": "vektor-truck-02",
+      "transactedAt": "2026-09-23 08:01:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-003",
+      "truckId": "vektor-truck-02",
+      "transactedAt": "2026-09-23 08:02:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-004",
+      "truckId": "vektor-truck-02",
+      "transactedAt": "2026-09-23 08:03:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-005",
+      "truckId": "vektor-truck-02",
+      "transactedAt": "2026-09-23 08:04:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-006",
+      "truckId": "vektor-truck-02",
+      "transactedAt": "2026-09-23 08:05:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-007",
+      "truckId": "vektor-truck-02",
+      "transactedAt": "2026-09-23 08:06:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-008",
+      "truckId": "vektor-truck-02",
+      "transactedAt": "2026-09-23 08:07:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-009",
+      "truckId": "vektor-truck-02",
+      "transactedAt": "2026-09-23 08:08:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-010",
+      "truckId": "vektor-truck-02",
+      "transactedAt": "2026-09-23 08:09:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-011",
+      "truckId": "vektor-truck-03",
+      "transactedAt": "2026-09-23 08:10:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-012",
+      "truckId": "vektor-truck-03",
+      "transactedAt": "2026-09-23 08:11:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-013",
+      "truckId": "vektor-truck-03",
+      "transactedAt": "2026-09-23 08:12:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-014",
+      "truckId": "vektor-truck-03",
+      "transactedAt": "2026-09-23 08:13:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-015",
+      "truckId": "vektor-truck-03",
+      "transactedAt": "2026-09-23 08:14:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-016",
+      "truckId": "vektor-truck-03",
+      "transactedAt": "2026-09-23 08:15:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-017",
+      "truckId": "vektor-truck-03",
+      "transactedAt": "2026-09-23 08:16:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-018",
+      "truckId": "vektor-truck-03",
+      "transactedAt": "2026-09-23 08:17:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-019",
+      "truckId": "vektor-truck-03",
+      "transactedAt": "2026-09-23 08:18:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-020",
+      "truckId": "vektor-truck-03",
+      "transactedAt": "2026-09-23 08:19:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-021",
+      "truckId": "vektor-truck-04",
+      "transactedAt": "2026-09-23 08:20:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-022",
+      "truckId": "vektor-truck-04",
+      "transactedAt": "2026-09-23 08:21:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-023",
+      "truckId": "vektor-truck-04",
+      "transactedAt": "2026-09-23 08:22:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-024",
+      "truckId": "vektor-truck-04",
+      "transactedAt": "2026-09-23 08:23:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-025",
+      "truckId": "vektor-truck-04",
+      "transactedAt": "2026-09-23 08:24:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-026",
+      "truckId": "vektor-truck-04",
+      "transactedAt": "2026-09-23 08:25:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-027",
+      "truckId": "vektor-truck-04",
+      "transactedAt": "2026-09-23 08:26:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-028",
+      "truckId": "vektor-truck-04",
+      "transactedAt": "2026-09-23 08:27:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-029",
+      "truckId": "vektor-truck-04",
+      "transactedAt": "2026-09-23 08:28:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-030",
+      "truckId": "vektor-truck-04",
+      "transactedAt": "2026-09-23 08:29:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-031",
+      "truckId": "vektor-truck-05",
+      "transactedAt": "2026-09-23 08:30:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-032",
+      "truckId": "vektor-truck-05",
+      "transactedAt": "2026-09-23 08:31:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-033",
+      "truckId": "vektor-truck-05",
+      "transactedAt": "2026-09-23 08:32:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-034",
+      "truckId": "vektor-truck-05",
+      "transactedAt": "2026-09-23 08:33:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-035",
+      "truckId": "vektor-truck-05",
+      "transactedAt": "2026-09-23 08:34:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-036",
+      "truckId": "vektor-truck-05",
+      "transactedAt": "2026-09-23 08:35:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-037",
+      "truckId": "vektor-truck-05",
+      "transactedAt": "2026-09-23 08:36:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-038",
+      "truckId": "vektor-truck-05",
+      "transactedAt": "2026-09-23 08:37:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-039",
+      "truckId": "vektor-truck-05",
+      "transactedAt": "2026-09-23 08:38:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-040",
+      "truckId": "vektor-truck-05",
+      "transactedAt": "2026-09-23 08:39:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-041",
+      "truckId": "vektor-truck-06",
+      "transactedAt": "2026-09-23 08:40:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-042",
+      "truckId": "vektor-truck-06",
+      "transactedAt": "2026-09-23 08:41:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-043",
+      "truckId": "vektor-truck-06",
+      "transactedAt": "2026-09-23 08:42:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-044",
+      "truckId": "vektor-truck-06",
+      "transactedAt": "2026-09-23 08:43:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-045",
+      "truckId": "vektor-truck-06",
+      "transactedAt": "2026-09-23 08:44:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-046",
+      "truckId": "vektor-truck-06",
+      "transactedAt": "2026-09-23 08:45:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-047",
+      "truckId": "vektor-truck-06",
+      "transactedAt": "2026-09-23 08:46:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-048",
+      "truckId": "vektor-truck-06",
+      "transactedAt": "2026-09-23 08:47:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-049",
+      "truckId": "vektor-truck-06",
+      "transactedAt": "2026-09-23 08:48:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-050",
+      "truckId": "vektor-truck-06",
+      "transactedAt": "2026-09-23 08:49:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-051",
+      "truckId": "vektor-truck-07",
+      "transactedAt": "2026-09-23 08:50:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-052",
+      "truckId": "vektor-truck-07",
+      "transactedAt": "2026-09-23 08:51:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-053",
+      "truckId": "vektor-truck-07",
+      "transactedAt": "2026-09-23 08:52:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-054",
+      "truckId": "vektor-truck-07",
+      "transactedAt": "2026-09-23 08:53:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-055",
+      "truckId": "vektor-truck-07",
+      "transactedAt": "2026-09-23 08:54:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-056",
+      "truckId": "vektor-truck-07",
+      "transactedAt": "2026-09-23 08:55:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-057",
+      "truckId": "vektor-truck-07",
+      "transactedAt": "2026-09-23 08:56:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-058",
+      "truckId": "vektor-truck-07",
+      "transactedAt": "2026-09-23 08:57:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-059",
+      "truckId": "vektor-truck-07",
+      "transactedAt": "2026-09-23 08:58:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-060",
+      "truckId": "vektor-truck-07",
+      "transactedAt": "2026-09-23 08:59:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-061",
+      "truckId": "vektor-truck-08",
+      "transactedAt": "2026-09-23 09:00:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-062",
+      "truckId": "vektor-truck-08",
+      "transactedAt": "2026-09-23 09:01:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-063",
+      "truckId": "vektor-truck-08",
+      "transactedAt": "2026-09-23 09:02:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-064",
+      "truckId": "vektor-truck-08",
+      "transactedAt": "2026-09-23 09:03:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-065",
+      "truckId": "vektor-truck-08",
+      "transactedAt": "2026-09-23 09:04:00",
+      "amount": "4.87",
+      "location": "I-75"
+    },
+    {
+      "transactionId": "toll-066",
+      "truckId": "vektor-truck-08",
+      "transactedAt": "2026-09-23 09:05:00",
+      "amount": "4.98",
+      "location": "I-75"
+    }
+  ]
+}

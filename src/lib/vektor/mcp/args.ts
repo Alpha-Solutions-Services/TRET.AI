@@ -25,3 +25,22 @@ export function buildOrderDetailsGetArgs(manifestId: string): Record<string, unk
 export function buildTrucksGetByIdsArgs(ids: string[]): Record<string, unknown> {
   return { ids };
 }
+
+/**
+ * Working date filter for fuel and toll list tools.
+ * Exact envelope is OPEN until the first live fuel import confirms it.
+ */
+export function buildTransactionDateArgs(input: {
+  from: string;
+  to: string;
+  pageToken?: string;
+}): Record<string, unknown> {
+  return {
+    transaction_date: {
+      from: input.from,
+      to: input.to,
+    },
+    page_size: 100,
+    page_token: input.pageToken ?? "",
+  };
+}

@@ -3,7 +3,9 @@
 ## DECIDED
 
 - Reporting week runs Monday to Sunday (taken from the sample report). Week helper: for any date, Monday is the start and Sunday is the end (example: week of 2026-09-21 ends 2026-09-27).
-- Loads, fuel and tolls come from Vektor. v0.0.0.5 connects loads through Vektor MCP after the owner signs in once. Fuel and tolls are not built yet.
+- Loads, fuel and tolls come from Vektor. v0.0.0.5 connects loads through Vektor MCP after the owner signs in once. v0.0.0.7 imports fuel and tolls through staging. Weekly statements are not built yet.
+- Fuel is booked at the discounted amount (integer cents). Retail is stored beside it. Unit 03 in the week of 2026-09-21 differs by $1.00 (100 cents) between retail and discounted. See decisions.
+- Fuel matches `trucks.unit_number` exactly (`02` is not `2`). Tolls match the Vektor truck id, resolved to that same unit number. Unmatched rows stay in staging with a Warn issue.
 - Fee rules are per truck, stored in the database with effective dates, never hardcoded. The number of trucks is not fixed; adding a truck must be easy.
 - Legacy-owned trucks: 10% of each load goes to TOLSON BLACKHAWK LLC (MC authority). Their report goes to Legacy and shows the Tolson payable. Everything else belongs to Legacy. Legacy pays the expenses. Contracts for this class must not include `MANAGEMENT_FEE` or `LEGACY_RETAINED`.
 - Third-party trucks: owner is charged a 15% management fee. The report shows only "Management Fee 15%" and never names Tolson. Internally the split is 10% Tolson payable and 5% Legacy income and is recorded in the database. `TOLSON_PAYABLE` + `LEGACY_RETAINED` rates must equal `MANAGEMENT_FEE`, and all three use the same `base_pct_bp`.

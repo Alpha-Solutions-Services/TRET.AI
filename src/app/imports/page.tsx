@@ -12,12 +12,23 @@ async function ImportsContent() {
   const withSource = await supabase
     .from("import_runs")
     .select(
-      "id, started_at, finished_at, status, source, range_from, range_to, rows_fetched, rows_promoted, rows_rejected, rows_updated, error_summary",
+      "id, started_at, finished_at, status, source, kind, range_from, range_to, rows_fetched, rows_promoted, rows_rejected, rows_updated, error_summary",
     )
     .order("started_at", { ascending: false })
     .limit(50);
   let data = withSource.data;
   let error = withSource.error;
+  if (error && /kind/i.test(error.message)) {
+    const withoutKind = await supabase
+      .from("import_runs")
+      .select(
+        "id, started_at, finished_at, status, source, range_from, range_to, rows_fetched, rows_promoted, rows_rejected, rows_updated, error_summary",
+      )
+      .order("started_at", { ascending: false })
+      .limit(50);
+    data = (withoutKind.data ?? []).map((row) => ({ ...row, kind: null }));
+    error = withoutKind.error;
+  }
   if (error && /source/i.test(error.message)) {
     const fallback = await supabase
       .from("import_runs")
@@ -26,7 +37,7 @@ async function ImportsContent() {
       )
       .order("started_at", { ascending: false })
       .limit(50);
-    data = (fallback.data ?? []).map((r) => ({ ...r, source: null }));
+    data = (fallback.data ?? []).map((r) => ({ ...r, source: null, kind: null }));
     error = fallback.error;
   }
   if (error) {

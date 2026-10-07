@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.0.7 — 2026-10-07
+
+- Fuel and tolls import: MCP first, CSV when column mapping is set. Staging, then `fuel_transactions` and `toll_transactions`. Idempotent on the Vektor transaction id.
+- Fuel matches `unit_number` exactly. Tolls resolve the Vektor truck id to that unit. Unmatched rows stay in staging with a Warn issue.
+- Validation uses `import_settings`: duplicate card/time/amount, price per gallon, tank size, no load that day, impossible MPG (Warn), row-count drop (Block), unlinked fuel at week close (Block check only).
+- Fuel and Tolls pages show per-unit week totals. Discounted fuel is booked. Unit 03 retail minus discounted is $1.00 in the reference fixture.
+- Read MCP allowlist adds the fuel list/aggregate and tolls list/stats tools. Any other tool name throws. Migration `20261007140000_fuel_tolls_import.sql` is not applied until the owner says go.
+
 ## v0.0.0.6 — 2026-10-07
 
 - Fixed weekly expenses per truck: one effective-dated row per kind, weekly amount in integer cents, `charged_to` owner (default) or management.
