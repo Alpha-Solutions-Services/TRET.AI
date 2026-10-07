@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.0.0.5 — 2026-10-07
+
+- Settings: Connect Vektor, status Connected / Needs sign-in, Test connection, Disconnect.
+- App OAuth (PKCE + dynamic client registration) at `/api/vektor/oauth/start` and `/api/vektor/oauth/callback`. Tokens encrypted with `VEKTOR_TOKEN_ENCRYPTION_KEY`. Tables are RLS deny-all; ciphertext only via security-definer RPCs.
+- Refresh before expiry under a database lock; rotated refresh token saved in one update. Failure sets Needs sign-in, marks the import run Failed, and opens Block issue "Vektor connection needs sign-in".
+- MCP read allowlist: `core_Manifests_Get`, `core_Manifests_OrderDetailsGet`, `fleet_Trucks_GetByIDs`. Any other tool name throws.
+- Live load fetch uses the first-stop window (from − 14 days, to + 7 days), then keeps rows whose delivery date is in range. `mcp_verified` becomes true only after Test connection passes; only then can Import source be MCP.
+- Migration `20261007120000_vektor_mcp_oauth.sql` is not applied until the owner says go.
+- Assumption Log defaults recorded in `docs/decisions.md`.
+
 ## v0.0.0.4 — 2026-10-06
 
 - Vektor loads import (manual only): staging → validate → `loads`; idempotent on `manifestId`.

@@ -5,7 +5,7 @@
 | 1 | Foundation and login (v0.0.0.1) | Done |
 | 2 | Database and fee engine (v0.0.0.2) | Done |
 | 2b | Trucks and fee rules screens (v0.0.0.3) | Done |
-| 3 | Vektor loads import (v0.0.0.4) | Done |
+| 3 | Vektor loads import (v0.0.0.4) plus live MCP connect (v0.0.0.5) | Done |
 | 4 | Fuel and tolls from Vektor | Not started |
 | 5 | Weekly Close and PDF report | Not started |
 | 6 | Validation, Issues inbox and AI (LLM gateway) | Not started |

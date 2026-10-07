@@ -6,12 +6,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
 
-async function SettingsContent() {
+async function SettingsContent({ notice }: { notice?: string | null }) {
   const initial = await getImportSourceSettings();
-  return <SettingsClient initial={initial} />;
+  return <SettingsClient initial={initial} notice={notice} />;
 }
 
-export default function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ vektor?: string }>;
+}) {
+  const params = await searchParams;
   return (
     <SignedInShell title="Settings">
       <Suspense
@@ -22,7 +27,7 @@ export default function SettingsPage() {
           </div>
         }
       >
-        <SettingsContent />
+        <SettingsContent notice={params.vektor ?? null} />
       </Suspense>
     </SignedInShell>
   );

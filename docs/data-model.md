@@ -72,7 +72,11 @@ Audit trail. Every truck create / activate / deactivate and every rate-version c
 - **vektor_loads_staging** — raw manifests, unique on `manifest_id` (idempotency). Unmatched trucks stay here.
 - **loads** — promoted delivered loads. Money in integer cents. `load_id` = order friendlyId; `manifest_friendly_id` separate. Deadhead = `emptyDistance`. Trip Group / Primary Load columns exist but stay empty (OPEN). Lineage fields stored raw.
 - **issues** — Block / Warn / Info with rule, message, ref, status.
+- **vektor_mcp_connection** — one row of encrypted Vektor OAuth client data and tokens. Not readable by the browser.
+- **vektor_oauth_pending** — one-time encrypted PKCE verifier while Connect Vektor is in progress.
 
 ## Access (RLS)
 
 `trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, and `issues` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read (and write where policies allow). Rate-version RPCs are security definer and still check `allowed_users`.
+
+`vektor_mcp_connection` and `vektor_oauth_pending` have Row Level Security on and no policies. `anon` and `authenticated` have no table grants. Allowed users touch ciphertext only through security-definer functions. The encryption key stays in server env.

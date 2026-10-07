@@ -79,3 +79,11 @@ Do these once (or when credentials change). The app cannot finish login or healt
 4. While signed in as the owner, open `/health` → database connection should show **OK**.
 5. Confirm the footer shows `TRET.AI v0.0.0.1` and that **Sign out** works.
 6. If env vars are missing, the site must show **Setup incomplete** (not a 500).
+
+## 9. Vektor Connect (v0.0.0.5) — do this before clicking Connect Vektor
+
+1. In the Supabase SQL editor, run `supabase/migrations/20261007120000_vektor_mcp_oauth.sql`. Do this only when you are ready (say go). It adds token tables with Row Level Security and no client policies.
+2. Create a random encryption secret locally and in Vercel (Production and Preview): name `VEKTOR_TOKEN_ENCRYPTION_KEY`. Example command on your machine: `openssl rand -base64 32`. Paste the value into the env var. Do not commit it. Do not put it in a `NEXT_PUBLIC_` variable.
+3. Optional: set `VEKTOR_OAUTH_REDIRECT_URI` to `https://tret.ai.alphasolutions.software/api/vektor/oauth/callback`. If you leave it empty, the app uses the site origin plus that path.
+4. Redeploy so Vercel picks up the new variable.
+5. Open Settings and click **Connect Vektor**. Sign in once. Then click **Test connection**, choose **Vektor MCP**, and Save.

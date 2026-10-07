@@ -5,29 +5,32 @@ import type {
   ImportSourceAdapter,
 } from "./types";
 
+export type McpAdapterOptions = {
+  verified: boolean;
+  hasTokens: boolean;
+  needsSignIn?: boolean;
+  fetchManifests?: (input: FetchManifestsInput) => Promise<FetchManifestsResult>;
+};
+
 /**
- * PRIMARY import path when verified. Flagged unverified until OAuth spike passes
- * (refresh_token proven). Cannot be selected as default until then.
+ * Live Vektor MCP path. Selectable only after tokens exist and Test connection
+ * has set mcp_verified. Fetch is injected so tests never call the network.
  */
 export class McpAdapter implements ImportSourceAdapter {
   readonly id = "mcp" as const;
 
-  constructor(
-    private readonly opts: {
-      verified: boolean;
-      hasTokens: boolean;
-    } = { verified: false, hasTokens: false },
-  ) {}
+  constructor(private readonly opts: McpAdapterOptions = { verified: false, hasTokens: false }) {}
 
   status(): AdapterStatus {
-    if (!this.opts.hasTokens) {
+    if (!this.opts.hasTokens || this.opts.needsSignIn) {
       return {
         id: "mcp",
         label: "Vektor MCP",
         selectable: false,
         configured: false,
-        message:
-          "unverified — connect Vektor once in the app (OAuth). Local spike proved refresh; app sign-in not wired yet.",
+        message: this.opts.hasTokens
+          ? "Needs sign-in. Click Connect Vektor, then Test connection. Import stays unverified until that passes."
+          : "Needs sign-in. Click Connect Vektor (unverified until Test connection passes).",
       };
     }
     if (!this.opts.verified) {
@@ -37,7 +40,7 @@ export class McpAdapter implements ImportSourceAdapter {
         selectable: false,
         configured: false,
         message:
-          "unverified — tokens present but mcp_verified is not true yet. Set after app OAuth is wired.",
+          "Connected. Run Test connection before choosing MCP. mcp_verified stays false until that passes.",
       };
     }
     return {
@@ -49,16 +52,18 @@ export class McpAdapter implements ImportSourceAdapter {
     };
   }
 
-  async fetchManifests(_input: FetchManifestsInput): Promise<FetchManifestsResult> {
+  async fetchManifests(input: FetchManifestsInput): Promise<FetchManifestsResult> {
     const st = this.status();
     if (!st.selectable) {
-      throw new Error(
-        "Vektor connection needs sign-in (MCP unverified or not connected).",
-      );
+      throw new Error("Vektor connection needs sign-in");
     }
-    // Live tool names/params OPEN until spike tools/list succeeds.
-    throw new Error(
-      "MCP fetch not enabled until spike lists exact tool names (OPEN).",
-    );
+    if (!this.opts.fetchManifests) {
+      throw new Error("Vektor connection needs sign-in");
+    }
+    const result = await this.opts.fetchManifests(input);
+    if (!result || !Array.isArray(result.manifests)) {
+      throw new Error("Vektor connection needs sign-in");
+    }
+    return result;
   }
 }

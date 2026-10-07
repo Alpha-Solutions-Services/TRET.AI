@@ -1,0 +1,157 @@
+import type { FetchManifestsResult } from "../adapters/types";
+import type { VektorManifest } from "../types";
+import { assertMcpToolAllowed } from "./allowlist";
+import {
+  buildManifestsGetArgs,
+  buildOrderDetailsGetArgs,
+  buildTrucksGetByIdsArgs,
+} from "./args";
+import { IdCache } from "./cache";
+import {
+  manifestsFromPayload,
+  nextPageToken,
+  partyName,
+  trucksFromPayload,
+  unwrapToolPayload,
+} from "./parse";
+import { withRetry, withTimeout } from "./retry";
+import { expandFirstStopWindow, summarizeManifestWindow } from "./window";
+
+export type ToolCaller = (name: string, args: Record<string, unknown>) => Promise<unknown>;
+
+const MAX_PAGES = 40;
+
+async function callAllowlisted(
+  callTool: ToolCaller,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  assertMcpToolAllowed(name);
+  const result = await withRetry(() => withTimeout(callTool(name, args)));
+  return unwrapToolPayload(result);
+}
+
+function rememberParties(
+  manifest: VektorManifest,
+  drivers: IdCache<string>,
+  brokers: IdCache<string>,
+): void {
+  const raw = manifest as VektorManifest & {
+    driverName?: string;
+    primaryDriverName?: string;
+  };
+  if (manifest.primaryDriverId) {
+    const name = raw.driverName ?? raw.primaryDriverName ?? null;
+    if (name) drivers.remember(manifest.primaryDriverId, name);
+  }
+  for (const order of manifest.orders ?? []) {
+    const brokerId = order.brokerId;
+    const name = partyName(order as unknown as Record<string, unknown>, [
+      "brokerName",
+      "broker_name",
+      "name",
+    ]);
+    if (brokerId && name && name !== order.friendlyId) {
+      brokers.remember(brokerId, name);
+    }
+  }
+  for (const stop of manifest.stops ?? []) {
+    const brokerId = stop.orderBrokerId;
+    const name = partyName(stop as unknown as Record<string, unknown>, [
+      "brokerName",
+      "broker_name",
+    ]);
+    if (brokerId && name) brokers.remember(brokerId, name);
+  }
+}
+
+export async function fetchManifestsFromTools(opts: {
+  from: string;
+  to: string;
+  callTool: ToolCaller;
+}): Promise<FetchManifestsResult> {
+  const window = expandFirstStopWindow(opts.from, opts.to);
+  const manifests: VektorManifest[] = [];
+  let pageToken = "";
+  const seenTokens = new Set<string>();
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const payload = await callAllowlisted(
+      opts.callTool,
+      "core_Manifests_Get",
+      buildManifestsGetArgs({
+        queryFrom: window.queryFrom,
+        queryTo: window.queryTo,
+        pageToken,
+      }),
+    );
+    manifests.push(...manifestsFromPayload(payload));
+    const next = nextPageToken(payload);
+    if (!next || seenTokens.has(next)) break;
+    seenTokens.add(next);
+    pageToken = next;
+  }
+
+  for (const manifest of manifests) {
+    const needsDetails = (manifest.orders ?? []).length === 0 || (manifest.stops ?? []).length === 0;
+    if (!needsDetails) continue;
+    const details = await callAllowlisted(
+      opts.callTool,
+      "core_Manifests_OrderDetailsGet",
+      buildOrderDetailsGetArgs(manifest.manifestId),
+    );
+    const [detailed] = manifestsFromPayload(details);
+    if (!detailed) continue;
+    if ((manifest.orders ?? []).length === 0 && detailed.orders) {
+      manifest.orders = detailed.orders;
+    }
+    if ((manifest.stops ?? []).length === 0 && detailed.stops) {
+      manifest.stops = detailed.stops;
+    }
+    if (!manifest.grossAmount && detailed.grossAmount) {
+      manifest.grossAmount = detailed.grossAmount;
+    }
+  }
+
+  const drivers = new IdCache<string>();
+  const brokers = new IdCache<string>();
+  const truckCache = new IdCache<{ truckId: string; referenceId: string }>();
+  for (const manifest of manifests) {
+    rememberParties(manifest, drivers, brokers);
+  }
+
+  const missingTruckIds = [
+    ...new Set(
+      manifests
+        .map((manifest) => manifest.truckId)
+        .filter((id): id is string => Boolean(id && !truckCache.has(id))),
+    ),
+  ];
+  for (let i = 0; i < missingTruckIds.length; i += 50) {
+    const ids = missingTruckIds.slice(i, i + 50);
+    const payload = await callAllowlisted(
+      opts.callTool,
+      "fleet_Trucks_GetByIDs",
+      buildTrucksGetByIdsArgs(ids),
+    );
+    for (const truck of trucksFromPayload(payload)) {
+      truckCache.remember(truck.truckId, truck);
+    }
+  }
+
+  const { kept, report } = summarizeManifestWindow(manifests, opts.from, opts.to);
+  const driverMap: Record<string, string> = {};
+  for (const [id, name] of drivers.entries()) driverMap[id] = name;
+  const brokerMap: Record<string, string> = {};
+  for (const [id, name] of brokers.entries()) brokerMap[id] = name;
+
+  return {
+    manifests: kept,
+    lookups: {
+      drivers: driverMap,
+      brokers: brokerMap,
+      trucks: Object.fromEntries(truckCache.entries()),
+    },
+    report,
+  };
+}
