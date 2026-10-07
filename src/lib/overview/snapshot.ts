@@ -1,7 +1,17 @@
 import { assertInteger, assertNonNegativeInteger } from "@/lib/fee-engine/money";
 import { expectedNetCents } from "@/lib/statements/engine";
 import type { TruckClass } from "@/lib/fee-engine";
+import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import type { UnitStatement } from "@/lib/statements/types";
+
+const SHEET_FEE_LABELS = new Set([
+  "driver compensation",
+  "management fee",
+  "dispatch fee",
+  "factoring fee",
+  "vektor fee",
+]);
+const SHEET_TOLL_LABELS = new Set(["toll pass", "toll fees", "toll charges"]);
 
 /** One unit, or the fleet total, for the overview table. */
 export type SnapshotRow = {
@@ -36,6 +46,62 @@ export function ownerFeeCents(unit: UnitStatement): number {
     unit.driverPayCents + managementOrTolson + unit.dispatchFeeCents + unit.factoringFeeCents;
   assertNonNegativeInteger(fees, "fees");
   return fees;
+}
+
+/**
+ * Dashboard week snapshot from the same sheet Ins and Outs as the cards.
+ * Gross is Ins. Fees, fuel, tolls, and fixed split Outs. Net is Ins minus Outs.
+ */
+export function buildSheetWeekSnapshot(rows: TruckWeekInsOuts[]): WeekSnapshot {
+  const units = rows.filter((row) => row.readable).map((row) => sheetSnapshotRow(row));
+  const fleet = emptyFleet();
+  for (const row of units) {
+    fleet.grossCents += row.grossCents;
+    fleet.feesCents += row.feesCents;
+    fleet.fuelCents += row.fuelCents;
+    fleet.tollsCents += row.tollsCents;
+    fleet.fixedCents += row.fixedCents;
+    fleet.netCents += row.netCents;
+  }
+  assertSnapshotMoney(fleet, "fleet");
+  assertSnapshotIdentity(fleet, "fleet");
+  return { units, fleet };
+}
+
+function sheetSnapshotRow(row: TruckWeekInsOuts): SnapshotRow {
+  assertNonNegativeInteger(row.insCents, `gross ${row.unitNumber}`);
+  assertNonNegativeInteger(row.outsCents, `outs ${row.unitNumber}`);
+  let feesCents = 0;
+  let fuelCents = 0;
+  let tollsCents = 0;
+  let fixedCents = 0;
+  for (const category of row.categories) {
+    assertNonNegativeInteger(category.cents, `${category.category} ${row.unitNumber}`);
+    const key = category.category.trim().toLowerCase();
+    if (SHEET_FEE_LABELS.has(key)) feesCents += category.cents;
+    else if (key === "fuel") fuelCents += category.cents;
+    else if (SHEET_TOLL_LABELS.has(key)) tollsCents += category.cents;
+    else fixedCents += category.cents;
+  }
+  if (feesCents + fuelCents + tollsCents + fixedCents !== row.outsCents) {
+    feesCents = row.outsCents;
+    fuelCents = 0;
+    tollsCents = 0;
+    fixedCents = 0;
+  }
+  const snapshot: SnapshotRow = {
+    unitNumber: row.unitNumber,
+    truckClass: row.truckClass,
+    grossCents: row.insCents,
+    feesCents,
+    fuelCents,
+    tollsCents,
+    fixedCents,
+    netCents: row.insCents - row.outsCents,
+  };
+  assertSnapshotMoney(snapshot, row.unitNumber);
+  assertSnapshotIdentity(snapshot, row.unitNumber);
+  return snapshot;
 }
 
 export function buildWeekSnapshot(units: UnitStatement[]): WeekSnapshot {

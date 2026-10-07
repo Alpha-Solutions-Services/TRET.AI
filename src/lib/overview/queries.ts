@@ -1,7 +1,7 @@
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { formatFooterLabel } from "@/lib/app-version";
 import { buildManagementPnl, type ManagementPnl } from "@/lib/overview/pnl";
-import { buildWeekSnapshot, type WeekSnapshot } from "@/lib/overview/snapshot";
+import { buildSheetWeekSnapshot, buildWeekSnapshot, type WeekSnapshot } from "@/lib/overview/snapshot";
 import { listOperatingExpenses } from "@/lib/operating-expenses/queries";
 import { buildInbox, countOpenIssues } from "@/lib/issues/inbox";
 import { listImportIssues } from "@/lib/issues/queries";
@@ -42,6 +42,8 @@ export async function loadOverview(weekRaw: string | undefined): Promise<Overvie
     listImportIssues(),
   ]);
 
+  const sheetSnapshot = ins.rows.some((row) => row.readable) ? buildSheetWeekSnapshot(ins.rows) : null;
+
   const base = {
     weekStart: statements.weekStart,
     weekEnd: statements.weekEnd,
@@ -67,7 +69,7 @@ export async function loadOverview(weekRaw: string | undefined): Promise<Overvie
       ...base,
       error: statements.error,
       issuesError: issues.error,
-      snapshot: null,
+      snapshot: sheetSnapshot,
       pnl: null,
       openIssueCount: issues.error
         ? null
@@ -82,9 +84,9 @@ export async function loadOverview(weekRaw: string | undefined): Promise<Overvie
   }
 
   if (expenses.error) {
-    let snapshot: WeekSnapshot | null = null;
+    let snapshot: WeekSnapshot | null = sheetSnapshot;
     try {
-      snapshot = buildWeekSnapshot(statements.units);
+      snapshot = sheetSnapshot ?? buildWeekSnapshot(statements.units);
     } catch (err) {
       return {
         ...base,
@@ -116,7 +118,7 @@ export async function loadOverview(weekRaw: string | undefined): Promise<Overvie
   let snapshot: WeekSnapshot;
   let pnl: ManagementPnl;
   try {
-    snapshot = buildWeekSnapshot(statements.units);
+    snapshot = sheetSnapshot ?? buildWeekSnapshot(statements.units);
     pnl = buildManagementPnl({
       weekStart: statements.weekStart,
       units: statements.units,

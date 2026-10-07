@@ -1,6 +1,6 @@
-import type { TruckClass } from "@/lib/fee-engine";
 import { roundHalfUpDivide } from "@/lib/fee-engine";
 import { monthBounds, parseMonth } from "@/lib/legacy/expenses";
+import type { TolsonPayableType } from "@/lib/trucks/tolson";
 
 const MONTH_NAMES = [
   "January",
@@ -22,28 +22,33 @@ export type ManagementCardSummary = {
   expenseCents: number;
   netCents: number;
   tolsonPayableCents: number;
-  /** Five fifteenths of a third-party fee. Already included in income. */
+  /** Income minus Tolson payable. Portal expenses are not in this figure. */
   legacyKeptCents: number;
   expenseMonth: string;
 };
 
-/**
- * Own trucks: the management fee is the Tolson payable.
- * Third-party trucks: the fee splits ten fifteenths to Tolson and five fifteenths to Legacy.
- * Half-up to the cent. The two shares add back to the fee.
- */
-export function splitManagementFee(
-  feeCents: number,
-  truckClass: TruckClass,
-): { tolsonCents: number; legacyKeptCents: number } {
-  if (!Number.isInteger(feeCents) || feeCents < 0) {
-    throw new Error("Management fee must be zero or more cents");
+export type TruckTolsonInput = {
+  type: TolsonPayableType | null;
+  /** Basis points for percent of gross. Cents for a fixed weekly amount. */
+  value: number | null;
+  grossCents: number;
+};
+
+/** Blank type or value is $0. Percent uses this truck's week gross. Fixed is once per week. */
+export function tolsonPayableForTruck(input: TruckTolsonInput): number {
+  if (input.type == null || input.value == null) return 0;
+  if (!Number.isInteger(input.value) || input.value < 0) {
+    throw new Error("Tolson payable value must be zero or more");
   }
-  if (truckClass === "legacy_owned") {
-    return { tolsonCents: feeCents, legacyKeptCents: 0 };
+  if (!Number.isInteger(input.grossCents) || input.grossCents < 0) {
+    throw new Error("Gross must be zero or more cents");
   }
-  const tolsonCents = roundHalfUpDivide(BigInt(feeCents) * BigInt(10), BigInt(15));
-  return { tolsonCents, legacyKeptCents: feeCents - tolsonCents };
+  if (input.type === "percent_of_gross") {
+    if (input.value > 10000) throw new Error("Tolson percent must be from 0 to 100");
+    return Number(roundHalfUpDivide(BigInt(input.grossCents) * BigInt(input.value), BigInt(10000)));
+  }
+  if (input.type === "fixed_weekly") return input.value;
+  throw new Error("Tolson payable type is not recognized");
 }
 
 export function expenseMonthLabel(month: string): string {
@@ -74,10 +79,13 @@ export function monthPortalExpenseCents(
  * Management cards for one week.
  * Income is the summed management fee on sheet loads.
  * Expenses are portal costs for the week's expense month.
- * Net is income minus those expenses. Tolson payable is not subtracted again.
+ * Tolson payable is the sum of each truck setting and is its own expense.
+ * Net is income minus portal expenses minus Tolson payable.
+ * Legacy kept is income minus Tolson payable.
  */
 export function buildManagementCards(input: {
-  fees: Array<{ feeCents: number; truckClass: TruckClass }>;
+  fees: Array<{ feeCents: number }>;
+  tolson: TruckTolsonInput[];
   operatingExpenses: Array<{ expenseDate: string; amountCents: number }>;
   expenseMonth: string;
 }): ManagementCardSummary {
@@ -85,19 +93,22 @@ export function buildManagementCards(input: {
     throw new Error("Expense month must be YYYY-MM");
   }
   let incomeCents = 0;
-  let tolsonPayableCents = 0;
-  let legacyKeptCents = 0;
   for (const fee of input.fees) {
-    const split = splitManagementFee(fee.feeCents, fee.truckClass);
+    if (!Number.isInteger(fee.feeCents) || fee.feeCents < 0) {
+      throw new Error("Management fee must be zero or more cents");
+    }
     incomeCents += fee.feeCents;
-    tolsonPayableCents += split.tolsonCents;
-    legacyKeptCents += split.legacyKeptCents;
+  }
+  let tolsonPayableCents = 0;
+  for (const row of input.tolson) {
+    tolsonPayableCents += tolsonPayableForTruck(row);
   }
   const expenseCents = monthPortalExpenseCents(input.operatingExpenses, input.expenseMonth);
+  const legacyKeptCents = incomeCents - tolsonPayableCents;
   return {
     incomeCents,
     expenseCents,
-    netCents: incomeCents - expenseCents,
+    netCents: incomeCents - expenseCents - tolsonPayableCents,
     tolsonPayableCents,
     legacyKeptCents,
     expenseMonth: input.expenseMonth,

@@ -173,8 +173,10 @@ class Writer {
       "Fuel Summary",
       "Compliance / Maintenance",
     );
-    this.section("Notes");
-    this.noteBox(report.notes);
+    if (report.notes.length > 0) {
+      this.section("Notes");
+      this.noteBox(report.notes);
+    }
   }
 
   private newPage(): void {
@@ -202,10 +204,11 @@ class Writer {
   }
 
   private section(title: string): void {
-    this.ensure(18);
+    this.y -= 16;
+    this.ensure(28);
     this.page.drawRectangle({ x: MARGIN, y: this.y - 2, width: 18, height: 3, color: GOLD });
     this.page.drawText(safe(title), { x: MARGIN + 24, y: this.y - 1, size: 11, font: this.bold, color: NAVY });
-    this.y -= 16;
+    this.y -= 18;
   }
 
   private callout(text: string): void {

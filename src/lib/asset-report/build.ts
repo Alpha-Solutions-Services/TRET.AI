@@ -93,9 +93,6 @@ export type AssetReport = {
 /** Shown when no dispatcher is stored on the truck or the sheet. */
 export const DEFAULT_DISPATCHER = "Legacy Dispatch Team";
 
-const DISPATCHER_NOTE =
-  "Dispatcher is shown as Legacy Dispatch Team because the truck record and the sheet do not store a dispatcher.";
-
 const UNIT_HEADERS = ["truck number", "truck #", "truck id", "unit", "unit number", "truck"];
 const VIN_HEADERS = ["vin", "vin #", "truck vin", "vehicle vin"];
 const TRAILER_HEADERS = ["trailer", "trailer #", "trailer number", "trailer no", "trailer id"];
@@ -453,6 +450,21 @@ function panelValue(found: string | null, active: boolean, whenActive: string, w
   return found ?? (active ? whenActive : whenInactive);
 }
 
+/** Use a truck-record name when it is the same person with more than the sheet's first name. */
+function displayDriver(sheetDriver: string, truckName: string | null, ownerName: string | null): string {
+  const sheet = sheetDriver.trim();
+  if (!sheet) return truckName?.trim() ?? "";
+  const sheetKey = sheet.toLowerCase();
+  for (const candidate of [truckName, ownerName]) {
+    const name = candidate?.trim() ?? "";
+    const key = name.toLowerCase();
+    if (!name || key.length <= sheetKey.length || !key.startsWith(sheetKey)) continue;
+    const next = key[sheetKey.length];
+    if (next === " " || next === ",") return name;
+  }
+  return sheet;
+}
+
 function identityLine(unitNumber: string, trailer: string, vin: string): string {
   const parts = [`Truck ${unitNumber}`];
   if (trailer) parts.push(`Trailer ${trailer}`);
@@ -464,6 +476,8 @@ export function buildAssetReport(input: {
   weekStart: string;
   weekEnd: string;
   unitNumber: string;
+  /** Truck record name. Used when the sheet driver is only a first name. */
+  truckName?: string | null;
   ownerName: string | null;
   ledger: SheetGrid | null;
   weekly: SheetGrid | null;
@@ -584,7 +598,6 @@ export function buildAssetReport(input: {
     ...labelGrids.map((grid) => pairValue(grid, input.unitNumber, DISPATCHER_HEADERS)),
   );
   const dispatcher = storedDispatcher || DEFAULT_DISPATCHER;
-  if (!storedDispatcher) notes.push(DISPATCHER_NOTE);
   const operationsNote = firstText(
     weekly ? textAt(weekly.header, weekly.row, ["weekly operations note", "operations note"]) : null,
     ...labelGrids.map((grid) => pairValue(grid, input.unitNumber, ["weekly operations note", "operations note"])),
@@ -605,10 +618,9 @@ export function buildAssetReport(input: {
   const netCents = grossCents - expenseCents;
   const periodLabel = `${shortDate(input.weekStart)} to ${shortDate(input.weekEnd)}`;
   const loadCountLabel = String(loads.length);
-  if (notes.length === 0) notes.push("No operations note for this week.");
   return {
     unitNumber: input.unitNumber,
-    driver,
+    driver: displayDriver(driver, input.truckName ?? null, input.ownerName),
     assetPartner: input.ownerName?.trim() || "",
     trailer,
     vin,

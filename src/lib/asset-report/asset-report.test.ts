@@ -162,7 +162,7 @@ describe("weekly asset report", () => {
     });
     expect(report.grossCents).toBe(700_000);
     expect(report.loadCount).toBe(4);
-    expect(report.driver).toBe("Brison");
+    expect(report.driver).toBe("Brison Hunter");
     expect(report.expenseCents).toBe(360_454);
     expect(report.netCents).toBe(339_546);
     expect(report.leftExpenses.map((line) => line.label)).toEqual([
@@ -193,14 +193,17 @@ describe("weekly asset report", () => {
     expect(report.fuelEconomy).toBe("19.97");
     expect(report.fuelUnitPriceCents).toBe(555);
     expect(report.fuelPerMileCents).toBe(14);
-    expect(report.notes.join(" ")).toContain(DEFAULT_DISPATCHER);
-    expect(report.notes.join(" ")).not.toContain("MC Lease");
+    expect(report.notes).toEqual([]);
+    expect(report.notes.join(" ")).not.toContain(DEFAULT_DISPATCHER);
     const bytes = await renderAssetReportPdf(report);
     const text = pdfText(bytes);
     expect((await PDFDocument.load(bytes)).getPageCount()).toBe(2);
     expect(text).toContain("$3,604.54");
     expect(text).toContain("$3,395.46");
+    expect(text).toContain("Brison Hunter");
     expect(text).toContain("Legacy Dispatch Team");
+    expect(text).not.toContain("because the truck record");
+    expect(text).not.toContain("Notes");
     expect(text).not.toContain("$4,051.77");
     expect(text).not.toContain("MC Lease");
     expect(text).not.toContain("Not stored");

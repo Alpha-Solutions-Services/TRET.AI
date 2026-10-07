@@ -52,10 +52,10 @@
 ## Dashboard and Management cards
 
 - Income is the summed management fee on sheet loads for the selected Monday–Sunday week. The fee is the portal amount: org default, truck week percent, or a saved load percent or dollar amount.
-- An own truck sends that whole fee to Tolson Blackhawk LLC.
-- A third-party truck splits that fee ten fifteenths to Tolson and five fifteenths to Legacy. The two shares add back to the fee. Half up to the cent.
+- Tolson payable is a setting on each truck: percent of that truck's week gross, or a fixed weekly amount. Both stay empty until someone sets them on Edit truck. An empty setting is $0. The week total is the sum of those trucks.
 - Expenses are portal operating costs whose date falls in the expense month of that week's Monday. The whole month is shown. It is not a one-seventh share of the month.
-- Net is income minus those expenses. Tolson payable is shown beside net.
+- Tolson payable is its own expense line. Net is income minus portal expenses minus Tolson payable.
+- Legacy kept is income minus Tolson payable. It matches that same Tolson total.
 - Dashboard Outs are the Weekly Expenses row for that truck and week, using the same money columns as the asset report. Mgmt Expenses is used only when the Weekly Expenses header is missing. Portal monthly costs are not added into Outs.
 
 ## Management P&L
@@ -86,7 +86,8 @@ Locked Assumption Log defaults are in `docs/decisions.md` (2026-10-07). Still op
 - Connect Vektor. The v0.0.0.11 smoke does not sign in and does not set `mcp_verified`. The owner still connects once in Settings and passes Test connection before a live import.
 - There is no Legacy logo file. The PDF prints the name Legacy Inc Global.
 - The weekly statement PDF still prints “Not stored” for trailer, VIN, dispatcher, compliance, and the operations note.
-- The Weekly Asset Management Report reads trailer, VIN, dispatcher, and status from the truck sheet when those fields are present. Asset partner is `trucks.owner_name`. There is no trailer or VIN column on `trucks`. A missing dispatcher prints Legacy Dispatch Team, with one note. That report does not print “Not stored”.
+- The Weekly Asset Management Report reads trailer, VIN, dispatcher, and status from the truck sheet when those fields are present. Asset partner is `trucks.owner_name`. There is no trailer or VIN column on `trucks`. A missing dispatcher prints Legacy Dispatch Team and does not add a note. The Driver line uses the truck name or owner name when it continues the sheet first name. The Notes block is omitted when there are no notes. That report does not print “Not stored”.
+- The Dashboard week snapshot uses sheet Ins and Outs for the selected week. Gross is Ins. Fees, fuel, tolls, and fixed split Outs. Net is Ins minus Outs.
 - Vektor REST list path. Probes are documented in decisions. Set `VEKTOR_API_MANIFESTS_PATH` when Vektor confirms it.
 - Truck Pymts and Trailer Pymts are not lines on the asset report. They are not combined into MC Lease.
 - A separate PDF file per truck is OPEN. This version downloads one week file.

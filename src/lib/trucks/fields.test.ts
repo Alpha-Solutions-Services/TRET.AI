@@ -18,6 +18,8 @@ function input(overrides: Partial<Parameters<typeof parseTruckFields>[0]> = {}) 
     truckClass: "third_party",
     ownerName: "Ada",
     googleSheetUrl: "",
+    tolsonPayableType: "",
+    tolsonPayableValue: "",
     ...overrides,
   };
 }
@@ -40,6 +42,8 @@ describe("parseTruckFields", () => {
         truckClass: "third_party",
         ownerName: null,
         googleSheetUrl: null,
+        tolsonPayableType: null,
+        tolsonPayableValue: null,
       },
     });
   });
@@ -54,6 +58,8 @@ describe("parseTruckFields", () => {
         truckClass: "third_party",
         ownerName: "Ada",
         googleSheetUrl: SHEET,
+        tolsonPayableType: null,
+        tolsonPayableValue: null,
       },
     });
   });
@@ -106,6 +112,39 @@ describe("parseTruckFields", () => {
   });
 });
 
+describe("parseTolsonPayable", () => {
+  it("keeps a blank type and value empty", () => {
+    const result = parseTruckFields(input());
+    expect(result.ok && result.value.tolsonPayableType).toBeNull();
+    expect(result.ok && result.value.tolsonPayableValue).toBeNull();
+  });
+
+  it("stores percent of gross as basis points and a fixed week as cents", () => {
+    const percent = parseTruckFields(
+      input({ tolsonPayableType: "percent_of_gross", tolsonPayableValue: "10" }),
+    );
+    expect(percent.ok && percent.value.tolsonPayableType).toBe("percent_of_gross");
+    expect(percent.ok && percent.value.tolsonPayableValue).toBe(1000);
+
+    const fixed = parseTruckFields(
+      input({ tolsonPayableType: "fixed_weekly", tolsonPayableValue: "25.50" }),
+    );
+    expect(fixed.ok && fixed.value.tolsonPayableType).toBe("fixed_weekly");
+    expect(fixed.ok && fixed.value.tolsonPayableValue).toBe(2550);
+  });
+
+  it("refuses a type without a value and a value without a type", () => {
+    expect(parseTruckFields(input({ tolsonPayableType: "percent_of_gross" }))).toEqual({
+      ok: false,
+      error: "Enter a Tolson payable value or choose Not set.",
+    });
+    expect(parseTruckFields(input({ tolsonPayableValue: "10" }))).toEqual({
+      ok: false,
+      error: "Choose a Tolson payable type or clear the value.",
+    });
+  });
+});
+
 describe("googleSheetHref", () => {
   it("returns an https link and refuses anything else", () => {
     expect(googleSheetHref(SHEET)).toBe(SHEET);
@@ -125,6 +164,8 @@ describe("truck sheet markup", () => {
           truckClass: "third_party",
           ownerName: "",
           googleSheetUrl: "",
+          tolsonPayableType: "",
+          tolsonPayableValue: "",
         },
         onChange: () => {},
         onSubmit: (event) => event.preventDefault(),
@@ -132,9 +173,12 @@ describe("truck sheet markup", () => {
         formError: null,
         submitLabel: "Save changes",
         googleSheetReady: true,
+        tolsonReady: true,
       }),
     );
     expect(form).toContain("Google Sheet");
+    expect(form).toContain("Tolson payable");
+    expect(form).toContain("Not set");
     expect(form).toContain("Save changes");
     expect(form).toContain("Paste the Google Sheet or portal sheet link for this truck.");
 

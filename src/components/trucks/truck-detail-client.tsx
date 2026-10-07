@@ -35,7 +35,12 @@ import {
   truckClassLabel,
 } from "@/lib/fees/kinds";
 import { bpToPercentString, tryPercentStringToBp } from "@/lib/fees/percent";
-import { GOOGLE_SHEET_MIGRATION_MESSAGE, parseTruckFields } from "@/lib/trucks/fields";
+import {
+  GOOGLE_SHEET_MIGRATION_MESSAGE,
+  TOLSON_MIGRATION_MESSAGE,
+  formatTolsonPayableValue,
+  parseTruckFields,
+} from "@/lib/trucks/fields";
 import type {
   FeeContractWithRules,
   TruckRow,
@@ -54,6 +59,7 @@ type Props = {
   lastChanged: { created_at: string; actor_email: string; action: string } | null;
   canDeleteLatest: boolean;
   googleSheetReady: boolean;
+  tolsonReady: boolean;
 };
 
 function emptyRules(
@@ -79,6 +85,7 @@ export function TruckDetailClient({
   lastChanged,
   canDeleteLatest,
   googleSheetReady,
+  tolsonReady,
 }: Props) {
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -93,6 +100,8 @@ export function TruckDetailClient({
     truckClass: truck.truck_class,
     ownerName: truck.owner_name ?? "",
     googleSheetUrl: truck.google_sheet_url ?? "",
+    tolsonPayableType: truck.tolson_payable_type ?? "",
+    tolsonPayableValue: formatTolsonPayableValue(truck.tolson_payable_type, truck.tolson_payable_value),
   });
   const [editError, setEditError] = useState<string | null>(null);
   const [effectiveFrom, setEffectiveFrom] = useState("");
@@ -235,6 +244,8 @@ export function TruckDetailClient({
       truckClass: truck.truck_class,
       ownerName: truck.owner_name ?? "",
       googleSheetUrl: truck.google_sheet_url ?? "",
+      tolsonPayableType: truck.tolson_payable_type ?? "",
+      tolsonPayableValue: formatTolsonPayableValue(truck.tolson_payable_type, truck.tolson_payable_value),
     });
     setEditError(null);
     setEditOpen(true);
@@ -296,6 +307,11 @@ export function TruckDetailClient({
           {!googleSheetReady ? (
             <p className="mt-2 text-xs text-[var(--color-fg-muted)]" role="status">
               {GOOGLE_SHEET_MIGRATION_MESSAGE}
+            </p>
+          ) : null}
+          {!tolsonReady ? (
+            <p className="mt-2 text-xs text-[var(--color-fg-muted)]" role="status">
+              {TOLSON_MIGRATION_MESSAGE}
             </p>
           ) : null}
           {lastChanged ? (
@@ -574,6 +590,7 @@ export function TruckDetailClient({
           formError={editError}
           submitLabel="Save changes"
           googleSheetReady={googleSheetReady}
+          tolsonReady={tolsonReady}
         />
       </SidePanel>
     </div>

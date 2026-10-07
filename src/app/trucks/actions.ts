@@ -10,7 +10,9 @@ import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import {
   GOOGLE_SHEET_MIGRATION_MESSAGE,
+  TOLSON_MIGRATION_MESSAGE,
   isMissingGoogleSheetColumn,
+  isMissingTolsonColumn,
   parseTruckFields,
 } from "@/lib/trucks/fields";
 import { selectTruckById } from "@/lib/trucks/queries";
@@ -37,6 +39,8 @@ export async function createTruckAction(input: {
   truckClass: TruckClass;
   ownerName: string;
   googleSheetUrl: string;
+  tolsonPayableType: string;
+  tolsonPayableValue: string;
 }): Promise<ActionResult> {
   const gate = await requireAccess();
   if (!gate.ok) return gate;
@@ -45,25 +49,33 @@ export async function createTruckAction(input: {
   if (!parsed.ok) return parsed;
   const fields = parsed.value;
 
-  const inserted = await gate.supabase
-    .from("trucks")
-    .insert({
-      unit_number: fields.unitNumber,
-      name: fields.name,
-      truck_class: fields.truckClass,
-      owner_name: fields.ownerName,
-      active: true,
-      ...(fields.googleSheetUrl ? { google_sheet_url: fields.googleSheetUrl } : {}),
-    })
-    .select("id")
-    .single();
+  const insertRow = {
+    unit_number: fields.unitNumber,
+    name: fields.name,
+    truck_class: fields.truckClass,
+    owner_name: fields.ownerName,
+    active: true,
+    ...(fields.googleSheetUrl ? { google_sheet_url: fields.googleSheetUrl } : {}),
+    ...(fields.tolsonPayableType
+      ? {
+          tolson_payable_type: fields.tolsonPayableType,
+          tolson_payable_value: fields.tolsonPayableValue,
+        }
+      : {}),
+  };
+
+  const inserted = await gate.supabase.from("trucks").insert(insertRow).select("id").single();
+
+  if (inserted.error && isMissingTolsonColumn(inserted.error)) {
+    return { ok: false, error: TOLSON_MIGRATION_MESSAGE };
+  }
+  if (inserted.error && isMissingGoogleSheetColumn(inserted.error)) {
+    return { ok: false, error: GOOGLE_SHEET_MIGRATION_MESSAGE };
+  }
 
   if (inserted.error) {
     if (inserted.error.code === "23505") {
       return { ok: false, error: "That unit number is already in use." };
-    }
-    if (fields.googleSheetUrl && isMissingGoogleSheetColumn(inserted.error)) {
-      return { ok: false, error: GOOGLE_SHEET_MIGRATION_MESSAGE };
     }
     return { ok: false, error: inserted.error.message };
   }
@@ -91,6 +103,8 @@ export async function updateTruckAction(input: {
   truckClass: TruckClass;
   ownerName: string;
   googleSheetUrl: string;
+  tolsonPayableType: string;
+  tolsonPayableValue: string;
 }): Promise<ActionResult> {
   const gate = await requireAccess();
   if (!gate.ok) return gate;
@@ -108,6 +122,8 @@ export async function updateTruckAction(input: {
     truck_class: fields.truckClass,
     owner_name: fields.ownerName,
     google_sheet_url: fields.googleSheetUrl,
+    tolson_payable_type: fields.tolsonPayableType,
+    tolson_payable_value: fields.tolsonPayableValue,
   };
 
   let updated = await gate.supabase
@@ -116,6 +132,23 @@ export async function updateTruckAction(input: {
     .eq("id", input.truckId)
     .select("id")
     .maybeSingle();
+
+  if (updated.error && isMissingTolsonColumn(updated.error)) {
+    if (fields.tolsonPayableType) return { ok: false, error: TOLSON_MIGRATION_MESSAGE };
+    const withoutTolson = {
+      unit_number: fields.unitNumber,
+      name: fields.name,
+      truck_class: fields.truckClass,
+      owner_name: fields.ownerName,
+      google_sheet_url: fields.googleSheetUrl,
+    };
+    updated = await gate.supabase
+      .from("trucks")
+      .update(withoutTolson)
+      .eq("id", input.truckId)
+      .select("id")
+      .maybeSingle();
+  }
 
   if (updated.error && isMissingGoogleSheetColumn(updated.error)) {
     if (fields.googleSheetUrl) {

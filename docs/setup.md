@@ -166,4 +166,11 @@ Do these once (or when credentials change). The app cannot finish login or healt
 
 1. No new migration. `trucks` does not gain trailer, VIN, or dispatcher columns.
 2. Download report on Ins and Outs is still two Letter pages. Owner expenses omit Truck Pymts and Trailer Pymts. Dashboard Outs still include those lines.
-3. Trailer, VIN, and dispatcher print when Fleet Directory, Weekly Expenses, or the Load Ledger has them. If dispatcher is missing, the PDF prints Legacy Dispatch Team and one note.
+3. Trailer, VIN, and dispatcher print when Fleet Directory, Weekly Expenses, or the Load Ledger has them. If dispatcher is missing, the PDF prints Legacy Dispatch Team and does not add a note. Driver prints the full truck or owner name when the sheet only has the first name.
+
+## 21. Tolson payable on the truck (v0.0.0.24)
+
+1. In the Supabase SQL editor, run `supabase/migrations/20261007200000_truck_tolson_payable.sql`. Do this only when you are ready. It adds two nullable columns on `trucks`. Row Level Security is unchanged.
+2. Until that script has run, Edit truck still saves unit, name, class, owner, and the Google Sheet link. The Tolson fields say the migration has not been applied.
+3. On Edit truck, Tolson payable type is percent of gross or a fixed weekly amount. Leave both blank to count that truck as $0. The form does not fill in a number for you.
+4. Management and the Dashboard management table add those truck amounts for the week. Net subtracts portal expenses and Tolson payable. Legacy kept is income minus Tolson payable.
