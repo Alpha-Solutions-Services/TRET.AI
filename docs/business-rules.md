@@ -3,7 +3,7 @@
 ## DECIDED
 
 - Reporting week runs Monday to Sunday (taken from the sample report). Week helper: for any date, Monday is the start and Sunday is the end (example: week of 2026-09-21 ends 2026-09-27).
-- Loads, fuel and tolls come from Vektor (not built in this version).
+- Loads, fuel and tolls come from Vektor. v0.0.0.5 connects loads through Vektor MCP after the owner signs in once. Fuel and tolls are not built yet.
 - Fee rules are per truck, stored in the database with effective dates, never hardcoded. The number of trucks is not fixed; adding a truck must be easy.
 - Legacy-owned trucks: 10% of each load goes to TOLSON BLACKHAWK LLC (MC authority). Their report goes to Legacy and shows the Tolson payable. Everything else belongs to Legacy. Legacy pays the expenses. Contracts for this class must not include `MANAGEMENT_FEE` or `LEGACY_RETAINED`.
 - Third-party trucks: owner is charged a 15% management fee. The report shows only "Management Fee 15%" and never names Tolson. Internally the split is 10% Tolson payable and 5% Legacy income and is recorded in the database. `TOLSON_PAYABLE` + `LEGACY_RETAINED` rates must equal `MANAGEMENT_FEE`, and all three use the same `base_pct_bp`.
@@ -26,11 +26,9 @@
 
 ## OPEN
 
-- What amount the dispatch fee is calculated on for each truck (full gross vs a reduced base such as 95%).
-- Who receives the dispatch fee.
-- What amount the 15% management fee is calculated on (gross or after factoring). Factoring-based bases stay unsupported until this is confirmed.
-- What an unlabeled $228 line in the sample report represents.
-- Quicken version (Windows confirmed; QIF export planned).
+Locked Assumption Log defaults are in `docs/decisions.md` (2026-10-07). Still open:
+
+- Quicken export format (build last).
 - Vektor long-lived access for scheduled server jobs.
 - Bestpass API keys (tolls may stay via Vektor).
 - Two-factor login (MFA).

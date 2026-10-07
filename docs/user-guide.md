@@ -35,13 +35,25 @@ Old versions are not edited. To undo a mistake on the newest version (only while
 
 On the truck page, enter a gross amount in dollars and a date. The table shows fee lines from the same engine the rest of the app uses. For Third-party trucks, Management fee is shown as the owner-facing line; Tolson payable and Legacy retained are marked as the internal split.
 
+## Connect Vektor
+
+1. Open **Settings**.
+2. Click **Connect Vektor**.
+3. Sign in on the Vektor page and approve read access. You return to Settings.
+4. Status should say **Connected**. Click **Test connection**.
+5. When the test passes, choose **Vektor MCP** under Import source and click **Save**.
+6. MCP stays unavailable until that test passes. **Disconnect** removes the saved sign-in. Loads already imported stay.
+
+If Connect Vektor reports that the database migration or `VEKTOR_TOKEN_ENCRYPTION_KEY` is missing, finish those steps in the setup guide first, then click Connect Vektor again.
+
 ## Import loads from Vektor
 
 1. Make sure trucks exist with unit numbers that match Vektor exactly (for example `02`, not `2`).
-2. Open **Imports**.
-3. Set the date range (defaults to the last 14 days) and click **Import now**.
-4. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts and any plain-language error.
-5. Open **Loads** to review promoted rows. Filter by week (Monday–Sunday) and truck. Totals are at the bottom.
+2. Connect Vektor and pass Test connection (above).
+3. Open **Imports**.
+4. Set the date range (defaults to the last 14 days) and click **Import now**.
+5. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts and any plain-language error. A zero-row result is stated in that message; a sign-in failure is a Failed run, not a silent zero.
+6. Open **Loads** to review promoted rows. Filter by week (Monday–Sunday) and truck. Totals are at the bottom.
 
 Notes:
 

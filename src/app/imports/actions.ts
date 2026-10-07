@@ -4,13 +4,13 @@ import { revalidatePath } from "next/cache";
 import { checkAccess } from "@/lib/auth/access";
 import { createClient } from "@/lib/supabase/server";
 import {
-  createAdapters,
-  getSelectableAdapter,
   resolveCrossSourceConflict,
-  type ImportSourceId,
   type ExistingLoadSnapshot,
 } from "@/lib/vektor/adapters";
 import { timestampToDate } from "@/lib/vektor/dates";
+import { loadImportRegistry } from "@/lib/vektor/import-registry";
+import { formatImportResultMessage } from "@/lib/vektor/mcp/window";
+import { NeedsSignInError } from "@/lib/vektor/oauth/needs-sign-in";
 import { runImportPipeline } from "@/lib/vektor/pipeline";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -36,31 +36,7 @@ function defaultRange(lookbackDays: number): { from: string; to: string } {
 }
 
 async function loadAdapterRegistry(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: rows } = await supabase
-    .from("import_settings")
-    .select("key, value_text")
-    .in("key", ["import_source", "mcp_verified", "csv_column_mapping"]);
-  const map = new Map((rows ?? []).map((r) => [r.key, r.value_text]));
-  let csvMapping: Record<string, string> | null = null;
-  if (map.get("csv_column_mapping")) {
-    try {
-      csvMapping = JSON.parse(map.get("csv_column_mapping")!) as Record<
-        string,
-        string
-      >;
-    } catch {
-      csvMapping = null;
-    }
-  }
-  const adapters = createAdapters({
-    mcpVerified: map.get("mcp_verified") === "true",
-    mcpHasTokens: false,
-    csvColumnMapping: csvMapping,
-    apiBaseUrl: process.env.VEKTOR_API_BASE_URL ?? "",
-    apiToken: process.env.VEKTOR_API_TOKEN ?? "",
-  });
-  const selected = (map.get("import_source") as ImportSourceId | null) ?? null;
-  return { adapters, selected, adapter: getSelectableAdapter(adapters, selected) };
+  return loadImportRegistry(supabase, { withLiveFetch: true });
 }
 
 export async function runVektorImportAction(input?: {
@@ -85,6 +61,44 @@ export async function runVektorImportAction(input?: {
   };
 
   const { adapter, selected } = await loadAdapterRegistry(supabase);
+  if (selected === "mcp" && !adapter) {
+    let { data: failedRun, error: failedErr } = await supabase
+      .from("import_runs")
+      .insert({
+        status: "failed",
+        range_from: range.from,
+        range_to: range.to,
+        source: "mcp",
+        finished_at: new Date().toISOString(),
+        error_summary: "Vektor connection needs sign-in",
+      })
+      .select("id")
+      .single();
+    if (failedErr && /source/i.test(failedErr.message)) {
+      ({ data: failedRun, error: failedErr } = await supabase
+        .from("import_runs")
+        .insert({
+          status: "failed",
+          range_from: range.from,
+          range_to: range.to,
+          finished_at: new Date().toISOString(),
+          error_summary: "Vektor connection needs sign-in",
+        })
+        .select("id")
+        .single());
+    }
+    if (!failedErr && failedRun) {
+      await supabase.from("issues").insert({
+        severity: "Block",
+        rule: "vektor_auth",
+        message: "Vektor connection needs sign-in",
+        status: "open",
+        import_run_id: failedRun.id,
+      });
+    }
+    revalidatePath("/imports");
+    return { ok: false, error: "Vektor connection needs sign-in" };
+  }
   if (!adapter || !selected) {
     return {
       ok: false,
@@ -122,6 +136,7 @@ export async function runVektorImportAction(input?: {
   try {
     const fetched = await adapter.fetchManifests(range);
     const manifests = fetched.manifests;
+    const fetchReport = fetched.report ?? null;
 
     const { data: dropSetting } = await supabase
       .from("import_settings")
@@ -170,7 +185,10 @@ export async function runVektorImportAction(input?: {
           finished_at: new Date().toISOString(),
           rows_fetched: manifests.length,
           error_summary: pipeline.blockIssue.message,
-          meta: { statusCounts: pipeline.statusCounts } as unknown as Json,
+          meta: {
+            statusCounts: pipeline.statusCounts,
+            fetchReport,
+          } as unknown as Json,
         })
         .eq("id", run.id);
       revalidatePath("/imports");
@@ -362,7 +380,10 @@ export async function runVektorImportAction(input?: {
         rows_promoted: promoted,
         rows_rejected: rejected,
         rows_updated: updated,
-        meta: { statusCounts: pipeline.statusCounts } as unknown as Json,
+        meta: {
+          statusCounts: pipeline.statusCounts,
+          fetchReport,
+        } as unknown as Json,
       })
       .eq("id", run.id);
 
@@ -375,13 +396,21 @@ export async function runVektorImportAction(input?: {
       promoted,
       rejected,
       updated,
-      message: `Source ${selected}: fetched ${manifests.length}. Promoted ${promoted}, updated ${updated}, rejected ${rejected}.`,
+      message: formatImportResultMessage({
+        source: selected,
+        fetched: manifests.length,
+        promoted,
+        updated,
+        rejected,
+        report: fetchReport,
+      }),
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const safe = message.replace(/Bearer\s+\S+/gi, "Bearer [redacted]");
     const needsSignIn =
-      /sign-in|unauthorized|unverified|MCP/i.test(safe) ||
+      err instanceof NeedsSignInError ||
+      /sign-in|unauthorized|unverified/i.test(safe) ||
       /connection needs/i.test(safe);
 
     await supabase.from("issues").insert({

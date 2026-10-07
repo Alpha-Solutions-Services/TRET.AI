@@ -1,4 +1,5 @@
 import type { LookupMaps } from "../map";
+import type { ImportWindowReport } from "../mcp/window";
 import type { VektorManifest } from "../types";
 
 export type ImportSourceId = "mcp" | "csv" | "api";
@@ -21,6 +22,7 @@ export type FetchManifestsInput = {
 export type FetchManifestsResult = {
   manifests: VektorManifest[];
   lookups: LookupMaps;
+  report?: ImportWindowReport;
 };
 
 /**

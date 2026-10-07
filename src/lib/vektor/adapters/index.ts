@@ -6,6 +6,8 @@ import type { ImportSourceAdapter, ImportSourceId } from "./types";
 export type AdapterRegistryOptions = {
   mcpVerified: boolean;
   mcpHasTokens: boolean;
+  mcpNeedsSignIn?: boolean;
+  mcpFetchManifests?: ImportSourceAdapter["fetchManifests"];
   csvColumnMapping: Record<string, string> | null;
   apiBaseUrl: string;
   apiToken: string;
@@ -18,6 +20,8 @@ export function createAdapters(
     new McpAdapter({
       verified: opts.mcpVerified,
       hasTokens: opts.mcpHasTokens,
+      needsSignIn: opts.mcpNeedsSignIn,
+      fetchManifests: opts.mcpFetchManifests,
     }),
     new CsvExportAdapter({ columnMapping: opts.csvColumnMapping }),
     new ApiAdapter({ baseUrl: opts.apiBaseUrl, token: opts.apiToken }),
