@@ -100,3 +100,10 @@ Do these once (or when credentials change). The app cannot finish login or healt
 2. It adds fuel and toll staging, `fuel_transactions`, `toll_transactions`, and threshold rows in `import_settings`. All new tables have Row Level Security.
 3. Until that script has run, Fuel, Tolls, and Import fuel and tolls say the migration has not been applied. Loads keep working.
 4. No new environment variables. Connect Vektor (section 9) is still required for the MCP path.
+
+## 12. Weekly statements (v0.0.0.8) — do this before closing a week
+
+1. In the Supabase SQL editor, run `supabase/migrations/20261007150000_weekly_statements.sql`. Do this only when you are ready (say go). Run it after the v0.0.0.6 and v0.0.0.7 scripts.
+2. It adds `weekly_statements`, `weekly_statement_lines`, and `week_closes`, all with Row Level Security. Signed-in users can read. Only `lock_week` inserts. There is no reopen.
+3. Until that script has run, Statements still shows a computed week, and Close says the migration has not been applied.
+4. No new environment variables.

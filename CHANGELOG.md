@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.0.8 — 2026-10-07
+
+- Weekly statements for a Monday–Sunday week, using each load’s delivery date. Per-unit and fleet totals from loads, fee contracts, discounted fuel, tolls, and fixed weekly expenses.
+- Money stays integer cents. Rates stay basis points. One half-up rounding per fee line on the week’s gross.
+- Legacy-owned trucks deduct Tolson payable. Managed trucks deduct one management fee. The 10% Tolson and 5% Legacy split is stored and is not deducted again. Fixed expenses charged to management are stored and are not in owner net.
+- Close week checks unlinked fuel, a row-count drop on an import that overlaps the week, missing or mid-week contracts, and that net reconciles. A clean week locks a snapshot. There is no reopen.
+- Statements page: week selector, fleet and unit tables, Close with the blocker list.
+- Migration `20261007150000_weekly_statements.sql` is not applied until the owner says go.
+
 ## v0.0.0.7 — 2026-10-07
 
 - Fuel and tolls import: MCP first, CSV when column mapping is set. Staging, then `fuel_transactions` and `toll_transactions`. Idempotent on the Vektor transaction id.

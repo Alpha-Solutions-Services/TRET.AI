@@ -3,7 +3,7 @@
 ## DECIDED
 
 - Reporting week runs Monday to Sunday (taken from the sample report). Week helper: for any date, Monday is the start and Sunday is the end (example: week of 2026-09-21 ends 2026-09-27).
-- Loads, fuel and tolls come from Vektor. v0.0.0.5 connects loads through Vektor MCP after the owner signs in once. v0.0.0.7 imports fuel and tolls through staging. Weekly statements are not built yet.
+- Loads, fuel and tolls come from Vektor. v0.0.0.5 connects loads through Vektor MCP after the owner signs in once. v0.0.0.7 imports fuel and tolls through staging. v0.0.0.8 builds the weekly statement and can lock the week.
 - Fuel is booked at the discounted amount (integer cents). Retail is stored beside it. Unit 03 in the week of 2026-09-21 differs by $1.00 (100 cents) between retail and discounted. See decisions.
 - Fuel matches `trucks.unit_number` exactly (`02` is not `2`). Tolls match the Vektor truck id, resolved to that same unit number. Unmatched rows stay in staging with a Warn issue.
 - Fee rules are per truck, stored in the database with effective dates, never hardcoded. The number of trucks is not fixed; adding a truck must be easy.
@@ -11,7 +11,7 @@
 - Third-party trucks: owner is charged a 15% management fee. The report shows only "Management Fee 15%" and never names Tolson. Internally the split is 10% Tolson payable and 5% Legacy income and is recorded in the database. `TOLSON_PAYABLE` + `LEGACY_RETAINED` rates must equal `MANAGEMENT_FEE`, and all three use the same `base_pct_bp`.
 - Dispatch fee is a per-truck rate (currently 5.5% or 5%) and can change per truck.
 - If the database and a Google Sheet disagree on the same data, the database wins and an issue is flagged; nothing is overwritten silently.
-- An approved week is locked; later fixes are adjustment entries.
+- An approved week is locked; later fixes are adjustment entries. v0.0.0.8 stores the locked snapshot and does not reopen it. Adjustment rows are not built yet.
 - A new fee rate version starts on a Monday.
 - Fixed weekly expenses are per truck and per kind, stored as integer cents, effective from a Monday. `charged_to` is `owner` (the default) or `management`.
 - A per-week override replaces that kind’s amount and `charged_to` for one Monday–Sunday week.
@@ -31,11 +31,24 @@
 - Fixed-expense lookup for a Monday returns the week override when one exists, otherwise exactly one version that covers that Monday. Error if none or more than one version covers it.
 - Factoring-based fee bases (for example “after factoring”) are **not** supported until confirmed (OPEN).
 
+## Weekly statement
+
+- The week is the delivery date’s Monday–Sunday. Pickup does not choose the week.
+- One fee line per rule, on the sum of that truck’s gross for the week. Half up, once.
+- Legacy-owned net deducts Tolson payable. Managed net deducts the management fee only. Tolson payable and Legacy retained on a managed truck are stored and are not deducted a second time.
+- Dispatch is deducted from the owner. It is also kept on the statement as Legacy income. This is not the management-company P&L.
+- Owner net = gross − driver − (management fee, or Tolson on a Legacy-owned truck) − dispatch − factoring − discounted fuel − tolls − fixed expenses charged to the owner.
+- A fixed expense charged to management is stored and left out of owner net. A kind with no row is zero. Overlapping versions block the close.
+- Close is blocked by unlinked fuel, a row-count drop on an import whose dates overlap the week, a missing or mid-week contract, a load whose stored week disagrees with its delivery date, or a net that does not reconcile.
+
 ## OPEN
 
 Locked Assumption Log defaults are in `docs/decisions.md` (2026-10-07). Still open:
 
 - Quicken export format (build last).
+- The owner statement dollar table for 21–27 Sep 2026 was not in the uploaded handoff. `fixtures/statements/week-2026-09-21.json` is the reference until a live compare.
+- Whether an import may keep updating source rows inside a locked week. The snapshot itself does not change. Default: source updates are still allowed.
+- Per-load fee rounding. This version rounds once on the week’s gross.
 - Vektor long-lived access for scheduled server jobs.
 - Bestpass API keys (tolls may stay via Vektor).
 - Two-factor login (MFA).

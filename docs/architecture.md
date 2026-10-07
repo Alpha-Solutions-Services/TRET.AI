@@ -13,7 +13,7 @@ Ingest → Staging → Validate → Ledger → Reports → Sync
 | **Ingest** | Pull loads, fuel, and tolls from Vektor (and other sources when approved) |
 | **Staging** | Hold raw imported rows before they are trusted |
 | **Validate** | Check rules, flag issues, block bad data from becoming final |
-| **Ledger** | Store fee results, payables, income, expenses, and adjustments |
+| **Ledger** | Store fee results, weekly statement snapshots, payables, income, expenses, and adjustments |
 | **Reports** | Weekly owner PDFs and management views |
 | **Sync** | Push or compare with Google Sheets; Quicken export |
 
@@ -23,7 +23,7 @@ The **Postgres database (Supabase)** wins over sheets and files. Disagreements c
 
 ## Money
 
-Money must never be stored or calculated as a floating-point number. (No money code in v0.0.0.1; this rule applies when fee code is added.)
+Money must never be stored or calculated as a floating-point number. Weekly statement totals are integer cents.
 
 ## LLM
 

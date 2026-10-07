@@ -57,3 +57,11 @@
 | 2026-10-07 | Toll duplicate key | Fuel duplicates are the same card, time, and amount. Tolls use card or transponder when present, otherwise the Vektor truck id, plus time and amount. |
 | 2026-10-07 | A fuel or toll day with no load does not promote | Warn, row stays in staging. Impossible MPG is a week Warn and the fuel rows still promote. Unlinked fuel at week close is a Block check. Week close itself is not built. |
 | 2026-10-07 | CSV fuel and toll mappings stay empty until a real export | MCP is primary. CSV runs only after `fuel_csv_column_mapping` and `toll_csv_column_mapping` are set. |
+| 2026-10-07 | Weekly statement uses the delivery-date week | Fees are one half-up line per rule on that week’s gross. Pickup does not choose the week. |
+| 2026-10-07 | Managed statement shows one management fee | Tolson payable and Legacy retained are stored and are not deducted again. Legacy-owned statements deduct Tolson payable. |
+| 2026-10-07 | Dispatch is an owner deduction | It is also stored as Legacy income. The management-company P&L is not this version. |
+| 2026-10-07 | Fixed expenses charged to management stay out of owner net | A missing kind is zero. Overlapping versions block the close. |
+| 2026-10-07 | Close locks a snapshot and does not reopen | Blockers: unlinked fuel, row-count drop on an overlapping import, missing or mid-week contract, delivery week mismatch, net that does not reconcile. Adjustment rows are later. |
+| 2026-10-07 | A locked week refuses a fixed-expense override | Resolves the v0.0.0.6 question. Delete-latest still refuses once any weekly statement exists for the truck. |
+| 2026-10-07 | OPEN: 21–27 Sep 2026 owner statement dollars | The uploaded handoff has no PDF dollar table. The fixture statement is the reference. Live per-unit fuel dollars stay OPEN. |
+| 2026-10-07 | OPEN: source edits after lock | The locked snapshot does not change. Whether imports should freeze source rows in that week is open. Default: imports may still update source rows. |
