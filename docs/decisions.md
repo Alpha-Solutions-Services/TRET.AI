@@ -55,11 +55,18 @@
 | 2026-10-07 | OPEN: fuel and toll MCP tool names and date arguments | Working names: `fuel_Transactions_Get`, `fuel_Transactions_AggregateGet`, `core_Tolls_Get`, `core_Tolls_StatsGet`, with `transaction_date` `{from, to}`. Test connection still requires only the three load tools. Confirm on the first live fuel import. |
 | 2026-10-07 | OPEN: fuel validation thresholds | Seeded in `import_settings`: price $1.50–$10.00 per gallon, diesel tank 300 gal, DEF tank 50 gal, MPG 2–12, row-count drop 50%. Change the rows. Do not hardcode replacements. |
 | 2026-10-07 | Toll duplicate key | Fuel duplicates are the same card, time, and amount. Tolls use card or transponder when present, otherwise the Vektor truck id, plus time and amount. |
-| 2026-10-07 | A fuel or toll day with no load does not promote | Warn, row stays in staging. Impossible MPG is a week Warn and the fuel rows still promote. Unlinked fuel at week close is a Block check. Week close itself is not built. |
+| 2026-10-07 | A fuel or toll day with no load does not promote | Warn, row stays in staging. Impossible MPG is a week Warn and the fuel rows still promote. Unlinked fuel at week close is a Block check. Week close is built in v0.0.0.8. |
 | 2026-10-07 | CSV fuel and toll mappings stay empty until a real export | MCP is primary. CSV runs only after `fuel_csv_column_mapping` and `toll_csv_column_mapping` are set. |
+| 2026-10-07 | Management P&L income | Legacy retained on managed trucks, from the statement, plus dispatch fee on its own line. The 5% figure is whatever the contract stored. Owned-truck retained is not income. |
+| 2026-10-07 | Management P&L expenses | Fixed expenses charged to management, plus `mgmt_operating_expenses` dated in the Monday–Sunday week. |
+| 2026-10-07 | Tolson payable on the P&L | Shown as a memo. Not included in management net. No payment workflow in this version. |
+| 2026-10-07 | Week lock and the P&L | Retained, dispatch, and fixed-to-management come from the locked snapshot. Operating expenses are not frozen. |
+| 2026-10-07 | Resolving an issue | `resolve_issue` sets one open Warn or Block row to resolved and writes `change_log`. Imported rows stay. A locked week stays locked. Close checks are computed and cannot be resolved. |
+| 2026-10-07 | Import issue with no run range | It stays in every week’s inbox so it is not hidden. |
+| 2026-10-07 | AI | `llm-gateway` is not created. Not in this version. |
 | 2026-10-07 | Weekly statement uses the delivery-date week | Fees are one half-up line per rule on that week’s gross. Pickup does not choose the week. |
 | 2026-10-07 | Managed statement shows one management fee | Tolson payable and Legacy retained are stored and are not deducted again. Legacy-owned statements deduct Tolson payable. |
-| 2026-10-07 | Dispatch is an owner deduction | It is also stored as Legacy income. The management-company P&L is not this version. |
+| 2026-10-07 | Dispatch is an owner deduction | It is also stored as Legacy income. v0.0.0.8 did not build the P&L. v0.0.0.10 puts that dispatch fee on the P&L as its own income line. |
 | 2026-10-07 | Fixed expenses charged to management stay out of owner net | A missing kind is zero. Overlapping versions block the close. |
 | 2026-10-07 | Close locks a snapshot and does not reopen | Blockers: unlinked fuel, row-count drop on an overlapping import, missing or mid-week contract, delivery week mismatch, net that does not reconcile. Adjustment rows are later. |
 | 2026-10-07 | A locked week refuses a fixed-expense override | Resolves the v0.0.0.6 question. Delete-latest still refuses once any weekly statement exists for the truck. |

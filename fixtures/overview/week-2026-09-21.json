@@ -1,0 +1,90 @@
+{
+  "weekStart": "2026-09-21",
+  "weekEnd": "2026-09-27",
+  "note": "Inputs for the management P&L and issues inbox. Statement cents come from fixtures/statements/week-2026-09-21.json.",
+  "operatingExpenses": [
+    { "expenseDate": "2026-09-20", "amountCents": 9999 },
+    { "expenseDate": "2026-09-21", "amountCents": 10000 },
+    { "expenseDate": "2026-09-27", "amountCents": 2500 },
+    { "expenseDate": "2026-09-28", "amountCents": 8888 }
+  ],
+  "importIssues": [
+    {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      "severity": "Warn",
+      "rule": "truck_unmatched",
+      "message": "Fuel unit 2 did not match a truck.",
+      "ref": "fuel-2",
+      "status": "open",
+      "createdAt": "2026-09-27T18:00:00.000Z",
+      "rangeFrom": "2026-09-21",
+      "rangeTo": "2026-09-27"
+    },
+    {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+      "severity": "Block",
+      "rule": "row_count_drop",
+      "message": "Fuel row count dropped.",
+      "ref": "2026-09-21",
+      "status": "open",
+      "createdAt": "2026-09-27T17:00:00.000Z",
+      "rangeFrom": "2026-09-20",
+      "rangeTo": "2026-09-21"
+    },
+    {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3",
+      "severity": "Warn",
+      "rule": "prior_week",
+      "message": "This import ends the day before the week.",
+      "ref": "prior",
+      "status": "open",
+      "createdAt": "2026-09-20T12:00:00.000Z",
+      "rangeFrom": "2026-09-14",
+      "rangeTo": "2026-09-20"
+    },
+    {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4",
+      "severity": "Info",
+      "rule": "note",
+      "message": "Info is not listed in the inbox.",
+      "ref": null,
+      "status": "open",
+      "createdAt": "2026-09-22T12:00:00.000Z",
+      "rangeFrom": "2026-09-21",
+      "rangeTo": "2026-09-27"
+    },
+    {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5",
+      "severity": "Warn",
+      "rule": "already_resolved",
+      "message": "A resolved warn stays out of the open list.",
+      "ref": null,
+      "status": "resolved",
+      "createdAt": "2026-09-23T12:00:00.000Z",
+      "rangeFrom": "2026-09-21",
+      "rangeTo": "2026-09-27"
+    },
+    {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa6",
+      "severity": "Block",
+      "rule": "ignored_status",
+      "message": "Ignored is not an inbox status in this version.",
+      "ref": null,
+      "status": "ignored",
+      "createdAt": "2026-09-23T12:00:00.000Z",
+      "rangeFrom": "2026-09-21",
+      "rangeTo": "2026-09-27"
+    },
+    {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa7",
+      "severity": "Block",
+      "rule": "vektor_auth",
+      "message": "Vektor connection needs sign-in",
+      "ref": null,
+      "status": "open",
+      "createdAt": "2026-09-26T12:00:00.000Z",
+      "rangeFrom": null,
+      "rangeTo": null
+    }
+  ]
+}

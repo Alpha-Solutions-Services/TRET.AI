@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.0.0.10 — 2026-10-07
+
+- Overview for the selected Monday–Sunday week: fleet and unit snapshot from the statement (gross, fees, discounted fuel, tolls, owner fixed, net), open issues, and close status. A locked week uses the snapshot.
+- Management P&L in integer cents. Income is Legacy retained on managed trucks plus the dispatch fee Legacy keeps. Expenses are fixed costs charged to management and operating expenses dated in the week. Tolson payable is shown and is not in the net.
+- Issues inbox: Warn and Block import issues for the week, plus live close checks. Filter by week, severity, and status. Mark resolved updates a stored open issue only. Close checks are not stored and cannot be resolved.
+- Migration `20261007160000_resolve_issue.sql` is not applied until the owner says go. No new table.
+
 ## v0.0.0.9 — 2026-10-07
 
 - Weekly PDF for a selected week: one file, a section per unit, then fleet totals. Dollars are formatted from integer cents.

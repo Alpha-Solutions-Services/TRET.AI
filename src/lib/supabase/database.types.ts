@@ -952,6 +952,10 @@ export type Database = {
         Args: { p_week_start: string; p_payload: Json };
         Returns: string;
       };
+      resolve_issue: {
+        Args: { p_issue_id: string };
+        Returns: string;
+      };
     };
     Enums: {
       truck_class: TruckClass;

@@ -38,6 +38,8 @@ export type StatementsPageData = {
   units: UnitStatement[];
   fleet: FleetStatement;
   blockers: StatementBlocker[];
+  /** Close checks from the current rows. Still filled when the week is locked. */
+  liveBlockers: StatementBlocker[];
   closeAllowed: boolean;
 };
 
@@ -252,6 +254,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
       units: live.units,
       fleet: live.fleet,
       blockers: live.blockers,
+      liveBlockers: live.blockers,
       closeAllowed: live.closeAllowed && !lockMissing,
     };
   }
@@ -292,6 +295,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
     units,
     fleet,
     blockers: [],
+    liveBlockers: live.blockers,
     closeAllowed: false,
   };
 }
@@ -358,6 +362,7 @@ function failed(
     units: [],
     fleet: EMPTY_FLEET,
     blockers: [],
+    liveBlockers: [],
     closeAllowed: false,
   };
 }

@@ -152,7 +152,7 @@ describe("weekly statement PDF", () => {
     expect(text).toContain("Maintenance Escrow Weekly");
     expect(text).toContain("Yard Fee");
     expect(text).toContain("Not stored");
-    expect(text).toContain("TRET.AI v0.0.0.9");
+    expect(text).toContain("TRET.AI v0.0.0.10");
     expect(text.replace(/\s+/g, " ")).toContain("not deducted again");
     expect(text).not.toContain("$228.00");
   });

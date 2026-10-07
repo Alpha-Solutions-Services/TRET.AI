@@ -1,25 +1,26 @@
 import { Suspense } from "react";
+import { OverviewClient } from "@/components/overview/overview-client";
 import { OverviewSkeleton } from "@/components/overview-skeleton";
 import { SignedInShell } from "@/components/signed-in-shell";
+import { loadOverview } from "@/lib/overview/queries";
 
 export const dynamic = "force-dynamic";
 
-function OverviewContent() {
-  return (
-    <section className="space-y-3">
-      <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
-      <p className="max-w-prose text-[var(--color-fg-muted)]">
-        Nothing to show on this page yet. Open Statements for the weekly figures.
-      </p>
-    </section>
-  );
+async function OverviewContent({ week }: { week: string | undefined }) {
+  const data = await loadOverview(week);
+  return <OverviewClient key={data.weekStart} data={data} />;
 }
 
-export default function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string }>;
+}) {
+  const params = await searchParams;
   return (
     <SignedInShell title="Overview">
       <Suspense fallback={<OverviewSkeleton />}>
-        <OverviewContent />
+        <OverviewContent week={params.week} />
       </Suspense>
     </SignedInShell>
   );
