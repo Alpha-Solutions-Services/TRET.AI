@@ -1,5 +1,6 @@
 import { roundHalfUpDivide } from "@/lib/fee-engine/money";
-import { canonicalLoadId } from "@/lib/loads/load-id";
+import { canonicalLoadId, loadMatchKey } from "@/lib/loads/load-id";
+import { countedLoadedHundredths, layoutManifestGroups, type ManifestRole } from "@/lib/loads/manifest-miles";
 import {
   centsPerLoad,
   centsPerLoadedMile,
@@ -36,6 +37,9 @@ export type AssetLoadLine = {
   loadedHundredths: number;
   deadheadHundredths: number;
   rateCents: number;
+  manifestRef: string | null;
+  manifestRole: ManifestRole;
+  manifestHeader: boolean;
 };
 
 export type AssetReport = {
@@ -63,7 +67,14 @@ export type AssetReport = {
   loads: AssetLoadLine[];
   leftExpenses: AssetExpenseLine[];
   rightExpenses: AssetExpenseLine[];
+  /** This week's escrow charge, included in truck expenses. */
+  escrowWeekCents: number;
+  /** Running balance when the sheet has that column. Null when TRET only has this week. */
+  escrowBalanceCents: number | null;
+  /** Card amount: the running balance, or this week's escrow when no balance is stored. */
   escrowCents: number;
+  /** "Escrow Balance" or "Escrow Balance (this week)". */
+  escrowCardLabel: string;
   fuelGallonsLabel: string;
   fuelCostCents: number;
   fuelUnitPriceCents: number | null;
@@ -151,6 +162,25 @@ export function percentOfRevenue(partCents: number, grossCents: number): string 
 function shortDate(iso: string): string {
   const [year, month, day] = iso.split("-");
   return `${month}/${day}/${year?.slice(2) ?? ""}`;
+}
+
+function manifestForLoad(map: Record<string, string | null> | undefined, loadId: string): string | null {
+  if (!map) return null;
+  const direct = map[loadMatchKey(loadId)] ?? map[canonicalLoadId(loadId)] ?? map[loadId];
+  const text = (direct ?? "").trim();
+  return text || null;
+}
+
+function readOptional(
+  weekly: { header: string[]; row: string[] } | null,
+  names: readonly string[],
+): number | null {
+  if (!weekly) return null;
+  const index = columnIndex(weekly.header, names);
+  if (index < 0) return null;
+  const text = (weekly.row[index] ?? "").trim();
+  if (!text) return null;
+  return sheetAmountToCents(text);
 }
 
 function cellAmount(header: string[], row: string[], names: readonly string[]): number {
@@ -488,23 +518,41 @@ export function buildAssetReport(input: {
   dbFuelCents?: number;
   dbGallonsMilli?: number;
   dbTollCents?: number;
+  /** Vektor manifest id by load match key. Used when the sheet has no manifest column. */
+  manifestRefs?: Record<string, string | null>;
 }): AssetReport {
   const parsed = input.ledger ? parseLoadLedger(input.ledger) : null;
   const weekLoads = (parsed?.rows ?? []).filter((row) => inWeek(row.deliveryDay, input.weekStart, input.weekEnd));
-  const loads: AssetLoadLine[] = weekLoads
-    .filter((row) => row.rateCents != null)
-    .map((row) => ({
-      loadId: row.loadId,
-      date: shortDate(row.deliveryDay),
-      broker: row.broker ?? "",
-      origin: row.origin ?? "",
-      destination: row.destination ?? "",
-      loadedHundredths: row.loadedMilesHundredths ?? 0,
-      deadheadHundredths: row.deadheadMilesHundredths ?? 0,
-      rateCents: row.rateCents ?? 0,
-    }));
+  const loads: AssetLoadLine[] = layoutManifestGroups(
+    weekLoads
+      .filter((row) => row.rateCents != null)
+      .map((row) => {
+        const fromSheet = row.manifestId?.trim() || null;
+        const fromVektor = manifestForLoad(input.manifestRefs, row.loadId);
+        const loadedHundredths = row.loadedMilesHundredths ?? 0;
+        return {
+          loadId: row.loadId,
+          date: shortDate(row.deliveryDay),
+          broker: row.broker ?? "",
+          origin: row.origin ?? "",
+          destination: row.destination ?? "",
+          loadedHundredths,
+          deadheadHundredths: row.deadheadMilesHundredths ?? 0,
+          rateCents: row.rateCents ?? 0,
+          manifestRef: fromSheet || fromVektor,
+          rankHundredths: loadedHundredths,
+        };
+      }),
+  ).map((row) => {
+    const { rankHundredths, ...load } = row;
+    void rankHundredths;
+    return load;
+  });
   const grossCents = loads.reduce((sum, row) => sum + row.rateCents, 0);
-  const loadedMilesHundredths = loads.reduce((sum, row) => sum + row.loadedHundredths, 0);
+  const loadedMilesHundredths = loads.reduce(
+    (sum, row) => sum + countedLoadedHundredths(row.manifestRole, row.loadedHundredths),
+    0,
+  );
   const deadheadMilesHundredths = loads.reduce((sum, row) => sum + row.deadheadHundredths, 0);
   const dispatchMilesHundredths = loadedMilesHundredths + deadheadMilesHundredths;
   const weekly = weeklyRow(input.weekly, input.weekStart, input.weekEnd);
@@ -541,6 +589,7 @@ export function buildAssetReport(input: {
     fuel: fuelCents,
     insurance: read(["insurance"]),
     escrow: read(["maintenance escrow weekly", "weekly escrow"]),
+    escrowBalance: readOptional(weekly, ["escrow balance", "maintenance escrow balance", "running escrow"]),
     eld: read(["eld fee"]),
     yard: read(["yard fee", "yard parking"]),
     gps: read(["gps tracker"]),
@@ -557,7 +606,7 @@ export function buildAssetReport(input: {
     { label: "Insurance", cents: lines.insurance },
   ];
   const rightExpenses: AssetExpenseLine[] = [
-    { label: "Weekly Escrow", cents: lines.escrow },
+    { label: "Escrow Balance (this week)", cents: lines.escrow },
     { label: "ELD Fee", cents: lines.eld },
     { label: "Yard Parking", cents: lines.yard },
     { label: "GPS Tracker", cents: lines.gps },
@@ -644,7 +693,10 @@ export function buildAssetReport(input: {
     loads,
     leftExpenses,
     rightExpenses,
-    escrowCents: lines.escrow,
+    escrowWeekCents: lines.escrow,
+    escrowBalanceCents: lines.escrowBalance,
+    escrowCents: lines.escrowBalance ?? lines.escrow,
+    escrowCardLabel: lines.escrowBalance == null ? "Escrow Balance (this week)" : "Escrow Balance",
     fuelGallonsLabel: gallonsMilli > 0 ? formatGallonsMilli(gallonsMilli) : "0.000",
     fuelCostCents: fuelCents,
     fuelUnitPriceCents:

@@ -2,7 +2,7 @@ import { inflateSync } from "node:zlib";
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import { buildAssetReport, DEFAULT_DISPATCHER } from "./build";
-import { renderAssetReportPdf } from "./pdf";
+import { PAGE_H, PAGE_W, renderAssetReportPdf } from "./pdf";
 
 const WEEK = { weekStart: "2026-08-31", weekEnd: "2026-09-06" };
 
@@ -127,26 +127,21 @@ describe("weekly asset report", () => {
     expect(report.notes.join(" ")).not.toContain("MC Lease");
     const bytes = await renderAssetReportPdf(report);
     const text = pdfText(bytes);
-    expect(text).toContain("LEGACY INC GLOBAL");
-    expect(text).toContain("Weekly Asset Management Report");
-    expect(text).toContain("Executive Summary");
-    expect(text).toContain("Weekly Load Activity");
+    expect(text).toContain("TOTALS");
     expect(text).toContain("TBH--1081");
-    expect(text).toContain("Owner Earnings");
-    expect(text).toContain("Fuel Summary and Compliance");
+    expect(text).toContain("Escrow Balance (this week)");
+    expect(text).not.toContain("Weekly Escrow");
     expect(text).toContain("John Reed");
     expect(text).toContain("Tolson Blackhawk LLC");
-    expect(text).toContain("Claims");
-    expect(text).toContain("Cargo Damage");
-    expect(text).toContain("Service Failures");
-    expect(text).toContain("Cancellation");
-    expect(text).toContain("Page 1 of 2");
-    expect(text).toContain("Page 2 of 2");
+    expect(text).toContain("08/31/26 to 09/06/26");
     expect(text).not.toContain("MC Lease");
     expect(text).not.toContain("Not stored");
     expect(text).not.toContain("\u2014");
     expect(text).not.toContain("\u2013");
-    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(2);
+    const pdf = await PDFDocument.load(bytes);
+    expect(pdf.getPageCount()).toBe(4);
+    expect(pdf.getPage(0).getWidth()).toBe(PAGE_W);
+    expect(pdf.getPage(0).getHeight()).toBe(PAGE_H);
   });
 
   it("drops truck and trailer payments and fills active defaults for truck 8", async () => {
@@ -159,8 +154,18 @@ describe("weekly asset report", () => {
       fuelLog: TRUCK8_FUEL,
       fleet: TRUCK8_FLEET,
       sheetNote: null,
+      manifestRefs: {
+        TBH1188: "1195",
+        TBH1192: "1195",
+      },
     });
     expect(report.grossCents).toBe(700_000);
+    expect(report.loadedMilesHundredths).toBe(207_500);
+    expect(report.loads.find((load) => load.loadId === "TBH--1192")?.manifestRole).toBe("partial");
+    expect(report.loads.find((load) => load.loadId === "TBH--1188")?.manifestRole).toBe("primary");
+    expect(report.escrowCardLabel).toBe("Escrow Balance (this week)");
+    expect(report.escrowCents).toBe(20_000);
+    expect(report.escrowBalanceCents).toBeNull();
     expect(report.loadCount).toBe(4);
     expect(report.driver).toBe("Brison Hunter");
     expect(report.expenseCents).toBe(360_454);
@@ -192,12 +197,15 @@ describe("weekly asset report", () => {
     expect(report.driverQualification).toBe("Current");
     expect(report.fuelEconomy).toBe("19.97");
     expect(report.fuelUnitPriceCents).toBe(555);
-    expect(report.fuelPerMileCents).toBe(14);
+    expect(report.fuelPerMileCents).toBe(20);
     expect(report.notes).toEqual([]);
     expect(report.notes.join(" ")).not.toContain(DEFAULT_DISPATCHER);
     const bytes = await renderAssetReportPdf(report);
     const text = pdfText(bytes);
-    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(2);
+    const pdf = await PDFDocument.load(bytes);
+    expect(pdf.getPageCount()).toBe(4);
+    expect(pdf.getPage(0).getWidth()).toBe(PAGE_W);
+    expect(pdf.getPage(0).getHeight()).toBe(PAGE_H);
     expect(text).toContain("$3,604.54");
     expect(text).toContain("$3,395.46");
     expect(text).toContain("Brison Hunter");
@@ -205,9 +213,17 @@ describe("weekly asset report", () => {
     expect(text).not.toContain("because the truck record");
     expect(text).not.toContain("Notes");
     expect(text).not.toContain("$4,051.77");
+    expect(text).toContain("TOTALS");
+    expect(text).toContain("Manifest 1195");
+    expect(text).toContain("partial");
+    expect(text).toContain("2,075.00");
+    expect(text).toContain("Escrow Balance (this week)");
+    expect(text).toContain("$200.00");
+    expect(text).not.toContain("Weekly Escrow");
     expect(text).not.toContain("MC Lease");
     expect(text).not.toContain("Not stored");
     expect(text).not.toContain("447.23");
+    expect(text).not.toContain("2,999.00");
   });
 
   it("reads trailer, VIN, and dispatcher from a fleet label block and from performance columns", () => {

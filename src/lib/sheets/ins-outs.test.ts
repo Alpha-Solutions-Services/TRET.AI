@@ -65,6 +65,7 @@ describe("sheet Ins and Outs", () => {
           loadedMilesHundredths: null,
           deadheadMilesHundredths: null,
           driverName: null,
+          manifestId: null,
         },
         {
           loadId: "TBH--1186",
@@ -74,6 +75,7 @@ describe("sheet Ins and Outs", () => {
           loadedMilesHundredths: null,
           deadheadMilesHundredths: null,
           driverName: null,
+          manifestId: null,
         },
       ],
     });

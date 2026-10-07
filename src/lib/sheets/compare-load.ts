@@ -16,6 +16,8 @@ import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
 
 const LOAD_COLUMNS =
+  "load_id, rate_cents, truck_unit_number, delivery_date, pickup_date, loaded_distance_mi, deadhead_miles, driver_name, delivery_date_kind, pickup_date_kind, source_manifest_ref";
+const LOAD_COLUMNS_KIND =
   "load_id, rate_cents, truck_unit_number, delivery_date, pickup_date, loaded_distance_mi, deadhead_miles, driver_name, delivery_date_kind, pickup_date_kind";
 const LOAD_COLUMNS_BASE =
   "load_id, rate_cents, truck_unit_number, delivery_date, pickup_date, loaded_distance_mi, deadhead_miles, driver_name";
@@ -56,6 +58,7 @@ type LoadRow = {
   driver_name: string | null;
   delivery_date_kind?: string | null;
   pickup_date_kind?: string | null;
+  source_manifest_ref?: string | null;
 };
 
 function dateKind(value: unknown): DateKind {
@@ -105,6 +108,7 @@ export async function loadSheetCompare(input: {
         driverName: load.driverName,
         deliveryDateKind: null,
         pickupDateKind: null,
+        manifestRef: load.manifestId,
       });
     }
   }
@@ -122,6 +126,12 @@ export async function loadSheetCompare(input: {
     () =>
       supabase
         .from("loads")
+        .select(LOAD_COLUMNS_KIND)
+        .gte("delivery_date", input.weekStart)
+        .lte("delivery_date", input.weekEnd),
+    () =>
+      supabase
+        .from("loads")
         .select(LOAD_COLUMNS_BASE)
         .gte("delivery_date", input.weekStart)
         .lte("delivery_date", input.weekEnd),
@@ -135,6 +145,7 @@ export async function loadSheetCompare(input: {
   if (sheetIds.length > 0) {
     const extra = await selectLoads(
       () => supabase.from("loads").select(LOAD_COLUMNS).in("load_id", sheetIds),
+      () => supabase.from("loads").select(LOAD_COLUMNS_KIND).in("load_id", sheetIds),
       () => supabase.from("loads").select(LOAD_COLUMNS_BASE).in("load_id", sheetIds),
     );
     if (extra.error) return empty(input, unit, trucks, extra.error);
@@ -165,6 +176,7 @@ export async function loadSheetCompare(input: {
       driverName: row.driver_name,
       deliveryDateKind: dateKind(row.delivery_date_kind),
       pickupDateKind: dateKind(row.pickup_date_kind),
+      manifestRef: row.source_manifest_ref?.trim() || null,
     });
   }
 
@@ -206,16 +218,22 @@ function empty(
 
 async function selectLoads(
   full: () => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+  kind: () => PromiseLike<{ data: unknown; error: { message: string } | null }>,
   base: () => PromiseLike<{ data: unknown; error: { message: string } | null }>,
 ): Promise<{ rows: LoadRow[]; error: string | null }> {
   const first = await full();
   if (!first.error) return { rows: (first.data as LoadRow[] | null) ?? [], error: null };
-  if (!/delivery_date_kind|pickup_date_kind|schema cache/i.test(first.error.message)) {
+  if (!/delivery_date_kind|pickup_date_kind|source_manifest_ref|schema cache/i.test(first.error.message)) {
     return { rows: [], error: first.error.message };
   }
-  const second = await base();
-  if (second.error) return { rows: [], error: second.error.message };
-  return { rows: (second.data as LoadRow[] | null) ?? [], error: null };
+  const second = await kind();
+  if (!second.error) return { rows: (second.data as LoadRow[] | null) ?? [], error: null };
+  if (!/delivery_date_kind|pickup_date_kind|schema cache/i.test(second.error.message)) {
+    return { rows: [], error: second.error.message };
+  }
+  const third = await base();
+  if (third.error) return { rows: [], error: third.error.message };
+  return { rows: (third.data as LoadRow[] | null) ?? [], error: null };
 }
 
 async function loadAcceptances(supabase: Awaited<ReturnType<typeof createClient>>): Promise<FieldAcceptance[]> {

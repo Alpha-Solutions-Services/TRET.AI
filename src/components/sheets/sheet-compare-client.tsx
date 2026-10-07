@@ -7,7 +7,9 @@ import { CopyableError } from "@/components/copyable-error";
 import { useToast } from "@/components/ui/toast";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { loadMatchKey } from "@/lib/loads/load-id";
+import { countedLoadedHundredths } from "@/lib/loads/manifest-miles";
 import { centsToDollarString } from "@/lib/money/cents";
+import { centsPerLoadedMile } from "@/lib/reports/format";
 import { highlightToField, milesLabel, type AlignedLoad, type AlignHighlight } from "@/lib/sheets/align";
 import type { FieldDecisionRow } from "@/lib/sheets/compare-load";
 import { unitKey } from "@/lib/sheets/mismatch";
@@ -27,6 +29,31 @@ const CHOICE_LABEL: Record<string, string> = {
   use_vektor: "Use Vektor",
   write_sheet: "Write to sheet",
 };
+
+function sideTotals(rows: AlignedLoad[], side: "sheet" | "vektor"): {
+  loaded: number;
+  deadhead: number;
+  rate: number;
+  ratePerMile: number | null;
+} {
+  let loaded = 0;
+  let deadhead = 0;
+  let rate = 0;
+  for (const row of rows) {
+    const facts = row[side];
+    if (!facts) continue;
+    loaded += countedLoadedHundredths(row.manifestRole, facts.loadedMilesHundredths);
+    deadhead += facts.deadheadMilesHundredths ?? 0;
+    rate += facts.rateCents ?? 0;
+  }
+  const miles = loaded + deadhead;
+  return {
+    loaded,
+    deadhead,
+    rate,
+    ratePerMile: miles === 0 ? null : centsPerLoadedMile(rate, miles),
+  };
+}
 
 function money(cents: number | null): string {
   if (cents == null) return "Blank";
@@ -95,6 +122,7 @@ function SideTable({
   sheetEditable: Record<string, boolean>;
   decisions: FieldDecisionRow[];
 }) {
+  const totals = sideTotals(rows, side);
   return (
     <section className="material overflow-x-auto rounded-xl border border-[var(--color-border)]">
       <table className="w-max min-w-full border-collapse text-left text-sm">
@@ -129,6 +157,13 @@ function SideTable({
               const expand = side === "sheet" && (row.highlights.length > 0 || history.length > 0);
               return (
                 <Fragment key={`${row.unitNumber}-${row.loadId}`}>
+                  {row.manifestHeader && row.manifestRef ? (
+                    <tr className="border-b border-[var(--color-border)] bg-[var(--color-muted)]">
+                      <td colSpan={9} className="px-3 py-2 text-sm font-medium">
+                        Manifest {row.manifestRef}
+                      </td>
+                    </tr>
+                  ) : null}
                   <tr className="border-b border-[var(--color-border)]">
                     <td className={nowrap}>{row.unitNumber}</td>
                     <td className={`${nowrap} font-medium`}>{row.loadId}</td>
@@ -142,7 +177,7 @@ function SideTable({
                         </td>
                         <td className={`${num} ${cellClass(row, "rate")}`}>{money(facts.rateCents)}</td>
                         <td className={`${num} ${cellClass(row, "loaded_miles")}`}>
-                          {milesLabel(facts.loadedMilesHundredths)}
+                          {row.manifestRole === "partial" ? "partial" : milesLabel(facts.loadedMilesHundredths)}
                         </td>
                         <td className={`${num} ${cellClass(row, "deadhead")}`}>
                           {milesLabel(facts.deadheadMilesHundredths)}
@@ -185,7 +220,26 @@ function SideTable({
             })
           )}
         </tbody>
+        {rows.length > 0 ? (
+          <tfoot>
+            <tr className="border-t border-[var(--color-border)] bg-[var(--color-muted)] font-medium">
+              <td className={nowrap} colSpan={4}>
+                Totals
+              </td>
+              <td className={num}>{money(totals.rate)}</td>
+              <td className={num}>{milesLabel(totals.loaded)}</td>
+              <td className={num}>{milesLabel(totals.deadhead)}</td>
+              <td className={nowrap} />
+              <td className={`${nowrap} text-[var(--color-fg-muted)]`}>
+                {totals.ratePerMile == null ? "Rate per mile n/a" : `${money(totals.ratePerMile)} per mile`}
+              </td>
+            </tr>
+          </tfoot>
+        ) : null}
       </table>
+      <p className="px-3 pb-3 text-xs text-[var(--color-fg-muted)]">
+        Loaded miles count once per manifest. A partial load shows as partial and is left out of that total. Revenue still adds every load.
+      </p>
     </section>
   );
 }

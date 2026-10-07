@@ -53,7 +53,7 @@ describe("weekly expense parsing", () => {
       { category: "Factoring fee", cents: 12_250 },
       { category: "Fuel", cents: 45_659 },
       { category: "Insurance", cents: 28_871 },
-      { category: "Maintenance escrow", cents: 20_000 },
+      { category: "Escrow Balance (this week)", cents: 20_000 },
       { category: "ELD fee", cents: 4_725 },
       { category: "Yard fee", cents: 1_293 },
       { category: "GPS tracker", cents: 850 },

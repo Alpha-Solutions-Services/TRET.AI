@@ -144,7 +144,7 @@ Do these once (or when credentials change). The app cannot finish login or healt
 1. No new migration.
 2. Optional server variable `VEKTOR_API_MANIFESTS_PATH`. Leave it empty until Vektor confirms the list path. `VEKTOR_API_BASE_URL` and `VEKTOR_API_TOKEN` turn on the REST source. That path never calls MCP.
 3. In **Settings**, read the four sources and save the one you want. CSV and Google Sheet Load Ledger work without Vektor keys. MCP stays listed and is labeled broken on filters proto.
-4. On **Ins and Outs**, **Download report** builds the two-page Weekly Asset Management Report for that truck and week. Truck Pymts and Trailer Pymts are left off owner expenses. A missing dispatcher prints Legacy Dispatch Team.
+4. On **Ins and Outs**, **Download report** builds the Weekly Asset Management Report for that truck and week. The file is four landscape pages in the Legacy template, starting with the executive cover. Truck Pymts and Trailer Pymts are left off owner expenses. A missing dispatcher prints Legacy Dispatch Team.
 
 ## 18. Service account key and the footer (v0.0.0.18)
 
@@ -162,10 +162,10 @@ Do these once (or when credentials change). The app cannot finish login or healt
 3. Until that script has run, Ins and Outs still shows a 10 percent fee and does not store edits. Settings says the migration has not been applied. Legacy expenses still list rows from the v0.0.0.6 table.
 4. No new environment variables. The footer is one short line under the page. It is not fixed to the screen.
 
-## 20. Weekly asset report layout (v0.0.0.24)
+## 20. Weekly asset report layout (v0.0.0.27)
 
 1. No new migration. `trucks` does not gain trailer, VIN, or dispatcher columns.
-2. Download report on Ins and Outs is still two Letter pages. Owner expenses omit Truck Pymts and Trailer Pymts. Dashboard Outs still include those lines.
+2. Download report on Ins and Outs is four landscape pages that follow the Legacy template, including the executive cover. Owner expenses omit Truck Pymts and Trailer Pymts. Dashboard Outs still include those lines. Escrow prints as Escrow Balance (this week) unless the sheet has an Escrow Balance column. Shared manifests count loaded miles once. No new migration.
 3. Trailer, VIN, and dispatcher print when Fleet Directory, Weekly Expenses, or the Load Ledger has them. If dispatcher is missing, the PDF prints Legacy Dispatch Team and does not add a note. Driver prints the full truck or owner name when the sheet only has the first name.
 
 ## 21. Tolson payable on the truck (v0.0.0.24)
