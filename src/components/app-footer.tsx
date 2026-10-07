@@ -2,8 +2,8 @@
 
 import { usePathname } from "next/navigation";
 import { usePageGuidance } from "@/components/page-guidance";
+import { APP_VERSION, formatFooterLabel } from "@/lib/app-version";
 import { routeGuidance } from "@/lib/footer-copy";
-import { formatFooterLabel } from "@/lib/version";
 
 export function AppFooter({
   version,
@@ -21,7 +21,9 @@ export function AppFooter({
       <div className="mx-auto flex max-w-[1280px] flex-col gap-1">
         <p>{guidance}</p>
         <p>{health.summary}</p>
-        <p className="font-medium tracking-tight text-[var(--color-fg)]">{formatFooterLabel(version)}</p>
+        <p className="font-medium tracking-tight text-[var(--color-fg)]">
+          {formatFooterLabel(version || APP_VERSION)}
+        </p>
       </div>
     </footer>
   );
