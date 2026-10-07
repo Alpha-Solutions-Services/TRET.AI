@@ -1,3 +1,4 @@
+import { weekBoundsForDate } from "@/lib/fee-engine";
 import { inWeek, sheetAmountToCents, sheetDay } from "@/lib/sheets/cell";
 import { parseLoadLedger } from "@/lib/sheets/ledger";
 
@@ -43,7 +44,17 @@ export type TruckWeekInsOuts = {
   readable: boolean;
   /** Load ledger rows in this week. Rate is null when the cell was blank. */
   ledgerLoads: Array<{ loadId: string; rateCents: number | null }>;
+  /** This week and the seven Mondays before it, from the same sheet tabs. */
+  recentWeeks: WeekMoney[];
 };
+
+export type WeekMoney = {
+  weekStart: string;
+  insCents: number;
+  outsCents: number;
+};
+
+export const TREND_WEEKS = 8;
 
 const CATEGORY_ORDER = new Map<string, number>(
   MGMT_EXPENSE_CATEGORIES.map((category, index) => [category.toLowerCase(), index]),
@@ -222,6 +233,51 @@ export function fleetInsOutsTotals(rows: TruckWeekInsOuts[]): {
   };
 }
 
+export function trendWeekStarts(weekStart: string, count = TREND_WEEKS): string[] {
+  const starts: string[] = [];
+  for (let offset = count - 1; offset >= 0; offset -= 1) {
+    const date = new Date(`${weekStart}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() - offset * 7);
+    starts.push(date.toISOString().slice(0, 10));
+  }
+  return starts;
+}
+
+export function recentWeeksFromGrids(
+  weekStart: string,
+  loadLedger: SheetGrid | null,
+  mgmtExpenses: SheetGrid | null,
+): WeekMoney[] {
+  return trendWeekStarts(weekStart).map((start) => {
+    const bounds = weekBoundsForDate(start);
+    const ins = loadLedger ? insFromLoadLedger(loadLedger, bounds.start, bounds.end) : null;
+    const outs = mgmtExpenses ? outsFromMgmtExpenses(mgmtExpenses, bounds.start, bounds.end) : null;
+    return {
+      weekStart: bounds.start,
+      insCents: ins?.headerFound ? ins.insCents : 0,
+      outsCents: outs?.headerFound ? outs.outsCents : 0,
+    };
+  });
+}
+
+export function fleetWeekTrend(rows: TruckWeekInsOuts[]): WeekMoney[] {
+  const totals = new Map<string, WeekMoney>();
+  for (const row of rows) {
+    if (!row.readable) continue;
+    for (const week of row.recentWeeks) {
+      const current = totals.get(week.weekStart) ?? {
+        weekStart: week.weekStart,
+        insCents: 0,
+        outsCents: 0,
+      };
+      current.insCents += week.insCents;
+      current.outsCents += week.outsCents;
+      totals.set(week.weekStart, current);
+    }
+  }
+  return [...totals.values()].sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+}
+
 export function buildTruckWeekInsOuts(input: {
   unitNumber: string;
   truckName: string;
@@ -245,6 +301,7 @@ export function buildTruckWeekInsOuts(input: {
     loadCount: 0,
     categories: [] as ExpenseCategoryTotal[],
     ledgerLoads: [] as Array<{ loadId: string; rateCents: number | null }>,
+    recentWeeks: [] as WeekMoney[],
     noteDetail,
   };
   if (!input.loadLedger && !input.mgmtExpenses) {
@@ -280,6 +337,7 @@ export function buildTruckWeekInsOuts(input: {
     loadCount: ins?.loadCount ?? 0,
     categories: outs?.categories ?? [],
     ledgerLoads: ins?.loads ?? [],
+    recentWeeks: recentWeeksFromGrids(input.weekStart, input.loadLedger, input.mgmtExpenses),
     note: notes.length ? notes.join(" ") : null,
     noteDetail,
     readable: true,

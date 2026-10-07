@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.0.0.21 — 2026-10-07
+
+- Dashboard (home) shows fleet sheet Ins and Outs, a load count, open issues, the sheet account check, and the version. Charts: bars by truck, an eight week area from the sheets already read, and a donut of this week's sheet expense categories.
+- Management is a second page. It shows Legacy earnings by truck (editable per load), monthly portal expenses as an area and a donut, and the management profit and loss. Truck sheet outs stay on the Dashboard.
+- Chart colors and card surfaces use the same accent tokens. Press and reduced-motion behavior is unchanged.
+
 ## v0.0.0.20 — 2026-10-07
 
 - Legacy earnings are a management fee on each truck load. The org default is 10 percent (1000 basis points), editable in Settings. A truck can use a different percent for one Monday week. A load can save a percent or a dollar amount. A saved amount stays put when the sheet rate changes. A saved percent is applied to the current sheet rate. Legacy earnings are the sum of those fees, per truck and for the fleet. Saving needs migration `20261007180000_legacy_management_fees.sql`. Until it is applied, the page still shows the 10 percent default and does not store edits.

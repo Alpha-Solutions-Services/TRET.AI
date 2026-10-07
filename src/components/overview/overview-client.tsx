@@ -8,8 +8,18 @@ import type { OverviewPageData } from "@/lib/overview/queries";
 import type { ManagementPnl } from "@/lib/overview/pnl";
 import type { SnapshotRow } from "@/lib/overview/snapshot";
 import { CopyableError } from "@/components/copyable-error";
+import { FleetCharts } from "@/components/dashboard/fleet-charts";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
+
+function StatusCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="material rounded-xl border border-[var(--color-border)] px-4 py-3">
+      <p className="text-xs text-[var(--color-fg-muted)]">{label}</p>
+      <p className="mt-1 text-sm font-medium">{value}</p>
+    </div>
+  );
+}
 
 function money(cents: number): string {
   if (cents < 0) return `-$${centsToDollarString(-cents)}`;
@@ -32,11 +42,25 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Overview</h1>
+        <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
-          Fleet and unit totals for one Monday to Sunday week. Fees are driver, management or Tolson, dispatch, and
-          factoring. Fixed is the amount charged to the owner. Amounts are cents.
+          Fleet sheets, loads, issues, and status for one Monday to Sunday week. Fees are driver, management or
+          Tolson, dispatch, and factoring. Fixed is the amount charged to the owner. Amounts are cents. Legacy
+          earnings and monthly company expenses are on Management.
         </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatusCard label="Version" value={data.versionLabel} />
+        <StatusCard label="Sheets" value={data.sheetHealth} />
+        <StatusCard
+          label="Open issues"
+          value={data.openIssueCount == null ? "Unavailable" : String(data.openIssueCount)}
+        />
+        <StatusCard
+          label="Loads"
+          value={String(data.insOuts.reduce((sum, row) => sum + (row.readable ? row.loadCount : 0), 0))}
+        />
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -98,6 +122,7 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
       </div>
 
       <SheetsEnvBanner missing={data.sheetEnvMissing} />
+      <FleetCharts rows={data.insOuts} />
 
       {data.mismatchCount != null ? (
         <Link
