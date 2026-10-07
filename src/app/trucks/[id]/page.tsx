@@ -24,8 +24,9 @@ function DetailSkeleton() {
 }
 
 async function TruckDetailContent({ id }: { id: string }) {
-  const truck = await getTruck(id);
-  if (!truck) notFound();
+  const loaded = await getTruck(id);
+  if (!loaded) notFound();
+  const { truck, googleSheetReady } = loaded;
 
   const [contracts, lastChanged, expenses] = await Promise.all([
     listContractsForTruck(id),
@@ -52,6 +53,7 @@ async function TruckDetailContent({ id }: { id: string }) {
       expenses={expenses}
       lastChanged={lastChanged}
       canDeleteLatest={canDeleteLatest}
+      googleSheetReady={googleSheetReady}
     />
   );
 }

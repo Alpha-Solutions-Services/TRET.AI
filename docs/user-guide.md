@@ -11,10 +11,21 @@ Short click-by-click steps for staff. You must be signed in.
    - **Name**
    - **Class**: Legacy-owned or Third-party
    - **Owner name** (optional)
+   - **Google Sheet** (optional). Paste the https link for this truck’s Google Sheet or portal sheet.
 4. Click **Save truck**.
 5. You should see a success message and the new row in the table.
 
-Trucks are never deleted. Use **Deactivate** / **Activate** on the list or truck page.
+## Edit a truck
+
+1. Open **Trucks**.
+2. On the row, click **Edit**. You can also open the truck and click **Edit** there.
+3. Change unit number, name, class, owner name, or the Google Sheet link.
+4. Click **Save changes**.
+5. The list and the truck page show the Google Sheet as a link. Click it to open the sheet.
+
+Leave **Google Sheet** blank if this truck has no sheet yet. The link must start with `https://`.
+
+Trucks are never deleted. Use **Deactivate** / **Activate** on the list or truck page. Editing a truck does not change its rate versions or fixed expenses.
 
 ## New rate version
 

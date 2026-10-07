@@ -89,3 +89,5 @@
 | 2026-10-07 | OPEN: Legacy logo | No logo file in the repo or the handoff. The PDF still prints “Legacy Inc Global”. |
 | 2026-10-07 | OPEN: trailer, VIN, dispatcher, compliance, operations note | Those fields are not stored. The PDF still prints “Not stored”. Asset partner remains `trucks.owner_name`. |
 | 2026-10-07 | OPEN: Quicken | Format still open. Not built. |
+| 2026-10-07 | Truck edit updates unit, name, class, owner, and the Google Sheet link | Active stays on Activate / Deactivate. Editing does not rewrite fee rate versions or fixed expenses. |
+| 2026-10-07 | Per-truck Google Sheet is a pasted https link | Not Google Sheets sync (module 8). Column `google_sheet_url`. Staff paste it on Add truck or Edit. Migration `20261007170000_truck_google_sheet_url.sql` is not applied until the owner says go. Until then, the other truck fields still save. |

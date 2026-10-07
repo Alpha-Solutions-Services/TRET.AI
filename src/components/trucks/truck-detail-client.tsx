@@ -6,8 +6,14 @@ import {
   createFeeRateVersionAction,
   deleteLatestFeeRateVersionAction,
   setTruckActiveAction,
+  updateTruckAction,
 } from "@/app/trucks/actions";
 import { FixedExpensesPanel } from "@/components/trucks/fixed-expenses-panel";
+import { GoogleSheetLink } from "@/components/trucks/google-sheet-link";
+import {
+  TruckFieldsForm,
+  type TruckFormValues,
+} from "@/components/trucks/truck-fields-form";
 import { Button } from "@/components/ui/button";
 import { SidePanel } from "@/components/ui/side-panel";
 import { useConfirm } from "@/components/ui/confirm";
@@ -29,6 +35,7 @@ import {
   truckClassLabel,
 } from "@/lib/fees/kinds";
 import { bpToPercentString, tryPercentStringToBp } from "@/lib/fees/percent";
+import { GOOGLE_SHEET_MIGRATION_MESSAGE, parseTruckFields } from "@/lib/trucks/fields";
 import type {
   FeeContractWithRules,
   TruckRow,
@@ -46,6 +53,7 @@ type Props = {
   expenses: FixedExpenseBundle;
   lastChanged: { created_at: string; actor_email: string; action: string } | null;
   canDeleteLatest: boolean;
+  googleSheetReady: boolean;
 };
 
 function emptyRules(
@@ -70,6 +78,7 @@ export function TruckDetailClient({
   expenses,
   lastChanged,
   canDeleteLatest,
+  googleSheetReady,
 }: Props) {
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -77,6 +86,15 @@ export function TruckDetailClient({
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<"rates" | "expenses">("rates");
   const [panelOpen, setPanelOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editValues, setEditValues] = useState<TruckFormValues>({
+    unitNumber: truck.unit_number,
+    name: truck.name,
+    truckClass: truck.truck_class,
+    ownerName: truck.owner_name ?? "",
+    googleSheetUrl: truck.google_sheet_url ?? "",
+  });
+  const [editError, setEditError] = useState<string | null>(null);
   const [effectiveFrom, setEffectiveFrom] = useState("");
   const [note, setNote] = useState("");
   const kinds = allowedFeeKindsForClass(truck.truck_class);
@@ -129,6 +147,7 @@ export function TruckDetailClient({
   }
 
   function openNewVersion() {
+    setEditOpen(false);
     setEffectiveFrom("");
     setNote("");
     setFormError(null);
@@ -208,6 +227,40 @@ export function TruckDetailClient({
     });
   }
 
+  function openEdit() {
+    setPanelOpen(false);
+    setEditValues({
+      unitNumber: truck.unit_number,
+      name: truck.name,
+      truckClass: truck.truck_class,
+      ownerName: truck.owner_name ?? "",
+      googleSheetUrl: truck.google_sheet_url ?? "",
+    });
+    setEditError(null);
+    setEditOpen(true);
+  }
+
+  function onSaveTruck(e: React.FormEvent) {
+    e.preventDefault();
+    setEditError(null);
+    const parsed = parseTruckFields(editValues);
+    if (!parsed.ok) {
+      setEditError(parsed.error);
+      return;
+    }
+    startTransition(async () => {
+      const result = await updateTruckAction({ truckId: truck.id, ...editValues });
+      if (!result.ok) {
+        setEditError(result.error);
+        toast(result.error, "error");
+        return;
+      }
+      toast("Truck saved", "success");
+      setEditOpen(false);
+      router.refresh();
+    });
+  }
+
   function onToggleActive() {
     startTransition(async () => {
       const result = await setTruckActiveAction(truck.id, !truck.active);
@@ -232,6 +285,19 @@ export function TruckDetailClient({
             {truck.owner_name ? ` · Owner ${truck.owner_name}` : ""}
             {truck.active ? "" : " · Inactive"}
           </p>
+          <p className="mt-2 text-sm">
+            <span className="text-[var(--color-fg-muted)]">Google Sheet: </span>
+            {truck.google_sheet_url ? (
+              <GoogleSheetLink url={truck.google_sheet_url} />
+            ) : (
+              <span className="text-[var(--color-fg-muted)]">None yet</span>
+            )}
+          </p>
+          {!googleSheetReady ? (
+            <p className="mt-2 text-xs text-[var(--color-fg-muted)]" role="status">
+              {GOOGLE_SHEET_MIGRATION_MESSAGE}
+            </p>
+          ) : null}
           {lastChanged ? (
             <p className="mt-2 text-xs text-[var(--color-fg-muted)]">
               Last changed {new Date(lastChanged.created_at).toLocaleString()} by{" "}
@@ -242,6 +308,9 @@ export function TruckDetailClient({
           )}
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" disabled={pending} onClick={openEdit}>
+            Edit
+          </Button>
           <Button variant="secondary" disabled={pending} onClick={onToggleActive}>
             {truck.active ? "Deactivate" : "Activate"}
           </Button>
@@ -495,6 +564,18 @@ export function TruckDetailClient({
       </SidePanel>
         </div>
       )}
+
+      <SidePanel open={editOpen} title="Edit truck" onClose={() => setEditOpen(false)}>
+        <TruckFieldsForm
+          values={editValues}
+          onChange={(patch) => setEditValues((prev) => ({ ...prev, ...patch }))}
+          onSubmit={onSaveTruck}
+          pending={pending}
+          formError={editError}
+          submitLabel="Save changes"
+          googleSheetReady={googleSheetReady}
+        />
+      </SidePanel>
     </div>
   );
 }

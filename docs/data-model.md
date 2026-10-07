@@ -17,6 +17,7 @@ One row per truck. There is no fixed truck count anywhere in the code or schema 
 | name | Display name |
 | truck_class | `legacy_owned` or `third_party` |
 | owner_name | Owner name when useful; may be empty |
+| google_sheet_url | Optional https link to this truck’s Google Sheet or portal sheet. Staff paste it on Add truck or Edit. Empty until set. Added in v0.0.0.13; the migration is not applied until the owner says go. |
 | active | Whether the truck is in use |
 | created_at | When the row was created |
 
@@ -46,7 +47,7 @@ One fee line on a contract. Each fee kind appears at most once per contract. The
 
 ## change_log (from v0.0.0.3)
 
-Audit trail. Truck create / activate / deactivate, rate-version create / delete, fixed-expense version and override changes, and operating-expense create / delete each write a row: who, when, action, and optional before/after JSON.
+Audit trail. Truck create / update / activate / deactivate, rate-version create / delete, fixed-expense version and override changes, and operating-expense create / delete each write a row: who, when, action, and optional before/after JSON.
 
 | Column | Meaning |
 |--------|---------|

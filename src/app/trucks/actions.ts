@@ -8,6 +8,12 @@ import { isChargedTo, isFixedExpenseKind } from "@/lib/fixed-expenses/kinds";
 import { centsInputError } from "@/lib/money/cents";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
+import {
+  GOOGLE_SHEET_MIGRATION_MESSAGE,
+  isMissingGoogleSheetColumn,
+  parseTruckFields,
+} from "@/lib/trucks/fields";
+import { selectTruckById } from "@/lib/trucks/queries";
 
 export type ActionResult =
   | { ok: true; id?: string }
@@ -30,50 +36,127 @@ export async function createTruckAction(input: {
   name: string;
   truckClass: TruckClass;
   ownerName: string;
+  googleSheetUrl: string;
 }): Promise<ActionResult> {
   const gate = await requireAccess();
   if (!gate.ok) return gate;
 
-  const unitNumber = input.unitNumber.trim();
-  const name = input.name.trim();
-  const ownerName = input.ownerName.trim();
+  const parsed = parseTruckFields(input);
+  if (!parsed.ok) return parsed;
+  const fields = parsed.value;
 
-  if (!unitNumber) return { ok: false, error: "Unit number is required." };
-  if (!name) return { ok: false, error: "Name is required." };
-  if (input.truckClass !== "legacy_owned" && input.truckClass !== "third_party") {
-    return { ok: false, error: "Choose Legacy-owned or Third-party." };
-  }
-
-  const { data, error } = await gate.supabase
+  const inserted = await gate.supabase
     .from("trucks")
     .insert({
-      unit_number: unitNumber,
-      name,
-      truck_class: input.truckClass,
-      owner_name: ownerName || null,
+      unit_number: fields.unitNumber,
+      name: fields.name,
+      truck_class: fields.truckClass,
+      owner_name: fields.ownerName,
       active: true,
+      ...(fields.googleSheetUrl ? { google_sheet_url: fields.googleSheetUrl } : {}),
     })
-    .select("id, unit_number, name, truck_class, owner_name, active, created_at")
+    .select("id")
     .single();
 
-  if (error) {
-    if (error.code === "23505") {
+  if (inserted.error) {
+    if (inserted.error.code === "23505") {
       return { ok: false, error: "That unit number is already in use." };
     }
-    return { ok: false, error: error.message };
+    if (fields.googleSheetUrl && isMissingGoogleSheetColumn(inserted.error)) {
+      return { ok: false, error: GOOGLE_SHEET_MIGRATION_MESSAGE };
+    }
+    return { ok: false, error: inserted.error.message };
   }
+
+  const saved = await selectTruckById(gate.supabase, inserted.data.id);
+  if (!saved) return { ok: false, error: "Truck was saved but could not be read back." };
 
   await gate.supabase.from("change_log").insert({
     entity_type: "truck",
-    entity_id: data.id,
+    entity_id: saved.truck.id,
     action: "create_truck",
     actor_email: gate.email,
     before_data: null,
-    after_data: data as unknown as Json,
+    after_data: saved.truck as unknown as Json,
   });
 
   revalidatePath("/trucks");
-  return { ok: true, id: data.id };
+  return { ok: true, id: saved.truck.id };
+}
+
+export async function updateTruckAction(input: {
+  truckId: string;
+  unitNumber: string;
+  name: string;
+  truckClass: TruckClass;
+  ownerName: string;
+  googleSheetUrl: string;
+}): Promise<ActionResult> {
+  const gate = await requireAccess();
+  if (!gate.ok) return gate;
+
+  const parsed = parseTruckFields(input);
+  if (!parsed.ok) return parsed;
+  const fields = parsed.value;
+
+  const before = await selectTruckById(gate.supabase, input.truckId);
+  if (!before) return { ok: false, error: "Truck not found." };
+
+  const patch = {
+    unit_number: fields.unitNumber,
+    name: fields.name,
+    truck_class: fields.truckClass,
+    owner_name: fields.ownerName,
+    google_sheet_url: fields.googleSheetUrl,
+  };
+
+  let updated = await gate.supabase
+    .from("trucks")
+    .update(patch)
+    .eq("id", input.truckId)
+    .select("id")
+    .maybeSingle();
+
+  if (updated.error && isMissingGoogleSheetColumn(updated.error)) {
+    if (fields.googleSheetUrl) {
+      return { ok: false, error: GOOGLE_SHEET_MIGRATION_MESSAGE };
+    }
+    updated = await gate.supabase
+      .from("trucks")
+      .update({
+        unit_number: fields.unitNumber,
+        name: fields.name,
+        truck_class: fields.truckClass,
+        owner_name: fields.ownerName,
+      })
+      .eq("id", input.truckId)
+      .select("id")
+      .maybeSingle();
+  }
+
+  if (updated.error) {
+    if (updated.error.code === "23505") {
+      return { ok: false, error: "That unit number is already in use." };
+    }
+    return { ok: false, error: updated.error.message };
+  }
+  if (!updated.data) return { ok: false, error: "Truck not found." };
+
+  const after = await selectTruckById(gate.supabase, input.truckId);
+  if (!after) return { ok: false, error: "Truck was saved but could not be read back." };
+
+  await gate.supabase.from("change_log").insert({
+    entity_type: "truck",
+    entity_id: input.truckId,
+    action: "update_truck",
+    actor_email: gate.email,
+    before_data: before.truck as unknown as Json,
+    after_data: after.truck as unknown as Json,
+  });
+
+  revalidatePath("/trucks");
+  revalidatePath(`/trucks/${input.truckId}`);
+  return { ok: true, id: input.truckId };
 }
 
 export async function setTruckActiveAction(

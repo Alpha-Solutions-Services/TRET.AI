@@ -8,6 +8,7 @@
 | 3 | Vektor loads import (v0.0.0.4) plus live MCP connect (v0.0.0.5). List calls use `filters`, `page`, and `perPage` (v0.0.0.12) | Done |
 | 3b | Fixed weekly expenses and operating expenses (v0.0.0.6) | Done |
 | 4 | Fuel and tolls from Vektor (v0.0.0.7) | Done |
+| 4b | Truck edit and per-truck Google Sheet link (v0.0.0.13) | Done |
 | 5 | Weekly statements and Close (v0.0.0.8) | Done |
 | 5b | Weekly owner PDF (v0.0.0.9) | Done |
 | 5c | Overview and management P&L (v0.0.0.10) | Done |
