@@ -96,6 +96,9 @@ Importing the same Vektor transaction again updates that row. It does not add a 
 4. Legacy-owned units show Tolson payable. Managed units show one management fee. Lines marked internal are the Tolson and Legacy split and are not subtracted again.
 5. If Close is blocked, the reasons are listed above the button. Fix those, then come back.
 6. **Close week** asks you to confirm. After that the week is locked. The numbers on the page are the snapshot. There is no reopen on this screen.
+7. **Download PDF** saves one file for that week. Each unit has its own pages, then a fleet page. Amounts on the PDF are dollars.
+8. The button stays off while this week has blockers. Fix the listed reasons first.
+9. If the download is refused, the message names what did not match (net, loads, discounted fuel, or tolls). A locked week uses the snapshot. The loads, fuel, and tolls in the file are the current rows, and they must still add up to that snapshot.
 
 A fixed-expense override cannot be saved for a unit and week that is already locked.
 

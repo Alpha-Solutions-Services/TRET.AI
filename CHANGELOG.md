@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.0.9 — 2026-10-07
+
+- Weekly PDF for a selected week: one file, a section per unit, then fleet totals. Dollars are formatted from integer cents.
+- Figures are recomputed from the locked snapshot, or from the computed statement when that week has no blockers. If net, lines, loads, discounted fuel, or tolls do not match, the PDF is refused.
+- Statements page: **Download PDF**.
+- Layout covers the header, load table, performance, owner earnings, discounted fuel, and fixed expenses that the statement already stores. Trailer, VIN, dispatcher, compliance, operations note, and a logo file are not stored.
+- No new migration and no new environment variables.
+
 ## v0.0.0.8 — 2026-10-07
 
 - Weekly statements for a Monday–Sunday week, using each load’s delivery date. Per-unit and fleet totals from loads, fee contracts, discounted fuel, tolls, and fixed weekly expenses.

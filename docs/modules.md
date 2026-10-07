@@ -9,7 +9,7 @@
 | 3b | Fixed weekly expenses and operating expenses (v0.0.0.6) | Done |
 | 4 | Fuel and tolls from Vektor (v0.0.0.7) | Done |
 | 5 | Weekly statements and Close (v0.0.0.8) | Done |
-| 5b | Weekly owner PDF | Not started |
+| 5b | Weekly owner PDF (v0.0.0.9) | Done |
 | 6 | Validation, Issues inbox and AI (LLM gateway) | Not started |
 | 7 | Management company P&L, Tolson payable, recurring charges, Quicken export | Not started |
 | 8 | Google Sheets sync | Not started |

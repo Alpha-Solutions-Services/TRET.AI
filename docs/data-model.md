@@ -138,6 +138,8 @@ One locked row per truck per Monday. Amounts are integer cents. Miles are intege
 
 There is no reopen. `lock_week` writes the snapshot in one transaction and refuses a second lock. It checks that owner net equals gross minus the owner deductions, and that the fleet totals match the units. A trigger refuses a fixed-expense override for a truck and week that already has a statement.
 
+v0.0.0.9 does not add a table. The PDF is built when the owner downloads it. A locked week reads `weekly_statements`. An unlocked week reads the computed statement. Load, fuel, and toll rows are read from the current tables and must match those totals.
+
 ## Access (RLS)
 
 `trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, `mgmt_operating_expenses`, `vektor_fuel_staging`, `vektor_toll_staging`, `fuel_transactions`, `toll_transactions`, `weekly_statements`, `weekly_statement_lines`, and `week_closes` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Statement rows are inserted only by `lock_week`. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`.
