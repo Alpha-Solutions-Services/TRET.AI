@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.0.0.15 — 2026-10-07
+
+- Import loads failed with MCP error -32602. An empty-list fallback sent `filters` as an array of `{field, from, to}`. Vektor reports that as unknown arguments `filters[0].field`, `filters[0].from`, and `filters[0].to`.
+- Manifest list filters are always an object map under `filters`. The tool schema is still read to choose the date field name. A schema that describes an array is not sent as an array. Probes that remain: `first_stop_appointment_start_date` `{from, to}`, the schema date field as an object map, `firstStopAppointmentStartDate` `{from, to}`, `firstStopAppointmentStartDate` `{gte, lte}`, `deliveryDate` `{from, to}`, and an empty filter. `gte/lte` is also used when the schema date field names those keys and does not name `from`/`to`.
+- A tool error still fails the run and the error text is stored. If every accepted call returns no rows, Notes still record the filters tried and the payload shape. Delivered manifests still promote into `loads`.
+
 ## v0.0.0.14 — 2026-10-07
 
 - Import loads: a successful Vektor call with zero rows was the unconfirmed date filter `filters.first_stop_appointment_start_date`. The list now reads the `core_Manifests_Get` input schema when that page is empty, tries the schema date field and camelCase delivery filters, and if only an unfiltered list has rows, keeps manifests by delivery date. An empty result stores payload keys and counts on the run and in Notes. Tool errors are no longer counted as an empty list. An empty `structuredContent` no longer hides rows that arrived in the text body.

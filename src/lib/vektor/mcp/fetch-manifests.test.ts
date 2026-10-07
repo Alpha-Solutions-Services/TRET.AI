@@ -138,5 +138,58 @@ describe("empty Vektor list probe", () => {
     expect(fetched.report?.fetchedInWindow).toBe(0);
     expect(fetched.report?.payloadNote).toMatch(/manifests length 0/);
     expect(fetched.report?.payloadNote).toMatch(/did not|Payload/);
+    expect(fetched.report?.payloadNote).toMatch(/Tried filters: first_stop_appointment_start_date/);
+    expect(fetched.report?.filterLabel).toBe("first_stop_appointment_start_date");
+  });
+
+  it("does not send a field/from/to array when the schema describes one", async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    const fetched = await fetchManifestsFromTools({
+      from: "2026-10-05",
+      to: "2026-10-07",
+      listTools: async () => [
+        {
+          name: "core_Manifests_Get",
+          inputSchema: {
+            type: "object",
+            properties: {
+              filters: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    field: {
+                      type: "string",
+                      enum: ["firstStopAppointmentStartDate", "status"],
+                    },
+                    from: { type: "string" },
+                    to: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      ],
+      callTool: async (name, args) => {
+        if (name !== "core_Manifests_Get") return {};
+        calls.push(args);
+        expect(Array.isArray(args.filters)).toBe(false);
+        for (const key of Object.keys(args)) {
+          expect(key).not.toMatch(/\[/);
+        }
+        const filters = args.filters as Record<string, unknown>;
+        const range = filters.firstStopAppointmentStartDate as { from?: string } | undefined;
+        if (range?.from) return { manifests: [delivered("manifest-live")] };
+        return { manifests: [] };
+      },
+    });
+    expect(calls.length).toBeGreaterThan(1);
+    expect(
+      calls.some((args) => Array.isArray(args.filters) || JSON.stringify(args).includes('"field"')),
+    ).toBe(false);
+    expect(fetched.manifests.map((row) => row.manifestId)).toEqual(["manifest-live"]);
+    expect(fetched.report?.keptForImport).toBe(1);
+    expect(fetched.report?.filterLabel).toBe("schema firstStopAppointmentStartDate");
   });
 });

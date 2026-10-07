@@ -22,7 +22,7 @@ The **database** is always the source of truth. If a sheet disagrees with the da
 
 ## Current version
 
-`VERSION` is the source of truth. v0.0.0.14 reads Vektor manifests into the loads ledger and shows per-truck Ins and Outs from each Google Sheet on Overview. See [modules.md](modules.md) and [WEEK-CLOSE-RUNBOOK.md](WEEK-CLOSE-RUNBOOK.md).
+`VERSION` is the source of truth. v0.0.0.15 keeps Vektor manifest date filters as an object under `filters`, so Import loads does not send the array shape the server rejects. v0.0.0.14 reads Vektor manifests into the loads ledger and shows per-truck Ins and Outs from each Google Sheet on Overview. See [modules.md](modules.md) and [WEEK-CLOSE-RUNBOOK.md](WEEK-CLOSE-RUNBOOK.md).
 
 ## What v0.0.0.1 included
 

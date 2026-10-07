@@ -12,15 +12,37 @@
 
 export const VEKTOR_LIST_PER_PAGE = 100;
 
+export const VEKTOR_LIST_ARGUMENT_NAMES = [
+  "aggregationKeys",
+  "filters",
+  "page",
+  "perPage",
+  "sortDirection",
+  "sortKey",
+] as const;
+
+/**
+ * filters must be an object map. An array is encoded as filters[0].field
+ * and Vektor rejects it with MCP -32602.
+ */
 export function buildManifestListArgs(
   filters: unknown,
   page: number | undefined,
 ): Record<string, unknown> {
-  return {
+  if (!filters || typeof filters !== "object" || Array.isArray(filters)) {
+    throw new Error("Vektor list filters must be an object map. Array filters are not sent.");
+  }
+  const args: Record<string, unknown> = {
     filters,
     page: page ?? 1,
     perPage: VEKTOR_LIST_PER_PAGE,
   };
+  for (const key of Object.keys(args)) {
+    if (!VEKTOR_LIST_ARGUMENT_NAMES.includes(key as (typeof VEKTOR_LIST_ARGUMENT_NAMES)[number])) {
+      throw new Error(`Vektor list call refused unknown argument ${key}.`);
+    }
+  }
+  return args;
 }
 
 export function buildManifestsGetArgs(input: {
