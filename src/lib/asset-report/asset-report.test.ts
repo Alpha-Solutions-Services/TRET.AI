@@ -2,7 +2,7 @@ import { inflateSync } from "node:zlib";
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import { buildAssetReport, DEFAULT_DISPATCHER } from "./build";
-import { renderAssetReportPdf } from "./pdf";
+import { PAGE_H, PAGE_W, renderAssetReportPdf } from "./pdf";
 
 const WEEK = { weekStart: "2026-08-31", weekEnd: "2026-09-06" };
 
@@ -127,29 +127,20 @@ describe("weekly asset report", () => {
     expect(report.notes.join(" ")).not.toContain("MC Lease");
     const bytes = await renderAssetReportPdf(report);
     const text = pdfText(bytes);
-    expect(text).toContain("LEGACY INC GLOBAL");
-    expect(text).toContain("Weekly Asset Management Report");
-    expect(text).toContain("Executive Summary");
-    expect(text).toContain("Weekly Load Activity");
     expect(text).toContain("TBH--1081");
-    expect(text).toContain("Owner Earnings Snapshot");
-    expect(text).toContain("Fuel Summary");
-    expect(text).toContain("Compliance / Maintenance");
     expect(text).toContain("Escrow Balance (this week)");
     expect(text).not.toContain("Weekly Escrow");
     expect(text).toContain("John Reed");
     expect(text).toContain("Tolson Blackhawk LLC");
-    expect(text).toContain("Claims");
-    expect(text).toContain("Cargo Damage");
-    expect(text).toContain("Service Failures");
-    expect(text).toContain("Cancellation");
-    expect(text).toContain("Page 1 of 2");
-    expect(text).toContain("Page 2 of 2");
+    expect(text).toContain("08/31/26 to 09/06/26");
     expect(text).not.toContain("MC Lease");
     expect(text).not.toContain("Not stored");
     expect(text).not.toContain("\u2014");
     expect(text).not.toContain("\u2013");
-    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(2);
+    const pdf = await PDFDocument.load(bytes);
+    expect(pdf.getPageCount()).toBe(4);
+    expect(pdf.getPage(0).getWidth()).toBe(PAGE_W);
+    expect(pdf.getPage(0).getHeight()).toBe(PAGE_H);
   });
 
   it("drops truck and trailer payments and fills active defaults for truck 8", async () => {
@@ -210,7 +201,10 @@ describe("weekly asset report", () => {
     expect(report.notes.join(" ")).not.toContain(DEFAULT_DISPATCHER);
     const bytes = await renderAssetReportPdf(report);
     const text = pdfText(bytes);
-    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(2);
+    const pdf = await PDFDocument.load(bytes);
+    expect(pdf.getPageCount()).toBe(4);
+    expect(pdf.getPage(0).getWidth()).toBe(PAGE_W);
+    expect(pdf.getPage(0).getHeight()).toBe(PAGE_H);
     expect(text).toContain("$3,604.54");
     expect(text).toContain("$3,395.46");
     expect(text).toContain("Brison Hunter");

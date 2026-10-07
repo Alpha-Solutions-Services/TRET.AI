@@ -1,23 +1,24 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
-import { formatMilesHundredths, formatStatementDollars } from "@/lib/reports/format";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage, type RGB } from "pdf-lib";
+import { formatStatementDollars } from "@/lib/reports/format";
 import { milesLabel, type AssetReport } from "./build";
 
-const PAGE_W = 612;
-const PAGE_H = 792;
-const MARGIN = 28;
-const CONTENT_W = PAGE_W - MARGIN * 2;
+/** Legacy template page, landscape 16:9. */
+export const PAGE_W = 960;
+export const PAGE_H = 540;
 
-const NAVY: RGB = rgb(10 / 255, 33 / 255, 71 / 255);
-const STEEL: RGB = rgb(51 / 255, 112 / 255, 158 / 255);
-const GOLD: RGB = rgb(160 / 255, 131 / 255, 61 / 255);
 const INK: RGB = rgb(20 / 255, 41 / 255, 64 / 255);
-const MUTED: RGB = rgb(71 / 255, 85 / 255, 105 / 255);
-const ZEBRA: RGB = rgb(224 / 255, 235 / 255, 245 / 255);
-const ZEBRA_SOFT: RGB = rgb(240 / 255, 245 / 255, 250 / 255);
-const TOTAL: RGB = rgb(209 / 255, 221 / 255, 234 / 255);
-const GREEN: RGB = rgb(5 / 255, 168 / 255, 92 / 255);
+const BLACK: RGB = rgb(0, 0, 0);
 const WHITE: RGB = rgb(1, 1, 1);
-const RULE: RGB = rgb(188 / 255, 204 / 255, 218 / 255);
+const GREEN: RGB = rgb(5 / 255, 168 / 255, 92 / 255);
+const ZEBRA_A: RGB = rgb(224 / 255, 235 / 255, 245 / 255);
+const ZEBRA_B: RGB = rgb(209 / 255, 222 / 255, 235 / 255);
+const ROW: RGB = rgb(221 / 255, 232 / 255, 243 / 255);
+const CARD: RGB = rgb(240 / 255, 244 / 255, 248 / 255);
+
+type Box = { x: number; y: number; w: number; h: number };
+type Align = "left" | "right" | "center";
 
 function safe(text: string): string {
   return text.replace(/\u2014/g, "-").replace(/\u2013/g, "-").replace(/[^\x20-\x7E]/g, "");
@@ -27,8 +28,57 @@ function money(cents: number): string {
   return formatStatementDollars(cents);
 }
 
-function moneyOrBlank(cents: number | null): string {
-  return cents == null ? "n/a" : money(cents);
+function asset(name: string): Uint8Array {
+  return readFileSync(join(process.cwd(), "src/lib/asset-report/assets", name));
+}
+
+function paint(page: PDFPage, box: Box, color: RGB): void {
+  page.drawRectangle({
+    x: box.x,
+    y: PAGE_H - box.y - box.h,
+    width: box.w,
+    height: box.h,
+    color,
+  });
+}
+
+function textIn(
+  page: PDFPage,
+  box: Box,
+  text: string,
+  font: PDFFont,
+  size: number,
+  color: RGB,
+  align: Align,
+): void {
+  const value = safe(text).trim();
+  if (!value) return;
+  let used = size;
+  let width = font.widthOfTextAtSize(value, used);
+  const max = Math.max(8, box.w - 4);
+  while (width > max && used > 3.5) {
+    used = Math.round((used - 0.2) * 10) / 10;
+    width = font.widthOfTextAtSize(value, used);
+  }
+  let x = box.x + 2;
+  if (align === "right") x = box.x + box.w - width - 2;
+  if (align === "center") x = box.x + (box.w - width) / 2;
+  const baseline = PAGE_H - box.y - box.h / 2 - used * 0.35;
+  page.drawText(value, { x, y: baseline, size: used, font, color });
+}
+
+function fill(
+  page: PDFPage,
+  box: Box,
+  text: string,
+  font: PDFFont,
+  size: number,
+  color: RGB,
+  align: Align,
+  background?: RGB,
+): void {
+  if (background) paint(page, box, background);
+  textIn(page, box, text, font, size, color, align);
 }
 
 function mpg(value: string): string {
@@ -41,465 +91,13 @@ function gallons(value: string): string {
   return value.endsWith("gal") ? value : `${value} gal`;
 }
 
-export async function renderAssetReportPdf(report: AssetReport): Promise<Uint8Array> {
-  const doc = await PDFDocument.create();
-  doc.setTitle("Legacy Inc Global Weekly Asset Management Report");
-  doc.setCreationDate(new Date("2026-10-07T00:00:00Z"));
-  doc.setModificationDate(new Date("2026-10-07T00:00:00Z"));
-  const font = await doc.embedFont(StandardFonts.Helvetica);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const writer = new Writer(doc, font, bold);
-  writer.draw(report);
-  const pages = doc.getPages();
-  pages.forEach((page, index) => {
-    page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: 26, color: NAVY });
-    page.drawRectangle({ x: 0, y: 26, width: PAGE_W, height: 2, color: GOLD });
-    const label = `Legacy Inc Global  |  Weekly Asset Management Report  |  Page ${index + 1} of ${pages.length}`;
-    const width = font.widthOfTextAtSize(label, 8);
-    page.drawText(label, {
-      x: Math.max(MARGIN, (PAGE_W - width) / 2),
-      y: 10,
-      size: 8,
-      font,
-      color: WHITE,
-    });
-  });
-  return doc.save();
-}
-
-class Writer {
-  private page!: PDFPage;
-  private y = 0;
-
-  constructor(
-    private readonly doc: PDFDocument,
-    private readonly font: PDFFont,
-    private readonly bold: PDFFont,
-  ) {}
-
-  draw(report: AssetReport): void {
-    this.pageOne(report);
-    this.pageTwo(report);
-  }
-
-  private pageOne(report: AssetReport): void {
-    this.newPage();
-    this.banner("LEGACY INC GLOBAL", "Weekly Asset Management Report", "Transportation Asset Management Division");
-    this.identity(report);
-    this.section("Weekly Load Activity");
-    this.loadTable(report);
-    this.y -= 8;
-    this.pairTable(
-      [
-        ["Gross Freight Revenue", money(report.grossCents)],
-        ["Total Loads Completed", String(report.loadCount)],
-        ["Loaded Miles", milesLabel(report.loadedMilesHundredths)],
-        ["Deadhead Miles", milesLabel(report.deadheadMilesHundredths)],
-        ["Dispatch Miles", milesLabel(report.dispatchMilesHundredths)],
-        ["Fuel Economy", mpg(report.fuelEconomy)],
-        ["Average Revenue Per Load", moneyOrBlank(report.revenuePerLoadCents)],
-        ["Average Rate Per Dispatch Mile", moneyOrBlank(report.ratePerMileCents)],
-        ["Fuel Cost Per Mile", moneyOrBlank(report.fuelPerMileCents)],
-      ],
-      [
-        ["Loads Accepted", report.loadsAccepted],
-        ["Loads Delivered", report.loadsDelivered],
-        ["On-Time Deliveries", report.onTime],
-        ["Claims", report.claims],
-        ["Cargo Damage", report.cargoDamage],
-        ["Service Failures", report.serviceFailures],
-        ["Cancellation", report.cancellations],
-      ],
-      "Weekly Totals",
-      "Amount",
-      "Daily Performance",
-      "Result",
-    );
-    const operations = report.notes.filter((note) => note.trim());
-    if (operations.length > 0) {
-      this.section("Weekly Operations Note");
-      this.noteBox(operations);
-    }
-  }
-
-  private pageTwo(report: AssetReport): void {
-    this.newPage();
-    const who = report.assetPartner || "Asset Partner";
-    this.banner(
-      "Owner Earnings Snapshot",
-      `${who}  |  Truck ${report.unitNumber}  |  ${report.periodLabel}`,
-      "Legacy Inc Global",
-    );
-    this.expenseTable(report);
-    this.y -= 8;
-    this.cards([
-      ["Gross Revenue", money(report.grossCents), STEEL],
-      ["Total Truck Expenses", money(report.expenseCents), STEEL],
-      ["Net Owner Earnings", money(report.netCents), GREEN],
-      [report.escrowCardLabel, money(report.escrowCents), GREEN],
-    ]);
-    this.y -= 4;
-    this.line("All expenses shown above are included in Total Truck Expenses.", 8, this.font, MUTED);
-    this.section("Executive Summary");
-    this.paragraph(report.summary);
-    this.y -= 4;
-    this.quad(report);
-  }
-
-  private newPage(): void {
-    this.page = this.doc.addPage([PAGE_W, PAGE_H]);
-    this.y = PAGE_H;
-  }
-
-  private banner(title: string, subtitle: string, kicker: string): void {
-    const height = 52;
-    this.page.drawRectangle({ x: 0, y: PAGE_H - height, width: PAGE_W, height, color: NAVY });
-    this.page.drawRectangle({ x: 0, y: PAGE_H - height, width: PAGE_W, height: 3, color: GOLD });
-    this.page.drawText(safe(title), { x: MARGIN, y: PAGE_H - 20, size: 14, font: this.bold, color: WHITE });
-    this.page.drawText(clip(safe(subtitle), this.font, 8, CONTENT_W), {
-      x: MARGIN,
-      y: PAGE_H - 34,
-      size: 8,
-      font: this.font,
-      color: rgb(214 / 255, 226 / 255, 235 / 255),
-    });
-    this.page.drawText(clip(safe(kicker), this.bold, 7, CONTENT_W), {
-      x: MARGIN,
-      y: PAGE_H - 46,
-      size: 7,
-      font: this.bold,
-      color: GOLD,
-    });
-    this.y = PAGE_H - height - 12;
-  }
-
-  private identity(report: AssetReport): void {
-    const lines = [
-      ["Reporting Period", report.periodLabel],
-      ["Asset Partner", report.assetPartner],
-      ["Truck", `${report.unitNumber}     Trailer: ${report.trailer}     VIN: ${report.vin}`],
-      ["Dispatcher", report.dispatcher],
-      ["Driver", report.driver],
-    ] as const;
-    for (const [label, value] of lines) {
-      const text = `${label}:  ${value}`;
-      this.page.drawText(clip(safe(text), label === "Asset Partner" || label === "Driver" ? this.bold : this.font, 9, CONTENT_W), {
-        x: MARGIN,
-        y: this.y - 11,
-        size: 9,
-        font: label === "Asset Partner" || label === "Driver" ? this.bold : this.font,
-        color: INK,
-      });
-      this.y -= 14;
-    }
-    this.y -= 4;
-  }
-
-  private section(title: string): void {
-    this.y -= 8;
-    this.page.drawRectangle({ x: MARGIN, y: this.y - 4, width: 16, height: 3, color: STEEL });
-    this.page.drawText(safe(title), { x: MARGIN + 22, y: this.y - 6, size: 11, font: this.bold, color: NAVY });
-    this.y -= 16;
-  }
-
-  private line(text: string, size: number, font: PDFFont, color: RGB): void {
-    this.page.drawText(clip(safe(text), font, size, CONTENT_W), {
-      x: MARGIN,
-      y: this.y - size,
-      size,
-      font,
-      color,
-    });
-    this.y -= size + 6;
-  }
-
-  private paragraph(text: string): void {
-    const lines = wrap(safe(text), this.font, 8, CONTENT_W);
-    lines.forEach((line, index) => {
-      this.page.drawText(line, { x: MARGIN, y: this.y - 10 - index * 11, size: 8, font: this.font, color: INK });
-    });
-    this.y -= lines.length * 11 + 4;
-  }
-
-  private noteBox(notes: string[]): void {
-    const wrapped = notes.flatMap((note) => wrap(safe(`- ${note}`), this.font, 8, CONTENT_W - 16));
-    const height = 8 + wrapped.length * 11;
-    const y = this.y - height;
-    this.page.drawRectangle({ x: MARGIN, y, width: CONTENT_W, height, color: ZEBRA_SOFT, borderColor: RULE, borderWidth: 0.4 });
-    this.page.drawRectangle({ x: MARGIN, y, width: 3, height, color: STEEL });
-    wrapped.forEach((line, index) => {
-      this.page.drawText(line, { x: MARGIN + 10, y: this.y - 14 - index * 11, size: 8, font: this.font, color: INK });
-    });
-    this.y = y - 6;
-  }
-
-  private cards(items: Array<[string, string, RGB]>): void {
-    const gap = 6;
-    const width = (CONTENT_W - gap * (items.length - 1)) / items.length;
-    const cardH = 40;
-    items.forEach((item, index) => {
-      const x = MARGIN + index * (width + gap);
-      const y = this.y - cardH;
-      this.page.drawRectangle({ x, y, width, height: cardH, color: ZEBRA_SOFT, borderColor: RULE, borderWidth: 0.4 });
-      this.page.drawRectangle({ x, y, width: 3, height: cardH, color: item[2] });
-      this.page.drawText(clip(safe(item[0]).toUpperCase(), this.bold, 6, width - 14), {
-        x: x + 8,
-        y: y + cardH - 13,
-        size: 6,
-        font: this.bold,
-        color: MUTED,
-      });
-      this.page.drawText(clip(safe(item[1]), this.bold, 11, width - 14), {
-        x: x + 8,
-        y: y + 8,
-        size: 11,
-        font: this.bold,
-        color: NAVY,
-      });
-    });
-    this.y -= cardH + 8;
-  }
-
-  private loadTable(report: AssetReport): void {
-    const headers = ["Load #", "Date", "Broker/Customer", "Origin", "Destination", "Loaded", "Deadhead", "Rate"];
-    const widths = [72, 52, 108, 78, 86, 54, 52, 54];
-    const align: Array<"left" | "right"> = ["left", "left", "left", "left", "left", "right", "right", "right"];
-    this.tableHeader(headers, widths, align);
-    const rows = report.loads.length
-      ? report.loads
-      : [
-          {
-            loadId: "None",
-            date: "",
-            broker: "",
-            origin: "",
-            destination: "",
-            loadedHundredths: 0,
-            deadheadHundredths: 0,
-            rateCents: 0,
-            manifestRef: null,
-            manifestRole: "solo" as const,
-            manifestHeader: false,
-          },
-        ];
-    rows.forEach((load, index) => {
-      if (load.manifestHeader && load.manifestRef) {
-        this.spanRow(`Manifest ${load.manifestRef}`, STEEL, true);
-      }
-      const zebra = index % 2 === 0 ? ZEBRA : WHITE;
-      this.tableRow(
-        [
-          load.loadId,
-          load.date,
-          load.broker,
-          load.origin,
-          load.destination,
-          load.manifestRole === "partial" ? "partial" : formatMilesHundredths(load.loadedHundredths),
-          formatMilesHundredths(load.deadheadHundredths),
-          money(load.rateCents),
-        ],
-        widths,
-        align,
-        zebra,
-        false,
-      );
-    });
-    this.tableRow(
-      [
-        "TOTALS",
-        "",
-        "",
-        "",
-        "",
-        formatMilesHundredths(report.loadedMilesHundredths),
-        formatMilesHundredths(report.deadheadMilesHundredths),
-        money(report.grossCents),
-      ],
-      widths,
-      align,
-      TOTAL,
-      true,
-    );
-  }
-
-  private expenseTable(report: AssetReport): void {
-    const leftW = CONTENT_W / 2 - 8;
-    const count = Math.max(report.leftExpenses.length, report.rightExpenses.length);
-    for (let index = 0; index < count; index++) {
-      const y = this.y - 16;
-      const fill = index % 2 === 0 ? ZEBRA : WHITE;
-      this.page.drawRectangle({ x: MARGIN, y, width: leftW, height: 16, color: fill });
-      this.page.drawRectangle({ x: MARGIN + leftW + 16, y, width: leftW, height: 16, color: fill });
-      const left = report.leftExpenses[index];
-      const right = report.rightExpenses[index];
-      if (left) this.expenseCell(MARGIN, y, leftW, left.label, money(left.cents));
-      if (right) this.expenseCell(MARGIN + leftW + 16, y, leftW, right.label, money(right.cents));
-      this.y -= 16;
-    }
-    const y = this.y - 18;
-    this.page.drawRectangle({ x: MARGIN, y, width: CONTENT_W, height: 18, color: TOTAL });
-    this.page.drawText("Total Truck Expenses", { x: MARGIN + 6, y: y + 5, size: 8, font: this.bold, color: NAVY });
-    const total = money(report.expenseCents);
-    const totalW = this.bold.widthOfTextAtSize(total, 8);
-    this.page.drawText(total, { x: MARGIN + CONTENT_W - totalW - 6, y: y + 5, size: 8, font: this.bold, color: NAVY });
-    this.y = y - 4;
-  }
-
-  private expenseCell(x: number, y: number, width: number, label: string, amount: string): void {
-    this.page.drawText(clip(safe(label), this.font, 8, width - 70), {
-      x: x + 6,
-      y: y + 4,
-      size: 8,
-      font: this.font,
-      color: INK,
-    });
-    const amountW = this.bold.widthOfTextAtSize(amount, 8);
-    this.page.drawText(amount, { x: x + width - amountW - 6, y: y + 4, size: 8, font: this.bold, color: NAVY });
-  }
-
-  private pairTable(
-    left: Array<[string, string]>,
-    right: Array<[string, string]>,
-    leftTitle: string,
-    leftAmount: string,
-    rightTitle: string,
-    rightAmount: string,
-  ): void {
-    const gap = 10;
-    const colW = (CONTENT_W - gap) / 2;
-    const labelW = colW * 0.68;
-    const valueW = colW - labelW;
-    this.tableHeader([leftTitle, leftAmount, rightTitle, rightAmount], [labelW, valueW, labelW, valueW], ["left", "right", "left", "right"]);
-    const count = Math.max(left.length, right.length);
-    for (let index = 0; index < count; index++) {
-      this.tableRow(
-        [left[index]?.[0] ?? "", left[index]?.[1] ?? "", right[index]?.[0] ?? "", right[index]?.[1] ?? ""],
-        [labelW, valueW, labelW, valueW],
-        ["left", "right", "left", "right"],
-        index % 2 === 0 ? ZEBRA : WHITE,
-        false,
-      );
-    }
-  }
-
-  private quad(report: AssetReport): void {
-    const gap = 8;
-    const colW = (CONTENT_W - gap) / 2;
-    const left: Array<[string, string]> = [
-      ["Asset Status", report.assetStatus],
-      ["Available for Dispatch", report.availableForDispatch],
-      ["Operating Condition", report.operatingCondition],
-      ["Revenue Performance", report.revenuePerformance],
-      ["Compliance", report.compliance],
-      ["Maintenance", report.maintenance],
-    ];
-    const kpis: Array<[string, string]> = [
-      ["Gross Revenue", money(report.grossCents)],
-      ["Owner Earnings", money(report.netCents)],
-      ["Loads Completed", String(report.loadCount)],
-      ["Dispatch Miles", milesLabel(report.dispatchMilesHundredths)],
-      ["Rate Per Dispatch Mile", moneyOrBlank(report.ratePerMileCents)],
-      ["Fuel Cost Per Mile", moneyOrBlank(report.fuelPerMileCents)],
-    ];
-    const fuel: Array<[string, string]> = [
-      ["Fuel Purchased", gallons(report.fuelGallonsLabel)],
-      ["Fuel Cost", money(report.fuelCostCents)],
-      ["Avg Unit Price", moneyOrBlank(report.fuelUnitPriceCents)],
-      ["Fuel Economy", mpg(report.fuelEconomy)],
-      ["Fuel Cost / Mile", moneyOrBlank(report.fuelPerMileCents)],
-      ["Dispatch Miles", milesLabel(report.dispatchMilesHundredths)],
-    ];
-    const compliance: Array<[string, string]> = [
-      ["Driver Qualification", report.driverQualification],
-      ["Medical Card", report.medicalCard],
-      ["Insurance", report.insuranceStatus],
-      ["Registration", report.registration],
-      ["Annual DOT Insp.", report.annualDot],
-      ["ELD Compliance", report.eldCompliance],
-      ["Maintenance", report.maintenance],
-    ];
-    const rowH = 12;
-    const headH = 14;
-    const block = (title: string, pairs: Array<[string, string]>, x: number, top: number): number => {
-      const height = headH + pairs.length * rowH;
-      this.page.drawRectangle({ x, y: top - height, width: colW, height, color: WHITE, borderColor: RULE, borderWidth: 0.4 });
-      this.page.drawRectangle({ x, y: top - headH, width: colW, height: headH, color: STEEL });
-      this.page.drawText(safe(title), { x: x + 4, y: top - headH + 4, size: 7, font: this.bold, color: WHITE });
-      pairs.forEach((pair, index) => {
-        const y = top - headH - (index + 1) * rowH;
-        if (index % 2 === 0) {
-          this.page.drawRectangle({ x, y, width: colW, height: rowH, color: ZEBRA });
-        }
-        this.page.drawText(clip(safe(pair[0]), this.font, 6.5, colW * 0.62), {
-          x: x + 4,
-          y: y + 3,
-          size: 6.5,
-          font: this.font,
-          color: INK,
-        });
-        const value = clip(safe(pair[1]), this.bold, 6.5, colW * 0.34);
-        const valueW = this.bold.widthOfTextAtSize(value, 6.5);
-        this.page.drawText(value, { x: x + colW - valueW - 4, y: y + 3, size: 6.5, font: this.bold, color: NAVY });
-      });
-      return height;
-    };
-    const top = this.y;
-    const leftH = Math.max(block("Asset Status", left, MARGIN, top), block("Performance KPIs", kpis, MARGIN + colW + gap, top));
-    const next = top - leftH - 8;
-    const rightH = Math.max(
-      block("Fuel Summary", fuel, MARGIN, next),
-      block("Compliance / Maintenance", compliance, MARGIN + colW + gap, next),
-    );
-    this.y = next - rightH - 6;
-  }
-
-  private tableHeader(cells: string[], widths: number[], align: Array<"left" | "right">): void {
-    this.tableRow(cells, widths, align, STEEL, true, true);
-  }
-
-  private spanRow(text: string, fill: RGB, strong: boolean): void {
-    const height = 13;
-    const y = this.y - height;
-    this.page.drawRectangle({ x: MARGIN, y, width: CONTENT_W, height, color: fill });
-    this.page.drawText(safe(text), { x: MARGIN + 4, y: y + 3, size: 7, font: this.bold, color: WHITE });
-    this.y -= height;
-    void strong;
-  }
-
-  private tableRow(
-    cells: string[],
-    widths: number[],
-    align: Array<"left" | "right">,
-    fill: RGB,
-    strong: boolean,
-    header = false,
-  ): void {
-    const height = header ? 14 : 12;
-    const y = this.y - height;
-    this.page.drawRectangle({ x: MARGIN, y, width: CONTENT_W, height, color: fill });
-    if (!header) this.page.drawRectangle({ x: MARGIN, y, width: CONTENT_W, height: 0.3, color: RULE });
-    let x = MARGIN;
-    cells.forEach((cell, index) => {
-      const width = widths[index] ?? 40;
-      const font = header || strong ? this.bold : this.font;
-      const color = header ? WHITE : INK;
-      const text = clip(safe(cell), font, 7, width - 6);
-      const textW = font.widthOfTextAtSize(text, 7);
-      const drawX = align[index] === "right" ? x + width - textW - 3 : x + 3;
-      this.page.drawText(text, { x: drawX, y: y + 3, size: 7, font, color });
-      x += width;
-    });
-    this.y -= height;
-  }
-}
-
-function wrap(text: string, font: PDFFont, size: number, width: number): string[] {
-  const words = text.split(/\s+/).filter((word) => word.length > 0);
+function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+  const words = safe(text).split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let line = "";
   for (const word of words) {
     const next = line ? `${line} ${word}` : word;
-    if (font.widthOfTextAtSize(next, size) > width && line) {
+    if (font.widthOfTextAtSize(next, size) > maxWidth && line) {
       lines.push(line);
       line = word;
     } else {
@@ -507,12 +105,420 @@ function wrap(text: string, font: PDFFont, size: number, width: number): string[
     }
   }
   if (line) lines.push(line);
-  return lines.length > 0 ? lines : [""];
+  return lines;
 }
 
-function clip(text: string, font: PDFFont, size: number, width: number): string {
-  if (font.widthOfTextAtSize(text, size) <= width) return text;
-  let next = text;
-  while (next.length > 1 && font.widthOfTextAtSize(`${next}...`, size) > width) next = next.slice(0, -1);
-  return `${next}...`;
+export async function renderAssetReportPdf(report: AssetReport): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  doc.setTitle("Legacy Inc Global Weekly Asset Management Report");
+  doc.setCreationDate(new Date("2026-10-07T00:00:00Z"));
+  doc.setModificationDate(new Date("2026-10-07T00:00:00Z"));
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const header = await doc.embedPng(asset("legacy-cover-header.png"));
+  const art = await doc.embedPng(asset("legacy-cover-art.png"));
+  const footer = await doc.embedPng(asset("legacy-cover-footer.png"));
+  const page2 = await doc.embedPng(asset("legacy-page-2.png"));
+  const page3 = await doc.embedPng(asset("legacy-page-3.png"));
+  const page4 = await doc.embedPng(asset("legacy-page-4.png"));
+  drawCover(doc, header, art, footer, font, bold, report);
+  drawLoads(doc, page2, font, bold, report);
+  drawEarnings(doc, page3, font, bold, report);
+  drawSummary(doc, page4, font, bold, report);
+  return doc.save();
+}
+
+function drawCover(
+  doc: PDFDocument,
+  header: PDFImage,
+  art: PDFImage,
+  footer: PDFImage,
+  font: PDFFont,
+  bold: PDFFont,
+  report: AssetReport,
+): void {
+  const page = doc.addPage([PAGE_W, PAGE_H]);
+  const headerH = (128 * PAGE_H) / 1200;
+  const footerH = (56 * PAGE_H) / 1200;
+  page.drawImage(header, { x: 0, y: PAGE_H - headerH, width: PAGE_W, height: headerH });
+  page.drawImage(art, { x: 0, y: footerH, width: PAGE_W, height: PAGE_H - headerH - footerH });
+  page.drawImage(footer, { x: 0, y: 0, width: PAGE_W, height: footerH });
+  fill(page, { x: 735, y: 5, w: 214, h: 45 }, report.periodLabel, bold, 11, INK, "center");
+}
+
+function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: PDFFont, report: AssetReport): void {
+  const page = doc.addPage([PAGE_W, PAGE_H]);
+  page.drawImage(background, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+  fill(page, { x: 735, y: 5, w: 214, h: 45 }, report.periodLabel, bold, 11, INK, "center");
+  // The page image is a filled example. Cover that text, then draw this truck.
+  paint(page, { x: 60, y: 98, w: 600, h: 84 }, WHITE);
+  textIn(page, { x: 70, y: 102, w: 110, h: 16 }, "Reporting Period:", bold, 7.4, INK, "left");
+  textIn(page, { x: 182, y: 102, w: 200, h: 16 }, report.periodLabel, font, 7.4, INK, "left");
+  textIn(page, { x: 70, y: 120, w: 80, h: 16 }, "Asset Partner:", bold, 7.4, INK, "left");
+  textIn(page, { x: 152, y: 120, w: 180, h: 16 }, report.assetPartner, bold, 7.4, INK, "left");
+  textIn(page, { x: 350, y: 120, w: 48, h: 16 }, "Driver:", bold, 7.4, INK, "left");
+  textIn(page, { x: 400, y: 120, w: 200, h: 16 }, report.driver, bold, 7.4, INK, "left");
+  textIn(page, { x: 70, y: 140, w: 40, h: 16 }, "Truck:", bold, 7.4, INK, "left");
+  textIn(page, { x: 112, y: 140, w: 40, h: 16 }, report.unitNumber, font, 7.4, INK, "left");
+  textIn(page, { x: 160, y: 140, w: 48, h: 16 }, "Trailer:", bold, 7.4, INK, "left");
+  textIn(page, { x: 210, y: 140, w: 70, h: 16 }, report.trailer, font, 7.4, INK, "left");
+  textIn(page, { x: 290, y: 140, w: 28, h: 16 }, "VIN:", bold, 7.4, INK, "left");
+  textIn(page, { x: 320, y: 140, w: 120, h: 16 }, report.vin, font, 7.4, INK, "left");
+  textIn(page, { x: 70, y: 160, w: 70, h: 16 }, "Dispatcher:", bold, 7.4, INK, "left");
+  textIn(page, { x: 142, y: 160, w: 240, h: 16 }, report.dispatcher, font, 7.4, INK, "left");
+  paint(page, { x: 58, y: 219, w: 602, h: 176 }, ROW);
+  paint(page, { x: 672, y: 219, w: 286, h: 250 }, ROW);
+  paint(page, { x: 48, y: 440, w: 640, h: 66 }, WHITE);
+
+  const columns: Array<{ x: number; w: number; align: Align; size: number }> = [
+    { x: 55.7, w: 73.6, align: "left", size: 6.2 },
+    { x: 130.7, w: 50.6, align: "left", size: 6.2 },
+    { x: 182.7, w: 103.6, align: "left", size: 5.8 },
+    { x: 287.7, w: 89.6, align: "left", size: 5.8 },
+    { x: 378.7, w: 97.6, align: "left", size: 5.8 },
+    { x: 477.7, w: 58.6, align: "right", size: 6.2 },
+    { x: 537.7, w: 58.6, align: "right", size: 6.2 },
+    { x: 597.7, w: 62.6, align: "right", size: 6.2 },
+  ];
+  const rowY = [220, 248, 276, 304, 332];
+  for (let index = 0; index < rowY.length; index += 1) {
+    const y = rowY[index] ?? 0;
+    const backgroundColor = index % 2 === 0 ? ZEBRA_A : ZEBRA_B;
+    const load = report.loads[index];
+    const loaded = !load ? "" : load.manifestRole === "partial" ? "partial" : milesLabel(load.loadedHundredths);
+    const manifest = load?.manifestRef ? `Manifest ${load.manifestRef}` : "";
+    const values = load
+      ? [
+          load.loadId,
+          load.date,
+          load.broker,
+          load.origin,
+          load.destination,
+          loaded,
+          milesLabel(load.deadheadHundredths),
+          money(load.rateCents),
+        ]
+      : ["", "", "", "", "", "", "", ""];
+    columns.forEach((column, columnIndex) => {
+      const box = { x: column.x, y, w: column.w, h: 27.6 };
+      paint(page, box, backgroundColor);
+      const value = values[columnIndex] ?? "";
+      if (columnIndex === 0 && manifest) {
+        textIn(page, { x: box.x, y: box.y + 2, w: box.w, h: 12 }, value, font, column.size, BLACK, "left");
+        textIn(page, { x: box.x, y: box.y + 13, w: box.w, h: 12 }, manifest, font, 5, BLACK, "left");
+      } else {
+        textIn(page, box, value, font, column.size, BLACK, column.align);
+      }
+    });
+  }
+
+  const totalY = 360;
+  const totals = [
+    { x: 477.7, w: 58.6, text: milesLabel(report.loadedMilesHundredths) },
+    { x: 537.7, w: 58.6, text: milesLabel(report.deadheadMilesHundredths) },
+    { x: 597.7, w: 62.6, text: money(report.grossCents) },
+  ];
+  for (const total of totals) {
+    fill(page, { x: total.x, y: totalY, w: total.w, h: 27.6 }, total.text, bold, 6.4, BLACK, "right", ZEBRA_B);
+  }
+
+  const weeklyY = [222, 246, 270, 294, 318, 342, 366, 390, 414];
+  const weeklyLabels = [
+    "Gross Freight Revenue",
+    "Total Loads Completed",
+    "Loaded Miles",
+    "Deadhead Miles",
+    "Dispatch Miles",
+    "Fuel Economy",
+    "Average Revenue Per Load",
+    "Average Rate Per Dispatch Mile",
+    "Fuel Cost Per Mile",
+  ];
+  const weekly = [
+    money(report.grossCents),
+    String(report.loadCount),
+    milesLabel(report.loadedMilesHundredths),
+    milesLabel(report.deadheadMilesHundredths),
+    milesLabel(report.dispatchMilesHundredths),
+    mpg(report.fuelEconomy),
+    report.revenuePerLoadCents == null ? "n/a" : money(report.revenuePerLoadCents),
+    report.ratePerMileCents == null ? "n/a" : money(report.ratePerMileCents),
+    report.fuelPerMileCents == null ? "n/a" : money(report.fuelPerMileCents),
+  ];
+  weekly.forEach((value, index) => {
+    const y = weeklyY[index] ?? 0;
+    textIn(page, { x: 678, y, w: 100, h: 22 }, weeklyLabels[index] ?? "", font, 5.6, BLACK, "left");
+    textIn(page, { x: 776, y, w: 48, h: 22 }, value, font, 5.6, BLACK, "right");
+  });
+  const dailyLabels = [
+    "Loads Accepted",
+    "Loads Delivered",
+    "On-Time Deliveries",
+    "Claims",
+    "Cargo Damage",
+    "Service Failures",
+    "Cancellation",
+  ];
+  const daily = [
+    report.loadsAccepted,
+    report.loadsDelivered,
+    report.onTime,
+    report.claims,
+    report.cargoDamage,
+    report.serviceFailures,
+    report.cancellations,
+  ];
+  daily.forEach((value, index) => {
+    const y = weeklyY[index] ?? 0;
+    textIn(page, { x: 830, y, w: 80, h: 22 }, dailyLabels[index] ?? "", font, 5.6, BLACK, "left");
+    textIn(page, { x: 908, y, w: 46, h: 22 }, value, font, 5.6, BLACK, "right");
+  });
+
+  const note = report.notes.join(" ").trim();
+  if (note) {
+    fill(page, { x: 62, y: 476, w: 603, h: 24 }, note, font, 5.5, BLACK, "left", CARD);
+  } else {
+    paint(page, { x: 48, y: 458, w: 630, h: 48 }, WHITE);
+  }
+}
+
+function drawEarnings(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: PDFFont, report: AssetReport): void {
+  const page = doc.addPage([PAGE_W, PAGE_H]);
+  page.drawImage(background, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+  fill(page, { x: 735, y: 5, w: 214, h: 45 }, report.periodLabel, bold, 11, INK, "center");
+  paint(page, { x: 28, y: 112, w: 910, h: 390 }, WHITE);
+  const who = `${report.assetPartner} | Truck ${report.unitNumber} | ${report.periodLabel}`;
+  fill(page, { x: 35, y: 116, w: 520, h: 18 }, who, font, 8, INK, "left");
+
+  const leftY = [160, 187, 214, 241, 268, 295, 322];
+  const leftLabels = [
+    report.leftExpenses[0]?.label ?? "",
+    report.leftExpenses[1]?.label ?? "",
+    "",
+    report.leftExpenses[2]?.label ?? "",
+    report.leftExpenses[3]?.label ?? "",
+    report.leftExpenses[4]?.label ?? "",
+    report.leftExpenses[5]?.label ?? "",
+  ];
+  const leftAmounts = [
+    report.leftExpenses[0]?.cents,
+    report.leftExpenses[1]?.cents,
+    null,
+    report.leftExpenses[2]?.cents,
+    report.leftExpenses[3]?.cents,
+    report.leftExpenses[4]?.cents,
+    report.leftExpenses[5]?.cents,
+  ];
+  leftY.forEach((y, index) => {
+    paint(page, { x: 36, y, w: 330, h: 18 }, WHITE);
+    textIn(page, { x: 40, y, w: 320, h: 18 }, leftLabels[index] ?? "", font, 7.4, INK, "left");
+    const cents = leftAmounts[index];
+    fill(page, { x: 370, y, w: 88, h: 18 }, cents == null ? "" : money(cents), bold, 7.5, INK, "right", WHITE);
+  });
+
+  const rightY = [160, 187, 214, 241, 268, 295, 322];
+  rightY.forEach((y, index) => {
+    const line = report.rightExpenses[index];
+    paint(page, { x: 490, y, w: 345, h: 18 }, WHITE);
+    textIn(page, { x: 496, y, w: 330, h: 18 }, line?.label ?? "", font, 7.4, INK, "left");
+    fill(page, { x: 840, y, w: 83, h: 18 }, line ? money(line.cents) : "", bold, 7.5, INK, "right", WHITE);
+  });
+
+  paint(page, { x: 36, y: 418, w: 888, h: 72 }, CARD);
+  textIn(page, { x: 48, y: 422, w: 200, h: 20 }, "Gross Revenue", bold, 10, INK, "left");
+  textIn(page, { x: 250, y: 422, w: 160, h: 20 }, money(report.grossCents), bold, 11, INK, "right");
+  textIn(page, { x: 470, y: 422, w: 220, h: 20 }, "Total Truck Expenses", bold, 10, INK, "left");
+  textIn(page, { x: 700, y: 422, w: 200, h: 20 }, money(report.expenseCents), bold, 11, INK, "right");
+  textIn(page, { x: 48, y: 448, w: 200, h: 20 }, "Net Owner Earnings", bold, 10, INK, "left");
+  textIn(page, { x: 250, y: 448, w: 160, h: 20 }, money(report.netCents), bold, 11, GREEN, "right");
+  textIn(page, { x: 470, y: 448, w: 250, h: 20 }, report.escrowCardLabel, bold, 9, INK, "left");
+  textIn(page, { x: 720, y: 448, w: 180, h: 20 }, money(report.escrowCents), bold, 11, INK, "right");
+  textIn(
+    page,
+    { x: 36, y: 492, w: 700, h: 14 },
+    "All expenses shown above are included in Total Truck Expenses.",
+    font,
+    6.5,
+    BLACK,
+    "left",
+  );
+}
+
+function drawSummary(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: PDFFont, report: AssetReport): void {
+  const page = doc.addPage([PAGE_W, PAGE_H]);
+  page.drawImage(background, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+  fill(page, { x: 735, y: 5, w: 214, h: 45 }, report.periodLabel, bold, 11, INK, "center");
+  paint(page, { x: 20, y: 118, w: 920, h: 385 }, WHITE);
+
+  paint(page, { x: 25, y: 124, w: 910, h: 58 }, CARD);
+  const lines = wrap(report.summary, font, 6.4, 890);
+  lines.slice(0, 5).forEach((line, index) => {
+    page.drawText(line, { x: 34, y: PAGE_H - 142 - index * 8.2, size: 6.4, font, color: BLACK });
+  });
+
+  const panels: Array<{ x: number; w: number; title: string }> = [
+    { x: 24, w: 176, title: "Asset Status" },
+    { x: 206, w: 188, title: "Performance KPIs" },
+    { x: 400, w: 200, title: "Operating Expenses" },
+    { x: 606, w: 176, title: "Fuel Summary" },
+    { x: 788, w: 150, title: "Compliance / Maintenance" },
+  ];
+  for (const panel of panels) {
+    paint(page, { x: panel.x, y: 196, w: panel.w, h: 18 }, rgb(47 / 255, 106 / 255, 151 / 255));
+    textIn(page, { x: panel.x + 4, y: 196, w: panel.w - 8, h: 18 }, panel.title, bold, 6.5, WHITE, "left");
+  }
+
+  const statusY = [220, 248, 276, 304, 332, 360];
+  const statusLabels = [
+    "Asset Status",
+    "Available for Dispatch",
+    "Operating Condition",
+    "Revenue Performance",
+    "Compliance",
+    "Maintenance",
+  ];
+  statusLabels.forEach((label, index) => {
+    textIn(page, { x: 28, y: statusY[index] ?? 0, w: 100, h: 24 }, label, font, 6, BLACK, "left");
+  });
+  const status = [
+    report.assetStatus,
+    report.availableForDispatch,
+    report.operatingCondition,
+    report.revenuePerformance,
+    report.compliance,
+    report.maintenance,
+  ];
+  status.forEach((value, index) => {
+    const y = statusY[index] ?? 0;
+    fill(page, { x: 120, y, w: 76, h: 24 }, value, font, 6.2, BLACK, "right", index % 2 === 0 ? ZEBRA_A : ZEBRA_B);
+  });
+
+  const kpiLabels = [
+    "Gross Revenue",
+    "Fuel Cost Per Mile",
+    "Owner Earnings",
+    "Loads Completed",
+    "Dispatch Miles",
+    "Rate Per Dispatch Mile",
+  ];
+  kpiLabels.forEach((label, index) => {
+    textIn(page, { x: 210, y: statusY[index] ?? 0, w: 110, h: 24 }, label, font, 6, BLACK, "left");
+  });
+  const kpis = [
+    money(report.grossCents),
+    report.fuelPerMileCents == null ? "n/a" : money(report.fuelPerMileCents),
+    money(report.netCents),
+    String(report.loadCount),
+    milesLabel(report.dispatchMilesHundredths),
+    report.ratePerMileCents == null ? "n/a" : money(report.ratePerMileCents),
+  ];
+  kpis.forEach((value, index) => {
+    const y = statusY[index] ?? 0;
+    fill(
+      page,
+      { x: 318, y, w: 72, h: 24 },
+      value,
+      bold,
+      6.4,
+      index === 2 ? GREEN : BLACK,
+      "right",
+      index % 2 === 0 ? ZEBRA_A : ZEBRA_B,
+    );
+  });
+
+  const expenseY = [220, 236, 252, 268, 284, 300, 316, 332, 348, 364, 380, 396, 412, 428, 444];
+  const expenseLabels = [
+    report.leftExpenses[0]?.label ?? "",
+    report.leftExpenses[1]?.label ?? "",
+    "",
+    report.leftExpenses[2]?.label ?? "",
+    report.leftExpenses[3]?.label ?? "",
+    report.leftExpenses[4]?.label ?? "",
+    report.leftExpenses[5]?.label ?? "",
+    report.rightExpenses[0]?.label ?? "",
+    report.rightExpenses[1]?.label ?? "",
+    report.rightExpenses[2]?.label ?? "",
+    report.rightExpenses[3]?.label ?? "",
+    report.rightExpenses[4]?.label ?? "",
+    report.rightExpenses[5]?.label ?? "",
+    report.rightExpenses[6]?.label ?? "",
+    "Total Truck Expenses",
+  ];
+  const expenseAmounts: Array<number | null> = [
+    report.leftExpenses[0]?.cents ?? null,
+    report.leftExpenses[1]?.cents ?? null,
+    null,
+    report.leftExpenses[2]?.cents ?? null,
+    report.leftExpenses[3]?.cents ?? null,
+    report.leftExpenses[4]?.cents ?? null,
+    report.leftExpenses[5]?.cents ?? null,
+    report.rightExpenses[0]?.cents ?? null,
+    report.rightExpenses[1]?.cents ?? null,
+    report.rightExpenses[2]?.cents ?? null,
+    report.rightExpenses[3]?.cents ?? null,
+    report.rightExpenses[4]?.cents ?? null,
+    report.rightExpenses[5]?.cents ?? null,
+    report.rightExpenses[6]?.cents ?? null,
+    report.expenseCents,
+  ];
+  expenseY.forEach((y, index) => {
+    paint(page, { x: 404, y, w: 118, h: 13.2 }, ROW);
+    textIn(page, { x: 406, y, w: 114, h: 13.2 }, expenseLabels[index] ?? "", index === expenseY.length - 1 ? bold : font, 4.6, BLACK, "left");
+    const cents = expenseAmounts[index];
+    fill(
+      page,
+      { x: 525, y, w: 79.5, h: 13.2 },
+      cents == null ? "" : money(cents),
+      index === expenseY.length - 1 ? bold : font,
+      4.6,
+      BLACK,
+      "right",
+      ROW,
+    );
+  });
+
+  const fuelLabels = ["Fuel Purchased", "Fuel Cost", "Avg Unit Price", "Fuel Economy", "Fuel Cost / Mile", "Dispatch Miles"];
+  const fuelY = statusY;
+  fuelLabels.forEach((label, index) => {
+    textIn(page, { x: 610, y: fuelY[index] ?? 0, w: 90, h: 24 }, label, font, 6, BLACK, "left");
+  });
+  const fuel = [
+    gallons(report.fuelGallonsLabel),
+    money(report.fuelCostCents),
+    report.fuelUnitPriceCents == null ? "n/a" : money(report.fuelUnitPriceCents),
+    mpg(report.fuelEconomy),
+    report.fuelPerMileCents == null ? "n/a" : money(report.fuelPerMileCents),
+    milesLabel(report.dispatchMilesHundredths),
+  ];
+  fuel.forEach((value, index) => {
+    const y = fuelY[index] ?? 0;
+    fill(page, { x: 700, y, w: 76, h: 24 }, value, font, 6, BLACK, "right", index % 2 === 0 ? ZEBRA_A : ZEBRA_B);
+  });
+
+  const complianceLabels = [
+    "Driver Qualification",
+    "Medical Card",
+    "Insurance",
+    "Registration",
+    "Annual DOT Insp.",
+    "ELD Compliance",
+    "Maintenance",
+  ];
+  const complianceY = [220, 248, 276, 304, 332, 360, 388];
+  complianceLabels.forEach((label, index) => {
+    textIn(page, { x: 792, y: complianceY[index] ?? 0, w: 88, h: 24 }, label, font, 5.4, BLACK, "left");
+  });
+  const compliance = [
+    report.driverQualification,
+    report.medicalCard,
+    report.insuranceStatus,
+    report.registration,
+    report.annualDot,
+    report.eldCompliance,
+    report.maintenance,
+  ];
+  compliance.forEach((value, index) => {
+    const y = complianceY[index] ?? 0;
+    fill(page, { x: 878, y, w: 56, h: 24 }, value, font, 5.6, BLACK, "right", index % 2 === 0 ? ZEBRA_A : ZEBRA_B);
+  });
 }

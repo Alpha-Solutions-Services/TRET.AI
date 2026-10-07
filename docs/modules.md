@@ -12,7 +12,7 @@
 | 4c | Overview Ins and Outs from each truck sheet (v0.0.0.14). Dedicated page `/ins-outs` (v0.0.0.16). Real sheet notes and date formats (v0.0.0.17). Service account JSON and private key normalize (v0.0.0.18). Not full Sheets sync | Done |
 | 4d | Load import sources: CSV, Google Sheet Load Ledger, Vektor REST (path OPEN), Vektor MCP kept and labeled broken on filters proto (v0.0.0.17) | Done |
 | 4e | Sheet vs loads mismatch Warn issues (v0.0.0.17) | Done |
-| 5d | Weekly Asset Management Report PDF from the truck sheet (v0.0.0.17). Two-page Legacy template layout, no MC Lease, sheet fields instead of "Not stored" (v0.0.0.27) | Done |
+| 5d | Weekly Asset Management Report PDF from the truck sheet (v0.0.0.17). Legacy landscape template, executive cover, no MC Lease, sheet fields instead of "Not stored" (v0.0.0.27) | Done |
 | 5 | Weekly statements and Close (v0.0.0.8) | Done |
 | 5b | Weekly owner PDF (v0.0.0.9) | Done |
 | 5c | Overview and management P&L (v0.0.0.10) | Done |
