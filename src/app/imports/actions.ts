@@ -371,6 +371,15 @@ export async function runVektorImportAction(input?: {
       else promoted += 1;
     }
 
+    const message = formatImportResultMessage({
+      source: selected,
+      fetched: manifests.length,
+      promoted,
+      updated,
+      rejected,
+      report: fetchReport,
+    });
+
     await supabase
       .from("import_runs")
       .update({
@@ -380,6 +389,7 @@ export async function runVektorImportAction(input?: {
         rows_promoted: promoted,
         rows_rejected: rejected,
         rows_updated: updated,
+        error_summary: manifests.length === 0 ? message.slice(0, 800) : null,
         meta: {
           statusCounts: pipeline.statusCounts,
           fetchReport,
@@ -396,14 +406,7 @@ export async function runVektorImportAction(input?: {
       promoted,
       rejected,
       updated,
-      message: formatImportResultMessage({
-        source: selected,
-        fetched: manifests.length,
-        promoted,
-        updated,
-        rejected,
-        report: fetchReport,
-      }),
+      message,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

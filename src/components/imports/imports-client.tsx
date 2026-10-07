@@ -87,6 +87,7 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
         <h1 className="text-2xl font-semibold tracking-tight">Imports</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
           Manual import only. Loads, fuel, and tolls. No scheduler. Does not write to Google Sheets.
+          Overview reads each truck sheet for Ins and Outs.
         </p>
       </div>
 
@@ -161,7 +162,7 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
                     {new Date(run.started_at).toLocaleString()}
                   </td>
                   <td className="px-4 py-3">{run.kind ?? "loads"}</td>
-                  <td className="px-4 py-3">{run.source ?? "—"}</td>
+                  <td className="px-4 py-3">{run.source ?? "None"}</td>
                   <td className="px-4 py-3">
                     {run.range_from} → {run.range_to}
                   </td>
@@ -171,7 +172,7 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
                   <td className="px-4 py-3">{run.rows_updated}</td>
                   <td className="px-4 py-3">{run.rows_rejected}</td>
                   <td className="max-w-xs px-4 py-3 text-[var(--color-fg-muted)]">
-                    {run.error_summary ?? "—"}
+                    {run.error_summary ?? "None"}
                   </td>
                 </tr>
               ))}

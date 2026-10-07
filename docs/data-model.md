@@ -17,7 +17,7 @@ One row per truck. There is no fixed truck count anywhere in the code or schema 
 | name | Display name |
 | truck_class | `legacy_owned` or `third_party` |
 | owner_name | Owner name when useful; may be empty |
-| google_sheet_url | Optional https link to this truck’s Google Sheet or portal sheet. Staff paste it on Add truck or Edit. Empty until set. Added in v0.0.0.13; the migration is not applied until the owner says go. |
+| google_sheet_url | Optional https link to this truck’s Google Sheet. Staff paste it on Add truck or Edit. Overview reads it for Ins and Outs (v0.0.0.14). It is not the loads ledger. Added in v0.0.0.13; the migration is not applied until the owner says go. |
 | active | Whether the truck is in use |
 | created_at | When the row was created |
 

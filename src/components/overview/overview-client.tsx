@@ -7,6 +7,7 @@ import { centsToDollarString } from "@/lib/money/cents";
 import type { OverviewPageData } from "@/lib/overview/queries";
 import type { ManagementPnl } from "@/lib/overview/pnl";
 import type { SnapshotRow } from "@/lib/overview/snapshot";
+import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 
 function money(cents: number): string {
   if (cents < 0) return `-$${centsToDollarString(-cents)}`;
@@ -98,10 +99,94 @@ export function OverviewClient({ data }: { data: OverviewPageData }) {
       ) : null}
 
       {data.snapshot ? <SnapshotTable snapshot={data.snapshot} /> : null}
+      <InsOutsTable rows={data.insOuts} error={data.insOutsError} />
       {data.pnl ? (
         <PnlTable pnl={data.pnl} operatingExpensesReady={data.operatingExpensesReady} />
       ) : null}
     </div>
+  );
+}
+
+function categoryLine(row: TruckWeekInsOuts): string {
+  if (!row.readable) return row.note ?? "Sheet was not read.";
+  const parts = row.categories.map((category) => `${category.category} ${money(category.cents)}`);
+  if (row.note) parts.push(row.note);
+  if (parts.length === 0) return "No outs this week.";
+  return parts.join(", ");
+}
+
+function InsOutsTable({ rows, error }: { rows: TruckWeekInsOuts[]; error: string | null }) {
+  const fleet = rows.filter((row) => row.readable).reduce(
+    (sum, row) => ({
+      insCents: sum.insCents + row.insCents,
+      outsCents: sum.outsCents + row.outsCents,
+      loadCount: sum.loadCount + row.loadCount,
+    }),
+    { insCents: 0, outsCents: 0, loadCount: 0 },
+  );
+
+  return (
+    <section className="space-y-2">
+      <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+        <table className="min-w-full text-left text-sm">
+          <caption className="px-3 py-3 text-left font-medium">Ins and Outs</caption>
+          <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
+            <tr>
+              <th className="px-3 py-3 font-medium">Unit</th>
+              <th className="px-3 py-3 font-medium">Loads</th>
+              <th className="px-3 py-3 font-medium">Ins</th>
+              <th className="px-3 py-3 font-medium">Outs</th>
+              <th className="px-3 py-3 font-medium">Net</th>
+              <th className="px-3 py-3 font-medium">Out detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            {error ? (
+              <tr>
+                <td className="px-3 py-3 text-red-700" colSpan={6} role="alert">
+                  {error}
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td className="px-3 py-3 text-[var(--color-fg-muted)]" colSpan={6}>
+                  No active trucks.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.unitNumber} className="border-b border-[var(--color-border)]">
+                  <td className="px-3 py-2">
+                    {row.unitNumber}
+                    <span className="block text-xs text-[var(--color-fg-muted)]">{row.truckName}</span>
+                  </td>
+                  <td className="px-3 py-2">{row.readable ? row.loadCount : "Unread"}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.insCents) : "Unread"}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.outsCents) : "Unread"}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.netCents) : "Unread"}</td>
+                  <td className="max-w-md px-3 py-2 text-[var(--color-fg-muted)]">{categoryLine(row)}</td>
+                </tr>
+              ))
+            )}
+            {rows.some((row) => row.readable) ? (
+              <tr className="bg-[var(--color-muted)] font-medium">
+                <td className="px-3 py-2">Fleet</td>
+                <td className="px-3 py-2">{fleet.loadCount}</td>
+                <td className="px-3 py-2">{money(fleet.insCents)}</td>
+                <td className="px-3 py-2">{money(fleet.outsCents)}</td>
+                <td className="px-3 py-2">{money(fleet.insCents - fleet.outsCents)}</td>
+                <td className="px-3 py-2 text-[var(--color-fg-muted)]">Readable sheets only</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+      <p className="max-w-3xl text-sm text-[var(--color-fg-muted)]">
+        Ins are load earnings from each truck Google Sheet load ledger (Rate, by delivery date). Outs are
+        management expenses dated this week: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary,
+        MVR, Drug Test, and Spare Expense 1 through 5. Loads in the ledger still come from Vektor.
+      </p>
+    </section>
   );
 }
 

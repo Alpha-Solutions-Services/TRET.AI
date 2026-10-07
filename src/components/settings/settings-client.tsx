@@ -168,6 +168,16 @@ export function SettingsClient({
         ))}
       </fieldset>
 
+      <section className="space-y-2 rounded-lg border border-[var(--color-border)] bg-white p-4">
+        <h2 className="text-sm font-medium">Truck Google Sheets</h2>
+        <p className="text-sm text-[var(--color-fg-muted)]">
+          Paste each truck link on Trucks. Overview reads that sheet for the selected week. Ins are the load
+          ledger Rate. Outs are Mgmt Expenses: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary,
+          MVR, Drug Test, and Spare Expense 1 through 5. Share the sheet so anyone with the link can view, or
+          share it with the Google service account from the setup guide. The import does not write to the sheet.
+        </p>
+      </section>
+
       <Button disabled={pending} onClick={onSave}>
         {pending ? "Saving…" : "Save"}
       </Button>

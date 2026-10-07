@@ -126,3 +126,14 @@ Do these once (or when credentials change). The app cannot finish login or healt
 2. It adds `trucks.google_sheet_url`. Row Level Security stays as it is. The existing trucks policy covers the new column.
 3. Until that script has run, Edit still saves unit, name, class, and owner. The Google Sheet field says the migration has not been applied.
 4. After it has run, paste each truck’s link on **Trucks → Edit** (or **Add truck**), in the field labeled **Google Sheet**.
+
+## 16. Overview Ins and Outs (v0.0.0.14)
+
+1. No new migration. The truck Google Sheet column from section 15 must already be applied, and each active truck needs its link.
+2. Overview reads two tabs: the load ledger (Rate by delivery date) and **Mgmt Expenses** (Date, Category, Amount).
+3. If the sheet is shared so anyone with the link can view, the server reads the public CSV. No new env var.
+4. If the sheet stays private, create a Google service account, share each sheet with that email as a viewer, and set these server-only variables (Vercel and local). Do not prefix them with `NEXT_PUBLIC_`.
+   - `GOOGLE_SERVICE_ACCOUNT_EMAIL`
+   - `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` (PEM; use `\n` for line breaks if the value must be one line)
+5. `GOOGLE_SHEETS_API_KEY` is optional and only works for sheets that are already public.
+6. Open **Overview**, pick the week, and check **Ins and Outs**. Unread means the link is missing or the server cannot open the sheet.
