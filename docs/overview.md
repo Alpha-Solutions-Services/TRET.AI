@@ -20,7 +20,11 @@ The **database** is always the source of truth. If a sheet disagrees with the da
 - **Owner / management** at Legacy Inc Global (and Alpha staff who maintain the system)
 - Access is limited to emails listed in the `allowed_users` table
 
-## What this version includes (v0.0.0.1)
+## Current version
+
+`VERSION` is the source of truth. v0.0.0.6 adds fixed weekly expenses per truck and a manual list of management-company operating expenses. See [modules.md](modules.md).
+
+## What v0.0.0.1 included
 
 - Project skeleton, tests, and CI
 - Email + password sign-in with an allowlist

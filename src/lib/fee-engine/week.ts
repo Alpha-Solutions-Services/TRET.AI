@@ -31,3 +31,34 @@ function formatUtcDate(dt: Date): string {
   const d = String(dt.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
+
+/** True when the calendar date is a Monday. Invalid dates are false. */
+export function isMondayIsoDate(value: string): boolean {
+  try {
+    assertIsoDate(value, "date");
+  } catch {
+    return false;
+  }
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 1;
+}
+
+/**
+ * Null when the value is a Monday. Otherwise a plain sentence for forms and actions.
+ */
+export function mondayDateError(value: string, label = "Effective from"): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return `${label} is required.`;
+  try {
+    assertIsoDate(trimmed, label);
+  } catch (err) {
+    return err instanceof Error ? err.message : `${label} is not a valid date.`;
+  }
+  if (!isMondayIsoDate(trimmed)) return `${label} must be a Monday.`;
+  return null;
+}
+
+export function assertMonday(value: string, label: string): void {
+  const error = mondayDateError(value, label);
+  if (error) throw new Error(error);
+}

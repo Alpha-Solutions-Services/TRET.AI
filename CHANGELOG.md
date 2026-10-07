@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.0.0.6 — 2026-10-07
+
+- Fixed weekly expenses per truck: one effective-dated row per kind, weekly amount in integer cents, `charged_to` owner (default) or management.
+- Kinds: Maintenance Escrow Weekly, ELD Fee, Yard Fee, GPS Tracker, Insurance, Truck Payments, Trailer Payments, Toll Pass, Permits, Misc.
+- Per-week override table. Overlap protection and `change_log` on create, delete latest, and override changes.
+- Fee rate versions and fixed-expense versions must start on a Monday (form, server action, and database function).
+- Trucks page: Fixed expenses tab (new version, delete latest, week override, week lookup).
+- Management-company operating expenses: manual date, category, amount in cents, note. Not a P&L.
+- Migration `20261007130000_fixed_expenses_monday_rule.sql` is not applied until the owner says go.
+
 ## v0.0.0.5 — 2026-10-07
 
 - Settings: Connect Vektor, status Connected / Needs sign-in, Test connection, Disconnect.

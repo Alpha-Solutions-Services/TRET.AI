@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { checkAccess } from "@/lib/auth/access";
 import { normalizeEmail } from "@/lib/allowed-users";
-import type { TruckClass } from "@/lib/fee-engine";
+import { mondayDateError, type TruckClass } from "@/lib/fee-engine";
+import { isChargedTo, isFixedExpenseKind } from "@/lib/fixed-expenses/kinds";
+import { centsInputError } from "@/lib/money/cents";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -121,9 +123,8 @@ export async function createFeeRateVersionAction(input: {
   const gate = await requireAccess();
   if (!gate.ok) return gate;
 
-  if (!input.effectiveFrom) {
-    return { ok: false, error: "Effective-from date is required." };
-  }
+  const mondayError = mondayDateError(input.effectiveFrom, "Effective from");
+  if (mondayError) return { ok: false, error: mondayError };
   if (input.rules.length === 0) {
     return { ok: false, error: "Add at least the required fee rules for this truck class." };
   }
@@ -140,6 +141,132 @@ export async function createFeeRateVersionAction(input: {
   revalidatePath(`/trucks/${input.truckId}`);
   revalidatePath("/trucks");
   return { ok: true, id: data };
+}
+
+export async function createFixedExpenseVersionAction(input: {
+  truckId: string;
+  kind: string;
+  effectiveFrom: string;
+  weeklyAmountCents: number;
+  chargedTo: string;
+  note: string;
+}): Promise<ActionResult> {
+  const gate = await requireAccess();
+  if (!gate.ok) return gate;
+
+  if (!isFixedExpenseKind(input.kind)) {
+    return { ok: false, error: "Choose an expense kind." };
+  }
+  const mondayError = mondayDateError(input.effectiveFrom, "Effective from");
+  if (mondayError) return { ok: false, error: mondayError };
+  const centsError = centsInputError(input.weeklyAmountCents);
+  if (centsError) return { ok: false, error: centsError };
+  if (!isChargedTo(input.chargedTo)) {
+    return { ok: false, error: "Charged to must be owner or management." };
+  }
+
+  const { data, error } = await gate.supabase.rpc("create_fixed_expense_version", {
+    p_truck_id: input.truckId,
+    p_kind: input.kind,
+    p_effective_from: input.effectiveFrom,
+    p_weekly_amount_cents: input.weeklyAmountCents,
+    p_charged_to: input.chargedTo,
+    p_note: input.note.trim() || null,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/trucks/${input.truckId}`);
+  return { ok: true, id: data };
+}
+
+export async function deleteLatestFixedExpenseVersionAction(
+  truckId: string,
+  kind: string,
+): Promise<ActionResult> {
+  const gate = await requireAccess();
+  if (!gate.ok) return gate;
+  if (!isFixedExpenseKind(kind)) {
+    return { ok: false, error: "Choose an expense kind." };
+  }
+
+  const { data: hasStatements, error: checkError } = await gate.supabase.rpc(
+    "truck_has_weekly_statements",
+    { p_truck_id: truckId },
+  );
+  if (checkError) return { ok: false, error: checkError.message };
+  if (hasStatements) {
+    return {
+      ok: false,
+      error: "Cannot delete an expense version after weekly statements exist.",
+    };
+  }
+
+  const { error } = await gate.supabase.rpc("delete_latest_fixed_expense_version", {
+    p_truck_id: truckId,
+    p_kind: kind,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/trucks/${truckId}`);
+  return { ok: true };
+}
+
+export async function upsertFixedExpenseOverrideAction(input: {
+  truckId: string;
+  kind: string;
+  weekStart: string;
+  amountCents: number;
+  chargedTo: string;
+  note: string;
+}): Promise<ActionResult> {
+  const gate = await requireAccess();
+  if (!gate.ok) return gate;
+
+  if (!isFixedExpenseKind(input.kind)) {
+    return { ok: false, error: "Choose an expense kind." };
+  }
+  const mondayError = mondayDateError(input.weekStart, "Week start");
+  if (mondayError) return { ok: false, error: mondayError };
+  const centsError = centsInputError(input.amountCents);
+  if (centsError) return { ok: false, error: centsError };
+  if (!isChargedTo(input.chargedTo)) {
+    return { ok: false, error: "Charged to must be owner or management." };
+  }
+
+  const { data, error } = await gate.supabase.rpc("upsert_fixed_expense_override", {
+    p_truck_id: input.truckId,
+    p_kind: input.kind,
+    p_week_start: input.weekStart,
+    p_amount_cents: input.amountCents,
+    p_charged_to: input.chargedTo,
+    p_note: input.note.trim() || null,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/trucks/${input.truckId}`);
+  return { ok: true, id: data };
+}
+
+export async function deleteFixedExpenseOverrideAction(input: {
+  truckId: string;
+  kind: string;
+  weekStart: string;
+}): Promise<ActionResult> {
+  const gate = await requireAccess();
+  if (!gate.ok) return gate;
+  if (!isFixedExpenseKind(input.kind)) {
+    return { ok: false, error: "Choose an expense kind." };
+  }
+
+  const { error } = await gate.supabase.rpc("delete_fixed_expense_override", {
+    p_truck_id: input.truckId,
+    p_kind: input.kind,
+    p_week_start: input.weekStart,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/trucks/${input.truckId}`);
+  return { ok: true };
 }
 
 export async function deleteLatestFeeRateVersionAction(

@@ -4,6 +4,7 @@ import { SignedInShell } from "@/components/signed-in-shell";
 import { TruckDetailClient } from "@/components/trucks/truck-detail-client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/server";
+import { listFixedExpensesForTruck } from "@/lib/fixed-expenses/queries";
 import {
   getTruck,
   latestChangeForTruck,
@@ -26,9 +27,10 @@ async function TruckDetailContent({ id }: { id: string }) {
   const truck = await getTruck(id);
   if (!truck) notFound();
 
-  const [contracts, lastChanged] = await Promise.all([
+  const [contracts, lastChanged, expenses] = await Promise.all([
     listContractsForTruck(id),
     latestChangeForTruck(id),
+    listFixedExpensesForTruck(id),
   ]);
 
   const supabase = await createClient();
@@ -47,6 +49,7 @@ async function TruckDetailContent({ id }: { id: string }) {
     <TruckDetailClient
       truck={truck}
       contracts={contracts}
+      expenses={expenses}
       lastChanged={lastChanged}
       canDeleteLatest={canDeleteLatest}
     />

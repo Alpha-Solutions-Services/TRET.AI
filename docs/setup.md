@@ -87,3 +87,9 @@ Do these once (or when credentials change). The app cannot finish login or healt
 3. Optional: set `VEKTOR_OAUTH_REDIRECT_URI` to `https://tret.ai.alphasolutions.software/api/vektor/oauth/callback`. If you leave it empty, the app uses the site origin plus that path.
 4. Redeploy so Vercel picks up the new variable.
 5. Open Settings and click **Connect Vektor**. Sign in once. Then click **Test connection**, choose **Vektor MCP**, and Save.
+
+## 10. Fixed expenses (v0.0.0.6) — do this before saving expenses
+
+1. In the Supabase SQL editor, run `supabase/migrations/20261007130000_fixed_expenses_monday_rule.sql`. Do this only when you are ready (say go).
+2. It adds fixed weekly expenses, week overrides, and management operating expenses, all with Row Level Security. It also requires new fee rate versions to start on a Monday.
+3. Until that script has run, the Fixed expenses tab and Operating expenses page say the migration has not been applied. Trucks, loads, and imports keep working.

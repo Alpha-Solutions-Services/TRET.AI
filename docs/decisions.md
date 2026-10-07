@@ -32,7 +32,7 @@
 | 2026-10-07 | Who receives the dispatch fee | Legacy management income, on its own line. |
 | 2026-10-07 | Management fee base | Gross (100%), not after factoring. |
 | 2026-10-07 | Unlabeled $228 line | Do not reproduce it. |
-| 2026-10-07 | Expenses moved to management | Later fixed-expense rows get `charged_to` (`owner` or `management`). Default is owner. Not built in v0.0.0.5. |
+| 2026-10-07 | Expenses moved to management | Fixed-expense rows have `charged_to` (`owner` or `management`). Default is owner. Built in v0.0.0.6. |
 | 2026-10-07 | TONU and other non-delivered statuses | Count them in the import report. Do not import them. |
 | 2026-10-07 | Multi-order manifests | Warn, and leave Load ID empty. |
 | 2026-10-07 | Load ID | Vektor order friendlyId, untouched. |
@@ -44,3 +44,8 @@
 | 2026-10-07 | Manifest query window | Ask Vektor for first-stop dates from 14 days before `from` through 7 days after `to`, then keep loads whose delivery date is inside the requested range. |
 | 2026-10-07 | OPEN: exact `core_Manifests_Get` argument envelope | Working request uses `first_stop_appointment_start_date` `{from, to}`, `page_size`, and `page_token`. `fleet_Trucks_GetByIDs` uses `{ids}`. `core_Manifests_OrderDetailsGet` uses `{manifest_id}`. Confirm on the first live Test connection. |
 | 2026-10-07 | OPEN: driver and broker name tools | Not called until `tools/list` shows the exact read-only names. Names are cached only when they are already on the payload. |
+| 2026-10-07 | Fixed expenses are one row per truck and kind | Each kind has its own Monday effective dates and weekly amount in integer cents. A new version closes the previous open row for that kind. |
+| 2026-10-07 | Week override replaces that week | For one Monday–Sunday week, the override amount and `charged_to` replace the effective-dated version. |
+| 2026-10-07 | Fee and expense versions start on Monday | Enforced in the form, the server action, and `assert_effective_monday` inside the database functions. No new check on existing `fee_contracts` rows, because v0.0.0.3 is already applied. |
+| 2026-10-07 | Operating expenses are a manual list | Date, category, integer cents, note. This is not the management-company P&L. |
+| 2026-10-07 | OPEN: override after a weekly statement exists | Weekly statements are not built. Deleting the latest expense version uses the same guard as rate versions. Whether an override may change a locked week stays open. |

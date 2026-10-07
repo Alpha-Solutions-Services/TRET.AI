@@ -112,34 +112,50 @@ export async function latestChangeForTruck(truckId: string): Promise<{
 } | null> {
   const supabase = await createClient();
 
-  const { data: truckLogs } = await supabase
-    .from("change_log")
-    .select("created_at, actor_email, action")
-    .eq("entity_type", "truck")
-    .eq("entity_id", truckId)
-    .order("created_at", { ascending: false })
-    .limit(1);
+  const [truckLogsResult, contractsResult, expenseResult, overrideResult] = await Promise.all([
+    supabase
+      .from("change_log")
+      .select("created_at, actor_email, action")
+      .eq("entity_type", "truck")
+      .eq("entity_id", truckId)
+      .order("created_at", { ascending: false })
+      .limit(1),
+    supabase.from("fee_contracts").select("id").eq("truck_id", truckId),
+    supabase.from("truck_fixed_expenses").select("id").eq("truck_id", truckId),
+    supabase.from("truck_fixed_expense_overrides").select("id").eq("truck_id", truckId),
+  ]);
 
-  const { data: contracts } = await supabase
-    .from("fee_contracts")
-    .select("id")
-    .eq("truck_id", truckId);
+  const truckLogs = truckLogsResult.data;
+  const contracts = contractsResult.data;
 
   const contractIds = (contracts ?? []).map((c) => c.id);
-  let contractLog: { created_at: string; actor_email: string; action: string } | null =
-    null;
-  if (contractIds.length > 0) {
+  const expenseIds = (expenseResult.data ?? []).map((row) => row.id);
+  const overrideIds = (overrideResult.data ?? []).map((row) => row.id);
+
+  async function latestLog(entityType: string, ids: string[]) {
+    if (ids.length === 0) return null;
     const { data: logs } = await supabase
       .from("change_log")
       .select("created_at, actor_email, action")
-      .eq("entity_type", "fee_contract")
-      .in("entity_id", contractIds)
+      .eq("entity_type", entityType)
+      .in("entity_id", ids)
       .order("created_at", { ascending: false })
       .limit(1);
-    contractLog = logs?.[0] ?? null;
+    return logs?.[0] ?? null;
   }
 
-  const candidates = [...(truckLogs ?? []), ...(contractLog ? [contractLog] : [])];
+  const [contractLog, expenseLog, overrideLog] = await Promise.all([
+    latestLog("fee_contract", contractIds),
+    latestLog("truck_fixed_expense", expenseIds),
+    latestLog("truck_fixed_expense_override", overrideIds),
+  ]);
+
+  const candidates = [
+    ...(truckLogs ?? []),
+    ...(contractLog ? [contractLog] : []),
+    ...(expenseLog ? [expenseLog] : []),
+    ...(overrideLog ? [overrideLog] : []),
+  ];
   if (candidates.length === 0) return null;
   candidates.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   return candidates[0]!;

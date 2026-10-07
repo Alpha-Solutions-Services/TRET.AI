@@ -7,6 +7,7 @@ import {
   deleteLatestFeeRateVersionAction,
   setTruckActiveAction,
 } from "@/app/trucks/actions";
+import { FixedExpensesPanel } from "@/components/trucks/fixed-expenses-panel";
 import { Button } from "@/components/ui/button";
 import { SidePanel } from "@/components/ui/side-panel";
 import { useConfirm } from "@/components/ui/confirm";
@@ -14,10 +15,12 @@ import { useToast } from "@/components/ui/toast";
 import {
   calculateFeeLines,
   findContractForDate,
+  mondayDateError,
   type FeeRuleInput,
   type FeeRuleKind,
   type TruckClass,
 } from "@/lib/fee-engine";
+import type { FixedExpenseBundle } from "@/lib/fixed-expenses/queries";
 import {
   FEE_KIND_LABELS,
   allowedFeeKindsForClass,
@@ -40,6 +43,7 @@ type RuleFormState = {
 type Props = {
   truck: TruckRow;
   contracts: FeeContractWithRules[];
+  expenses: FixedExpenseBundle;
   lastChanged: { created_at: string; actor_email: string; action: string } | null;
   canDeleteLatest: boolean;
 };
@@ -63,6 +67,7 @@ function emptyRules(
 export function TruckDetailClient({
   truck,
   contracts,
+  expenses,
   lastChanged,
   canDeleteLatest,
 }: Props) {
@@ -70,6 +75,7 @@ export function TruckDetailClient({
   const { confirm } = useConfirm();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [tab, setTab] = useState<"rates" | "expenses">("rates");
   const [panelOpen, setPanelOpen] = useState(false);
   const [effectiveFrom, setEffectiveFrom] = useState("");
   const [note, setNote] = useState("");
@@ -133,6 +139,12 @@ export function TruckDetailClient({
   function onSaveVersion(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
+
+    const mondayError = mondayDateError(effectiveFrom, "Effective from");
+    if (mondayError) {
+      setFormError(mondayError);
+      return;
+    }
 
     const mandatory = mandatoryFeeKindsForClass(truck.truck_class);
     const rules: Array<{ kind: string; rate_bp: number; base_pct_bp: number }> = [];
@@ -233,8 +245,10 @@ export function TruckDetailClient({
           <Button variant="secondary" disabled={pending} onClick={onToggleActive}>
             {truck.active ? "Deactivate" : "Activate"}
           </Button>
-          <Button onClick={openNewVersion}>New rate version</Button>
-          {contracts.length > 0 && canDeleteLatest ? (
+          {tab === "rates" ? (
+            <Button onClick={openNewVersion}>New rate version</Button>
+          ) : null}
+          {tab === "rates" && contracts.length > 0 && canDeleteLatest ? (
             <Button variant="danger" disabled={pending} onClick={onDeleteLatest}>
               Delete latest version
             </Button>
@@ -242,6 +256,49 @@ export function TruckDetailClient({
         </div>
       </div>
 
+      <div role="tablist" aria-label="Truck sections" className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          role="tab"
+          id="truck-tab-rates"
+          aria-selected={tab === "rates"}
+          aria-controls="truck-panel-rates"
+          className={
+            tab === "rates"
+              ? "inline-flex h-10 items-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              : "inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          }
+          onClick={() => setTab("rates")}
+        >
+          Rates
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="truck-tab-expenses"
+          aria-selected={tab === "expenses"}
+          aria-controls="truck-panel-expenses"
+          className={
+            tab === "expenses"
+              ? "inline-flex h-10 items-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              : "inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          }
+          onClick={() => setTab("expenses")}
+        >
+          Fixed expenses
+        </button>
+      </div>
+
+      {tab === "expenses" ? (
+        <div role="tabpanel" id="truck-panel-expenses" aria-labelledby="truck-tab-expenses">
+          <FixedExpensesPanel
+            truckId={truck.id}
+            bundle={expenses}
+            canDeleteLatest={canDeleteLatest}
+          />
+        </div>
+      ) : (
+        <div role="tabpanel" id="truck-panel-rates" aria-labelledby="truck-tab-rates" className="space-y-8">
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Rate versions</h2>
         {contracts.length === 0 ? (
@@ -351,6 +408,9 @@ export function TruckDetailClient({
               onChange={(e) => setEffectiveFrom(e.target.value)}
               className="h-10 w-full rounded-md border border-[var(--color-border)] px-3"
             />
+            <span className="mt-1 block text-xs text-[var(--color-fg-muted)]">
+              Must be a Monday.
+            </span>
           </label>
           <label className="block text-sm">
             <span className="mb-1 block">Note (optional)</span>
@@ -433,6 +493,8 @@ export function TruckDetailClient({
           </Button>
         </form>
       </SidePanel>
+        </div>
+      )}
     </div>
   );
 }
