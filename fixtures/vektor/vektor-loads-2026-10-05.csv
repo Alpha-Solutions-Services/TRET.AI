@@ -1,0 +1,453 @@
+﻿Order ID,Order Reference ID,Manifest ID,Broker Name,Broker Short Name,Customer Name,Customer Short Name,Drivers,Order Date Delivered,Origin,Destination,Stops,Stops Count,Total Miles,Loaded Miles,Empty Miles,Rate Per Mile,Invoice Paperwork Verified,Gross,Manifest Gross,Dispatcher Name,Weight,Temperature,Commodity,Total Amount,Total Driver Pay,Invoice Status,Status,Truck Reference ID,Trailer Reference ID,Start At,End At,Carrier Name,Total Carrier Pay,Invoice Date,Invoice Due Date,Note,Invoice Note,Shipment Date,Invoice Number,Origin Datetime,Destination Datetime,Equipment Type,Driver Assist,Driver assist,Layover,Permits and Licenses,Flat Rate,Tarping,Lumper,TONU,Detention,Miscellaneous,Fuel Surcharge
+TBH--1197,2384057,1197,"LANDSTAR TRANSPORTATION LOGISTICS, INC","LANDSTAR TRANSPORTATION LOGISTICS, INC",,,Casey Morgan Hale,N/A,"4321 West 32nd Street, Chicago, IL 60623","3109 North 30th Street, Quincy, IL 62305","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 2789 Oak Street, Highland Park, IL 60035 (42.202964, -87.798087)
+	Appointment Start At: 2026-10-07 10:00:00
+Stop [1]:
+	Status: En Route, Type: Pickup
+	Location: 4321 West 32nd Street, Chicago, IL 60623 (41.834676, -87.732504)
+	Reference: PO# 802271/836562/839982
+	Appointment Start At: 2026-10-07 08:00:00, Appointment End At: 2026-10-07 16:00:00
+Stop [2]:
+	Status: Planning, Type: Dropoff
+	Location: 3109 North 30th Street, Quincy, IL 62305 (39.968568, -91.368883)
+	Appointment Start At: 2026-10-08 07:00:00, Appointment End At: 2026-10-08 08:00:00",3,326,284,42,$3.68,false,"$1,200.00",1200.00,Jordan Ellis Shaw,9000 lb,,10 Skid Auto/Auto Parts (9000 lb),"$1,200.00",$240.00,Not Invoiced,En Route to Pickup,03,03,2026-10-07 08:00:00,2026-10-08 07:00:00,,,,,"- Carrier must not subcontract, broker, or arrange for freight to be transported by a third party.
+- Compliance with load tracking requirements is mandatory; non-compliance may result in a rate reduction of up to 15%.
+- Invoice must include Landstar’s freight bill number or EL#; accessorials must be authorized in writing to avoid payment delays.
+
+Ensure to use 4' tarps for this load and verify compliance with California Air Resources Board regulations if applicable.",Submit invoices with signed BOL and proof of delivery for each stop. Use Transflo Mobile or Transflo Express for paperwork submission by 2:00 PM EST for same-day receipt. Include Landstar’s freight bill number or EL# on the invoice.,2026-10-07,,2026-10-07 08:00:00,2026-10-08 07:00:00,Flatbed,-,-,-,-,1200.00,-,-,-,-,-,-
+TBH--1196,92875,1196,RCH ENTERPRISES INC,RCH ENTERPRISES INC,,,Riley Santos Cruz,N/A,"18743 Route 16, Gillespie, IL 62033","3801 Mopac Rd, Fort Worth, TX 76107","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 2 Hawthorne Drive, Hermann, MO 65041 (38.702685, -91.412977)
+	Appointment Start At: 2026-10-06 14:59:31
+Stop [1]:
+	Status: En Route, Type: Pickup
+	Location: 18743 Route 16, Gillespie, IL 62033 (39.140160, -89.797510)
+	Appointment Start At: 2026-10-07 08:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [2]:
+	Status: Planning, Type: Pickup
+	Location: 101 North Railroad Street, Villa Grove, IL 61956 (39.860441, -88.161937)
+	Reference: 117598
+	Appointment Start At: 2026-10-07 07:30:00, Appointment End At: 2026-10-07 14:30:00
+Stop [3]:
+	Status: Planning, Type: Dropoff
+	Location: 601 Interstate 45 South, Ferris, TX 75125 (32.528171, -96.660044)
+	Appointment Start At: 2026-10-08 08:00:00
+Stop [4]:
+	Status: Planning, Type: Dropoff
+	Location: 3801 Mopac Rd, Fort Worth, TX 76107 (32.723160, -97.372789)
+	Reference: 117598
+	Appointment Start At: 2026-10-09 07:30:00, Appointment End At: 2026-10-09 14:30:00",5,837,837,0,$2.03,false,"$1,700.00",3700.00,Jordan Ellis Shaw,3892 lb,,1 Unit Rail (3892 lb),"$1,700.00",$740.00,Not Invoiced,Booked,05,05,2026-10-07 07:30:00,2026-10-09 07:30:00,,Merged Order - N/A,,,"- Call 24 hours ahead for pickup and delivery.
+- Driver must have PPE (boots, hard hat, vest, ear plugs) at all locations.
+- Detention charge applies after 2 hours; notify logistics team 30 minutes prior.
+- All paperwork must be submitted within 24 hours of delivery.
+- Real-time tracking is mandatory; failure results in a financial penalty.
+- If tarps are required, the load must be fully tarped to avoid penalties.
+- No double brokering allowed; violations will be reported.
+
+Driver must have proper PPE and take pictures of the load before departure and unloading. Call ahead to confirm shipping/receiving hours.",Send POD to broker's email within 24 hours. Invoices should be sent to invoice@rchtransportation.com. Include signed BOL and any required documents.,2026-10-07,,2026-10-07 07:30:00,2026-10-09 07:30:00,Power Only,-,-,-,-,1700.00,-,-,-,-,-,-
+TBH--1195,2165599,1195,"LANDSTAR TRANSPORTATION LOGISTICS, INC","LANDSTAR TRANSPORTATION LOGISTICS, INC",,,Quinn Ellis Parker,N/A,"H & H, 28701 South East Highway 125, Afton, OK 74331","952 Kings Highway, Fredericksburg, VA 22405","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 4399 North Perkins Road, Stillwater, OK 74075 (36.167161, -97.051763)
+	Appointment Start At: 2026-10-06 08:22:11
+Stop [1]:
+	Status: En Route, Type: Pickup
+	Location: H & H, 28701 South East Highway 125, Afton, OK 74331 (36.561117, -94.843418)
+	Appointment Start At: 2026-10-06 07:00:00, Appointment End At: 2026-10-06 12:00:00
+Stop [2]:
+	Status: Completed, Type: Pickup
+	Location: 1354 East South Sheridan Road, Tulsa, OK 74112 (36.142554, -95.905845)
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 16:00:00
+Stop [3]:
+	Status: Completed, Type: Dropoff
+	Location: 25 Barnes Trail, Greenville, SC 29605 (34.739678, -82.360083)
+	Appointment Start At: 2026-10-08 08:00:00, Appointment End At: 2026-10-08 16:00:00
+Stop [4]:
+	Status: En Route, Type: Pickup
+	Location: 742 J A Cochran Bypass, Chester, SC 29706 (34.700982, -81.237771)
+	Reference: PO# P02011842
+	Appointment Start At: 2026-10-07 08:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [5]:
+	Status: Planning, Type: Dropoff
+	Location: 3301 Castlewood Rd, Richmond, VA 23234 (37.478129, -77.445003)
+	Appointment Start At: 2026-10-08 08:00:00, Appointment End At: 2026-10-08 15:00:00
+Stop [6]:
+	Status: Planning, Type: Dropoff
+	Location: 952 Kings Highway, Fredericksburg, VA 22405 (38.258218, -77.413178)
+	Appointment Start At: 2026-10-08 08:00:00, Appointment End At: 2026-10-08 14:00:00",7,384,384,0,$2.34,false,$900.00,4400.00,Jordan Ellis Shaw,5220 lb,,2 Pieces Machinery/Machine Parts (4710 lb); 1 Pieces Support Legs (510 lb),$900.00,$880.00,Not Invoiced,In Transit,08,08,2026-10-06 07:00:00,2026-10-08 08:00:00,,Merged Order - N/A,,,"- Carrier must not subcontract, broker, or arrange for freight to be transported by a third party.
+- Compliance with load tracking requirements is mandatory; non-compliance may result in a rate reduction of up to 15%.
+- Invoice must include Landstar’s freight bill number or EL#; any accessorials must be authorized in writing to avoid payment delays.
+
+No tarps required for this load. Ensure all tracking requirements are met to avoid penalties.","Submit invoice, signed BOL for each stop, and proof of delivery for each stop. Include Landstar’s freight bill number or EL#. Receipts for lumper, tolls, etc., must be submitted. Use Transflo Mobile or Transflo Express for paperwork submission by 2:00 PM EST for same-day receipt.",2026-10-06,,2026-10-06 07:00:00,2026-10-08 08:00:00,Dry Van,-,-,-,-,900.00,-,-,-,-,-,-
+TBH--1193,131994404,1196,GLEN ROSE TRANSPORTATION MANAGEMENT INC.,GLEN ROSE TRANSPORTATION MANAGEMENT INC.,,,Riley Santos Cruz,N/A,"18743 Route 16, Gillespie, IL 62033","3801 Mopac Rd, Fort Worth, TX 76107","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 2 Hawthorne Drive, Hermann, MO 65041 (38.702685, -91.412977)
+	Appointment Start At: 2026-10-06 14:59:31
+Stop [1]:
+	Status: En Route, Type: Pickup
+	Location: 18743 Route 16, Gillespie, IL 62033 (39.140160, -89.797510)
+	Appointment Start At: 2026-10-07 08:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [2]:
+	Status: Planning, Type: Pickup
+	Location: 101 North Railroad Street, Villa Grove, IL 61956 (39.860441, -88.161937)
+	Reference: 117598
+	Appointment Start At: 2026-10-07 07:30:00, Appointment End At: 2026-10-07 14:30:00
+Stop [3]:
+	Status: Planning, Type: Dropoff
+	Location: 601 Interstate 45 South, Ferris, TX 75125 (32.528171, -96.660044)
+	Appointment Start At: 2026-10-08 08:00:00
+Stop [4]:
+	Status: Planning, Type: Dropoff
+	Location: 3801 Mopac Rd, Fort Worth, TX 76107 (32.723160, -97.372789)
+	Reference: 117598
+	Appointment Start At: 2026-10-09 07:30:00, Appointment End At: 2026-10-09 14:30:00",5,842,697,145,$2.38,false,"$2,000.00",3700.00,Jordan Ellis Shaw,830 lb,,1 Pail Tubes (830 lb),"$2,000.00",$740.00,Not Invoiced,In Transit,05,05,2026-10-07 07:30:00,2026-10-09 07:30:00,,Merged Order - N/A,,,"- Driver must call (254) 897-3580 to be dispatched and start TruckerTools tracking.
+- All Overages, Shortages, and Damages (OS&D) must be reported immediately to GRTM.
+- Shipments must be sealed by an employee at the shipper and removed by an employee at the consignee's facility. Driver must not break seal for any reason.
+- Detention will not be paid without prior authorization from GRTM and must be notified before it starts.
+- Valid proof of IN/OUT times is mandatory for detention claims; handwritten times on the BOL do not qualify.
+- GRTM does not allow double brokering.
+
+Driver must tarp the load and ensure the trailer meets food-grade standards. Call broker for any issues before signing BOL.","Email all paperwork, BOLs, POD, lumper receipts, and your invoice to ap@grtminc.com within 15 days of delivery. Payment terms are NET-30. Include all required documents for reimbursement of unloading/lumper charges.",2026-10-07,,2026-10-07 07:30:00,2026-10-09 07:30:00,Dry Van,-,-,-,-,2000.00,-,-,-,-,-,-
+TBH--1192,68076,1195,NEW ERA LOGISTICS INC (NEW ERA LOGISTICS),NEW ERA LOGISTICS INC (NEW ERA LOGISTICS),,,Quinn Ellis Parker,2026-10-08 08:00:00,"H & H, 28701 South East Highway 125, Afton, OK 74331","952 Kings Highway, Fredericksburg, VA 22405","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 4399 North Perkins Road, Stillwater, OK 74075 (36.167161, -97.051763)
+	Appointment Start At: 2026-10-06 08:22:11
+Stop [1]:
+	Status: En Route, Type: Pickup
+	Location: H & H, 28701 South East Highway 125, Afton, OK 74331 (36.561117, -94.843418)
+	Appointment Start At: 2026-10-06 07:00:00, Appointment End At: 2026-10-06 12:00:00
+Stop [2]:
+	Status: Completed, Type: Pickup
+	Location: 1354 East South Sheridan Road, Tulsa, OK 74112 (36.142554, -95.905845)
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 16:00:00
+Stop [3]:
+	Status: Completed, Type: Dropoff
+	Location: 25 Barnes Trail, Greenville, SC 29605 (34.739678, -82.360083)
+	Appointment Start At: 2026-10-08 08:00:00, Appointment End At: 2026-10-08 16:00:00
+Stop [4]:
+	Status: En Route, Type: Pickup
+	Location: 742 J A Cochran Bypass, Chester, SC 29706 (34.700982, -81.237771)
+	Reference: PO# P02011842
+	Appointment Start At: 2026-10-07 08:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [5]:
+	Status: Planning, Type: Dropoff
+	Location: 3301 Castlewood Rd, Richmond, VA 23234 (37.478129, -77.445003)
+	Appointment Start At: 2026-10-08 08:00:00, Appointment End At: 2026-10-08 15:00:00
+Stop [6]:
+	Status: Planning, Type: Dropoff
+	Location: 952 Kings Highway, Fredericksburg, VA 22405 (38.258218, -77.413178)
+	Appointment Start At: 2026-10-08 08:00:00, Appointment End At: 2026-10-08 14:00:00",7,924,924,0,$1.84,false,"$1,700.00",4400.00,Jordan Ellis Shaw,4000 lb,,3 Pieces Wire Reels,"$1,700.00",$880.00,Not Invoiced,Delivered,08,08,2026-10-06 07:00:00,2026-10-08 08:00:00,,Merged Order - N/A,,,"- Must accept GPS tracking request if asked or $300 will be removed from the line haul.
+- Confirm driver has the correct dunnage.
+
+Ensure the driver has the correct dunnage and is prepared for GPS tracking requests.",Submit invoices to accounting@loadnewera.com. Required documents include signed BOL. Payment terms are Net 30 days. Include NEL PO# 68076 on the invoice.,2026-10-06,,2026-10-06 07:00:00,2026-10-08 08:00:00,Flatbed,-,-,-,-,1700.00,-,-,-,-,-,-
+TBH--1191,246669,1191,INTERNATIONAL TRANSPORT SYSTEMS INC,INTERNATIONAL TRANSPORT SYSTEMS INC,,,Drew Nolan Brooks,N/A,"301 Industrial Drive, Carrollton, OH 44615","2200 Northwest 93rd Avenue, Doral, FL 33172","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 47201 CR-273, Conesville, OH 43811 (40.187950, -81.876270)
+	Appointment Start At: 2026-10-02 09:20:46
+Stop [1]:
+	Status: Completed, Type: Pickup
+	Location: 301 Industrial Drive, Carrollton, OH 44615 (40.566929, -81.094932)
+	Appointment Start At: 2026-10-05 07:00:00, Appointment End At: 2026-10-05 16:00:00
+Stop [2]:
+	Status: Completed, Type: Pickup
+	Location: WOODWARD INC, 128 Myoma Road, Mars, PA 16046 (40.729115, -80.031364)
+	Appointment Start At: 2026-10-05 08:00:00, Appointment End At: 2026-10-05 15:00:00
+Stop [3]:
+	Status: Completed, Type: Dropoff
+	Location: 370 Great SW Pkwy SW Ste h, Atlanta, GA 30336 (33.747112, -84.565867)
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 15:00:00
+Stop [4]:
+	Status: Completed, Type: Pickup
+	Location: 150 Adamson Industrial Boulevard, Carrollton, GA 30117 (33.610208, -85.100079)
+	Reference: PCL92050
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 15:00:00
+Stop [5]:
+	Status: Completed, Type: Pickup
+	Location: 39 Curtis Ct SW, Cartersville, GA 30120 (34.142846, -84.842354), Checked In At: 2026-10-06 14:49:27, Checked Out At: 2026-10-06 15:24:03
+	Appointment Start At: 2026-10-06 13:00:00
+Stop [6]:
+	Status: En Route, Type: Dropoff
+	Location: 15200 Alexandria Court, Fort Myers, FL 33908 (26.521515, -81.925722)
+	Appointment Start At: 2026-10-07 08:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [7]:
+	Status: Planning, Type: Dropoff
+	Location: 2000 North Andrews Avenue Extension, Pompano Beach, FL 33069 (26.255062, -80.140719)
+	Appointment Start At: 2026-10-07 09:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [8]:
+	Status: Planning, Type: Dropoff
+	Location: 2200 Northwest 93rd Avenue, Doral, FL 33172 (25.794199, -80.346811)
+	Appointment Start At: 2026-10-07 12:00:00",9,713,713,0,$1.12,false,$800.00,5300.00,Jordan Ellis Shaw,4300 lb,,1 Unit Refrigerated Scissor Lift (4300 lb),$800.00,"$1,060.00",Not Invoiced,In Transit,06,06,2026-10-05 07:00:00,2026-10-07 12:00:00,,Merged Order - N/A,,,"- Drivers must wear long sleeve shirt, long pants, steel toed boots, safety vest, safety glasses, and hard hat; failure results in a $250 fine.
+- Double brokering and soliciting the shipper are prohibited.
+- Confirm the load matches the specified commodity description and piece count; discrepancies must be reported immediately.
+
+Ensure all PPE is worn before arriving on site. Call broker after delivery to provide the name of the person who signed for the shipment.",Upload your invoice PDF at https://prov2.itransys.com/invoice. Include a signed BOL and any required documents. Ensure all documents are legible and in PDF format.,2026-10-05,,2026-10-05 07:00:00,2026-10-07 12:00:00,Power Only,-,-,-,-,800.00,-,-,-,-,-,-
+TBH--1190,31416-77230,1191,CORE LOGISTICS BROKERAGE LLC,CORE LOGISTICS BROKERAGE LLC,,,Drew Nolan Brooks,2026-10-07 12:00:00,"301 Industrial Drive, Carrollton, OH 44615","2200 Northwest 93rd Avenue, Doral, FL 33172","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 47201 CR-273, Conesville, OH 43811 (40.187950, -81.876270)
+	Appointment Start At: 2026-10-02 09:20:46
+Stop [1]:
+	Status: Completed, Type: Pickup
+	Location: 301 Industrial Drive, Carrollton, OH 44615 (40.566929, -81.094932)
+	Appointment Start At: 2026-10-05 07:00:00, Appointment End At: 2026-10-05 16:00:00
+Stop [2]:
+	Status: Completed, Type: Pickup
+	Location: WOODWARD INC, 128 Myoma Road, Mars, PA 16046 (40.729115, -80.031364)
+	Appointment Start At: 2026-10-05 08:00:00, Appointment End At: 2026-10-05 15:00:00
+Stop [3]:
+	Status: Completed, Type: Dropoff
+	Location: 370 Great SW Pkwy SW Ste h, Atlanta, GA 30336 (33.747112, -84.565867)
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 15:00:00
+Stop [4]:
+	Status: Completed, Type: Pickup
+	Location: 150 Adamson Industrial Boulevard, Carrollton, GA 30117 (33.610208, -85.100079)
+	Reference: PCL92050
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 15:00:00
+Stop [5]:
+	Status: Completed, Type: Pickup
+	Location: 39 Curtis Ct SW, Cartersville, GA 30120 (34.142846, -84.842354), Checked In At: 2026-10-06 14:49:27, Checked Out At: 2026-10-06 15:24:03
+	Appointment Start At: 2026-10-06 13:00:00
+Stop [6]:
+	Status: Completed, Type: Dropoff
+	Location: 15200 Alexandria Court, Fort Myers, FL 33908 (26.521515, -81.925722)
+	Arrived At: 2026-10-07 11:17:35, Checked In At: 2026-10-07 11:19:41, Checked Out At: 2026-10-07 11:32:01
+	Appointment Start At: 2026-10-07 08:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [7]:
+	Status: En Route, Type: Dropoff
+	Location: 2000 North Andrews Avenue Extension, Pompano Beach, FL 33069 (26.255062, -80.140719)
+	Appointment Start At: 2026-10-07 09:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [8]:
+	Status: Planning, Type: Dropoff
+	Location: 2200 Northwest 93rd Avenue, Doral, FL 33172 (25.794199, -80.346811)
+	Appointment Start At: 2026-10-07 12:00:00",9,627,627,0,$1.91,false,"$1,200.00",5300.00,Jordan Ellis Shaw,2200 lb,,Freight of All Kinds,"$1,200.00","$1,060.00",Not Invoiced,Delivered,06,06,2026-10-05 07:00:00,2026-10-07 12:00:00,,Merged Order - N/A,,,"- CARRIER MUST NOT CONTACT SHIPPER OR RECEIVER; all communication through broker.
+- Late pickup or delivery incurs a $250/hour fine; non-compensation for the load may apply.
+- Detention begins after 3 hours from appointment time at $40/hour.
+- POD must be submitted within 24 hours of delivery; failure results in a $150 fine, with additional $50/day after 48 hours.
+- Acceptance of electronic Tracking App is required; $300 fine if not accepted within three hours of load pick-up.
+
+Ensure proper PPE is worn, including steel-toe boots, hard hat, and safety vest. Seals must only be removed by the receiver or under their supervision.",Email POD and invoice to POD@shipwithcore.com for payment approval. Include signed BOL and any required documents. Payment will be processed through Triumph Pay.,2026-10-05,,2026-10-05 07:00:00,2026-10-07 12:00:00,Flatbed,-,-,-,-,1200.00,-,-,-,-,-,-
+TBH--1189,317569,1189,GTI USA INC.,GTI USA INC.,,,Blake Rowan Miles,2026-10-07 09:27:35,"2820 Farm to Market 1516 North, Converse, TX 78109","395 Anderson Boulevard, Clarksdale, MS 38614","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 51900 Joanna Street, Brownsville, TX 78521 (25.983958, -97.189047)
+	Appointment Start At: 2026-10-03 12:51:10
+Stop [1]:
+	Status: Completed, Type: Pickup
+	Location: 2820 Farm to Market 1516 North, Converse, TX 78109 (29.454665, -98.316715)
+	Reference: W810976
+	Arrived At: 2026-10-06 11:59:17, Checked In At: 2026-10-06 12:01:23, Checked Out At: 2026-10-06 13:34:36
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 15:00:00
+Stop [2]:
+	Status: Completed, Type: Dropoff
+	Location: 605 Boutz Lane, Mer Rouge, LA 71261 (32.779454, -91.787331)
+	Reference: W810976
+	Arrived At: 2026-10-07 07:55:35, Checked In At: 2026-10-07 08:01:35, Checked Out At: 2026-10-07 09:27:35
+	Appointment Start At: 2026-10-07 08:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [3]:
+	Status: Completed, Type: Dropoff
+	Location: 395 Anderson Boulevard, Clarksdale, MS 38614 (34.191393, -90.593778)
+	Reference: W810976
+	Appointment Start At: 2026-10-07 07:00:00, Appointment End At: 2026-10-07 16:00:00",4,687,687,0,$3.93,false,"$2,700.00",2700.00,Jordan Ellis Shaw,4140 lb,,3 Unit 6250G Vertical Yellow Tanks (4140 lb),"$2,700.00",$540.00,Not Invoiced,Delivered,07,07,2026-10-06 08:00:00,2026-10-07 08:00:00,,,,,"- Driver/dispatcher must call end user prior to loading to inform about delivery; failure results in a $200 fine.
+- Driver must call receiver with ETA before delivery; no prior call may result in delays of 1-2 days.
+- No double brokering or subcontracting without prior written consent from broker; violation results in 100% rate reduction.
+
+Call the end user before loading and the receiver with ETA before delivery to avoid fines and delays.","Invoices must include a SIGNED DELIVERY RECEIPT, BOL (all pages), RATE CONFIRMATION, and INVOICE #. Send to accounting@thegtigroup.com. Settlements are paid within 30 days after invoice approval.",2026-10-06,,2026-10-06 13:34:36,2026-10-07 09:27:35,Power Only,-,-,-,-,2700.00,-,-,-,-,-,-
+TBH--1188,38670782,1195,TOTAL QUALITY LOGISTICS LLC,TOTAL QUALITY LOGISTICS LLC,,,Quinn Ellis Parker,N/A,"H & H, 28701 South East Highway 125, Afton, OK 74331","952 Kings Highway, Fredericksburg, VA 22405","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 4399 North Perkins Road, Stillwater, OK 74075 (36.167161, -97.051763)
+	Appointment Start At: 2026-10-06 08:22:11
+Stop [1]:
+	Status: En Route, Type: Pickup
+	Location: H & H, 28701 South East Highway 125, Afton, OK 74331 (36.561117, -94.843418)
+	Appointment Start At: 2026-10-06 07:00:00, Appointment End At: 2026-10-06 12:00:00
+Stop [2]:
+	Status: Completed, Type: Pickup
+	Location: 1354 East South Sheridan Road, Tulsa, OK 74112 (36.142554, -95.905845)
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 16:00:00
+Stop [3]:
+	Status: Completed, Type: Dropoff
+	Location: 25 Barnes Trail, Greenville, SC 29605 (34.739678, -82.360083)
+	Appointment Start At: 2026-10-08 08:00:00, Appointment End At: 2026-10-08 16:00:00
+Stop [4]:
+	Status: En Route, Type: Pickup
+	Location: 742 J A Cochran Bypass, Chester, SC 29706 (34.700982, -81.237771)
+	Reference: PO# P02011842
+	Appointment Start At: 2026-10-07 08:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [5]:
+	Status: Planning, Type: Dropoff
+	Location: 3301 Castlewood Rd, Richmond, VA 23234 (37.478129, -77.445003)
+	Appointment Start At: 2026-10-08 08:00:00, Appointment End At: 2026-10-08 15:00:00
+Stop [6]:
+	Status: Planning, Type: Dropoff
+	Location: 952 Kings Highway, Fredericksburg, VA 22405 (38.258218, -77.413178)
+	Appointment Start At: 2026-10-08 08:00:00, Appointment End At: 2026-10-08 14:00:00",7,1318,1165,153,$1.37,false,"$1,800.00",4400.00,Jordan Ellis Shaw,2595 lb,,1 Pail metal displays (2595 lb),"$1,800.00",$880.00,Not Invoiced,In Transit,08,08,2026-10-06 07:00:00,2026-10-08 08:00:00,,Merged Order - N/A,,,"- Must maintain tracking and communication; late fees apply.
+- $250 deduction for late BOL submission (24 hours).
+- Must be on time for both pick-up and drop-off to avoid excessive late fees.
+
+Ensure load is safe, secure, and legal for transport. Driver must answer calls for dispatch and check-ins.",Submit signed BOL and other paperwork to cinvoices@tql.com within 24 hours of delivery. Payment terms are 28 days. Include TQL PO# 38670782 on the invoice.,2026-10-06,,2026-10-06 07:00:00,2026-10-08 08:00:00,Flatbed,-,-,-,-,1800.00,-,-,-,-,-,-
+TBH--1187,1823184,1187,BENNETT LLC,BENNETT LLC,,,Avery James Cole,N/A,"Tom Bean, TX 75090","5662 Leesport Avenue A, Reading, PA 19605","Stop [0]:
+	Status: Completed, Type: Start
+	Location: Forney, TX (32.752916, -96.423254)
+	Appointment Start At: 2026-10-06 07:33:46
+Stop [1]:
+	Status: Completed, Type: Pickup
+	Location: Tom Bean, TX 75090 (33.600581, -96.556988)
+	Reference: 0359020
+	Appointment Start At: 2026-10-06 07:00:00, Appointment End At: 2026-10-06 14:30:00
+Stop [2]:
+	Status: En Route, Type: Dropoff
+	Location: 5662 Leesport Avenue A, Reading, PA 19605 (40.419823, -75.930059)
+	Appointment Start At: 2026-10-08 07:00:00, Appointment End At: 2026-10-09 15:00:00",3,1507,1426,81,$1.66,false,"$2,500.00",2500.00,Jordan Ellis Shaw,1200 lb,,2 Pieces Rail Parts (1200 lb),"$2,500.00",$500.00,Not Invoiced,In Transit,04,04,2026-10-06 07:00:00,2026-10-08 07:00:00,,,,,"- Driver must call broker for dispatch when loaded and upon completion of load for Release #.
+- Fax signed BOL/POD to 800-688-2221 upon delivery.
+- Report any claims or delivery problems immediately to broker.
+- Carrier shall not broker or subcontract this load to any party not noted in this agreement.
+- Payment requires signed BOL free of loss, damage, or delay notations.
+
+Driver must fax signed BOL upon delivery and report any issues immediately to the broker.","Submit invoices to bildocs@bennettig.com. Include signed BOL, BIL Order, and Release Numbers. Payment will not be made without these documents.",2026-10-06,,2026-10-06 07:00:00,2026-10-08 07:00:00,Power Only,-,-,-,-,2500.00,-,-,-,-,-,-
+TBH--1186,9892969,1186,TRINITY LOGISTICS INC.,TRINITY LOGISTICS INC.,,,Casey Morgan Hale,2026-10-07 14:17:57,"32 Old Country Road, Westhampton, NY 11977","2789 Oak Street, Highland Park, IL 60035","Stop [0]:
+	Status: Completed, Type: Start
+	Location: PAULSIGNS, 654 4th Avenue, Brooklyn, NY 11232 (40.663877, -73.994917)
+	Appointment Start At: 2026-10-05 10:04:42
+Stop [1]:
+	Status: Completed, Type: Pickup
+	Location: 32 Old Country Road, Westhampton, NY 11977 (40.825907, -72.668009)
+	Reference: Tarp
+	Arrived At: 2026-10-06 07:16:41, Checked In At: 2026-10-06 07:17:17, Checked Out At: 2026-10-06 07:53:43
+	Appointment Start At: 2026-10-06 07:00:00, Appointment End At: 2026-10-06 10:00:00
+Stop [2]:
+	Status: Completed, Type: Pickup
+	Location: 80 East Hampton Sag Harbor Turnpike, East Hampton, NY 11937 (40.965304, -72.205619)
+	Arrived At: 2026-10-06 10:09:20, Checked In At: 2026-10-06 10:11:32, Checked Out At: 2026-10-06 11:05:10
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 13:00:00
+Stop [3]:
+	Status: Completed, Type: Dropoff
+	Location: 2789 Oak Street, Highland Park, IL 60035 (42.202964, -87.798087)
+	Arrived At: 2026-10-07 12:58:37, Checked In At: 2026-10-07 12:59:48, Checked Out At: 2026-10-07 14:17:57
+	Appointment Start At: 2026-10-07 08:30:00, Appointment End At: 2026-10-07 10:00:00",4,1060,981,79,$3.02,false,"$3,200.00",3200.00,Jordan Ellis Shaw,0 lb,,16 Bag Nursery tarp,"$3,200.00",$640.00,Not Invoiced,Delivered,03,03,2026-10-06 07:00:00,2026-10-07 08:30:00,,,,,"- Carrier must comply with California Air Resources Board regulations if operating in California.
+- Carrier agrees not to broker the load without written approval from the broker.
+- All paperwork must be submitted within 24 hours of delivery.
+
+Use a 16 x 24 nursery tarp for this load. Ensure the equipment is pre-cooled and verify the temperature before loading.",Send invoices to carrierinvoices@trinitylogistics.com. Include signed BOL and any lumper receipts. Payment terms are within 25 days of receipt of all uncontested paperwork.,2026-10-06,,2026-10-06 07:53:43,2026-10-07 14:17:57,Container,-,-,-,-,3200.00,-,-,-,-,-,-
+TBH--1185,2763375,1185,MEGACORP LOGISTICS LLC,MEGACORP LOGISTICS LLC,,,Riley Santos Cruz,2026-10-06 14:59:31,"17382 Foltz Industrial Parkway, Strongsville, OH 44149","2 Hawthorne Drive, Hermann, MO 65041","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 2882 Lewis Centre Way, Urbancrest, OH 43123 (39.895759, -83.093948)
+	Appointment Start At: 2026-10-05 12:14:47
+Stop [1]:
+	Status: Completed, Type: Pickup
+	Location: 17382 Foltz Industrial Parkway, Strongsville, OH 44149 (41.291286, -81.871567)
+	Reference: PU# 1
+	Arrived At: 2026-10-05 17:16:38, Checked In At: 2026-10-05 17:18:20, Checked Out At: 2026-10-05 18:51:28
+	Appointment Start At: 2026-10-05 07:00:00, Appointment End At: 2026-10-05 21:00:00
+Stop [2]:
+	Status: Completed, Type: Dropoff
+	Location: 2 Hawthorne Drive, Hermann, MO 65041 (38.702685, -91.412977)
+	Reference: DEL# 1
+	Arrived At: 2026-10-06 14:08:58, Checked In At: 2026-10-06 14:09:01, Checked Out At: 2026-10-06 14:59:31
+	Appointment Start At: 2026-10-06 07:00:00, Appointment End At: 2026-10-06 19:00:00",3,753,615,138,$2.66,true,"$2,000.00",2000.00,Jordan Ellis Shaw,8000 lb,,1 Package Construction Metal (8000 lb),"$2,000.00",$400.00,Invoiced,Delivered,05,05,2026-10-05 07:00:00,2026-10-06 07:00:00,,,,,"- Do not break seal; breaking the seal will result in a claim charged to the carrier.
+- Notify broker 1 hour before detention begins to accrue; detention is on a per load basis.
+- This load is not to be double brokered.
+
+Use 4ft tarps or better and dunnage for loading. Ensure load is sealed and do not break the seal during transit.","Submit invoice with signed BOLs, any accessorial fees, and receipts within 2 weeks. Email paperwork to ap@megacorplogistics.com in PDF format.",2026-10-05,,2026-10-05 18:51:28,2026-10-06 14:59:31,Power Only,-,-,-,-,2000.00,-,-,-,-,-,-
+TBH--1184,628585,1184,TALLGRASS FREIGHT COMPANY,TALLGRASS FREIGHT COMPANY,,,Quinn Ellis Parker,2026-10-06 08:22:11,"3939A Northeast 33rd Terrace, Kansas City, MO 64117","4399 North Perkins Road, Stillwater, OK 74075","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 3201 Fairfax Trafficway, Kansas City, KS 66115 (39.150205, -94.609547)
+	Appointment Start At: 2026-10-05 08:46:28
+Stop [1]:
+	Status: Completed, Type: Pickup
+	Location: 3939A Northeast 33rd Terrace, Kansas City, MO 64117 (39.153735, -94.534000)
+	Arrived At: 2026-10-05 12:00:25, Checked In At: 2026-10-05 12:02:27, Checked Out At: 2026-10-05 12:52:10
+	Appointment Start At: 2026-10-05 00:00:00, Appointment End At: 2026-10-05 23:59:59
+Stop [2]:
+	Status: Completed, Type: Dropoff
+	Location: 4399 North Perkins Road, Stillwater, OK 74075 (36.167161, -97.051763)
+	Arrived At: 2026-10-06 07:17:08, Checked In At: 2026-10-06 08:01:20, Checked Out At: 2026-10-06 08:22:11
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 15:00:00",3,324,314,10,$3.40,true,"$1,100.00",1100.00,Jordan Ellis Shaw,9100 lb,,65 Pieces 8 and 15 inch water pipe (9100 lb),"$1,100.00",$220.00,Invoiced,Delivered,08,08,2026-10-05 00:00:00,2026-10-06 08:00:00,,,,,"- Double brokering is prohibited; any violation will result in non-payment.
+- This is an exclusive-use load; partialing is not allowed without prior written consent.
+- A $250 per day rate reduction applies for late or missed appointments without prior notification.
+
+Ensure the load is not partialed and notify the broker of any overages, shortages, or damages immediately.",Invoices must be emailed to billing@tallgrassfreight.com. Include signed BOL and any accessorial receipts. Payment terms are net 30 days. Register at secure.triumphpay.com/register/payee to receive payments.,2026-10-05,,2026-10-05 12:52:10,2026-10-06 08:22:11,Flatbed,-,-,-,-,1100.00,-,-,-,-,-,-
+TBH--1183,38663153,1191,TOTAL QUALITY LOGISTICS LLC,TOTAL QUALITY LOGISTICS LLC,,,Drew Nolan Brooks,2026-10-07 12:00:00,"301 Industrial Drive, Carrollton, OH 44615","2200 Northwest 93rd Avenue, Doral, FL 33172","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 47201 CR-273, Conesville, OH 43811 (40.187950, -81.876270)
+	Appointment Start At: 2026-10-02 09:20:46
+Stop [1]:
+	Status: Completed, Type: Pickup
+	Location: 301 Industrial Drive, Carrollton, OH 44615 (40.566929, -81.094932)
+	Appointment Start At: 2026-10-05 07:00:00, Appointment End At: 2026-10-05 16:00:00
+Stop [2]:
+	Status: Completed, Type: Pickup
+	Location: WOODWARD INC, 128 Myoma Road, Mars, PA 16046 (40.729115, -80.031364)
+	Appointment Start At: 2026-10-05 08:00:00, Appointment End At: 2026-10-05 15:00:00
+Stop [3]:
+	Status: Completed, Type: Dropoff
+	Location: 370 Great SW Pkwy SW Ste h, Atlanta, GA 30336 (33.747112, -84.565867)
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 15:00:00
+Stop [4]:
+	Status: Completed, Type: Pickup
+	Location: 150 Adamson Industrial Boulevard, Carrollton, GA 30117 (33.610208, -85.100079)
+	Reference: PCL92050
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 15:00:00
+Stop [5]:
+	Status: Completed, Type: Pickup
+	Location: 39 Curtis Ct SW, Cartersville, GA 30120 (34.142846, -84.842354), Checked In At: 2026-10-06 14:49:27, Checked Out At: 2026-10-06 15:24:03
+	Appointment Start At: 2026-10-06 13:00:00
+Stop [6]:
+	Status: En Route, Type: Dropoff
+	Location: 15200 Alexandria Court, Fort Myers, FL 33908 (26.521515, -81.925722)
+	Appointment Start At: 2026-10-07 08:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [7]:
+	Status: Planning, Type: Dropoff
+	Location: 2000 North Andrews Avenue Extension, Pompano Beach, FL 33069 (26.255062, -80.140719)
+	Appointment Start At: 2026-10-07 09:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [8]:
+	Status: Planning, Type: Dropoff
+	Location: 2200 Northwest 93rd Avenue, Doral, FL 33172 (25.794199, -80.346811)
+	Appointment Start At: 2026-10-07 12:00:00",9,726,726,0,$1.10,true,$800.00,5300.00,Jordan Ellis Shaw,2000 lb,,1 Pail Machinery (2000 lb),$800.00,"$1,060.00",Invoiced,Delivered,06,06,2026-10-05 07:00:00,2026-10-07 12:00:00,,Merged Order - N/A,,,"- Submit completed and signed paperwork within 24 hours of delivery to cinvoices@tql.com.
+- Detention payment does not begin for at least 3 hours unless otherwise agreed in writing.
+- Notify TQL at least 30 minutes before beginning detention time.
+
+MUST SECURE LOAD! Notify broker of any delays.",Submit invoices to cinvoices@tql.com. Include signed BOL and any applicable receipts. Payment terms are 28 days. Quick Pay options available.,2026-10-05,,2026-10-05 07:00:00,2026-10-07 12:00:00,Flatbed,-,-,-,-,800.00,-,-,-,-,-,-
+TBH--1181,3428149,1191,"BUCHANAN LOGISTICS, INC.","BUCHANAN LOGISTICS, INC.",,,Drew Nolan Brooks,N/A,"301 Industrial Drive, Carrollton, OH 44615","2200 Northwest 93rd Avenue, Doral, FL 33172","Stop [0]:
+	Status: Completed, Type: Start
+	Location: 47201 CR-273, Conesville, OH 43811 (40.187950, -81.876270)
+	Appointment Start At: 2026-10-02 09:20:46
+Stop [1]:
+	Status: Completed, Type: Pickup
+	Location: 301 Industrial Drive, Carrollton, OH 44615 (40.566929, -81.094932)
+	Appointment Start At: 2026-10-05 07:00:00, Appointment End At: 2026-10-05 16:00:00
+Stop [2]:
+	Status: Completed, Type: Pickup
+	Location: WOODWARD INC, 128 Myoma Road, Mars, PA 16046 (40.729115, -80.031364)
+	Appointment Start At: 2026-10-05 08:00:00, Appointment End At: 2026-10-05 15:00:00
+Stop [3]:
+	Status: Completed, Type: Dropoff
+	Location: 370 Great SW Pkwy SW Ste h, Atlanta, GA 30336 (33.747112, -84.565867)
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 15:00:00
+Stop [4]:
+	Status: Completed, Type: Pickup
+	Location: 150 Adamson Industrial Boulevard, Carrollton, GA 30117 (33.610208, -85.100079)
+	Reference: PCL92050
+	Appointment Start At: 2026-10-06 08:00:00, Appointment End At: 2026-10-06 15:00:00
+Stop [5]:
+	Status: Completed, Type: Pickup
+	Location: 39 Curtis Ct SW, Cartersville, GA 30120 (34.142846, -84.842354), Checked In At: 2026-10-06 14:49:27, Checked Out At: 2026-10-06 15:24:03
+	Appointment Start At: 2026-10-06 13:00:00
+Stop [6]:
+	Status: Completed, Type: Dropoff
+	Location: 15200 Alexandria Court, Fort Myers, FL 33908 (26.521515, -81.925722)
+	Arrived At: 2026-10-07 11:17:35, Checked In At: 2026-10-07 11:19:41, Checked Out At: 2026-10-07 11:32:01
+	Appointment Start At: 2026-10-07 08:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [7]:
+	Status: En Route, Type: Dropoff
+	Location: 2000 North Andrews Avenue Extension, Pompano Beach, FL 33069 (26.255062, -80.140719)
+	Appointment Start At: 2026-10-07 09:00:00, Appointment End At: 2026-10-07 15:00:00
+Stop [8]:
+	Status: Planning, Type: Dropoff
+	Location: 2200 Northwest 93rd Avenue, Doral, FL 33172 (25.794199, -80.346811)
+	Appointment Start At: 2026-10-07 12:00:00",9,1221,1150,71,$2.05,false,"$2,500.00",5300.00,Jordan Ellis Shaw,1806 lb,,Tubing (1806 lb),"$2,500.00","$1,060.00",Not Invoiced,In Transit,06,06,2026-10-05 07:00:00,2026-10-07 12:00:00,,Merged Order - N/A,,,"- Detention: $35/hr after 3 hrs at FCFS stops; $35/hr after 2 hrs at appointment stops.
+- Must accept and use Buchanan-approved tracking throughout the shipment or face a $250 rate reduction and forfeiture of detention/accessorial pay.
+- Driver must report any pickup or delivery delays to Broker immediately; delays may result in a 25% rate reduction or broker profit loss, whichever is greater.","- Upload signed BOL, signed rate confirmation, and invoice within 72 hours to: https://tms.buchananhauling.com
+- Required docs: legible Proof of Delivery with 3 signatures (shipper, consignee, and carrier’s driver); signed rate confirmation; any customer-required documents; arrival and departure times signed by shipper/consignee.
+- Freight charges paid within 30 days of receipt of invoice and all required documents.
+- Unplanned accessory charges are reimbursed within 30 days after Broker receives invoice and required documents.
+- Detention requirements: arrival/departure times must be on the BOL; for FCFS locations, driver must arrive within 1 hour of first open time; for appointment locations, driver must arrive on time and sign BOL before departing shipper/receiver; Broker pays a maximum of 7 hours ($245) detention per day.
+- Payment setup must be current in Highway for NOA/banking info. If factoring is not available in Highway, payment will be via ACH or check; check incurs a $10 processing fee.
+- If invoiced after 60 days but before 180 days from delivery, payment is reduced by 25%. Charges not invoiced within 180 days are deemed waived.",2026-10-05,,2026-10-05 07:00:00,2026-10-07 12:00:00,Power Only,-,-,-,-,2500.00,-,-,-,-,-,-

@@ -1,3 +1,5 @@
+import { canonicalLoadId, loadMatchKey } from "@/lib/loads/load-id";
+import { unitKey } from "@/lib/sheets/mismatch";
 import type { IssueDraft, MappedLoad } from "./types";
 
 export type ImportSettings = {
@@ -65,9 +67,10 @@ export function validateDuplicateLoadIds(
   const counts = new Map<string, string[]>();
   for (const row of mappedRows) {
     if (!row.eligible || !row.loadId) continue;
-    const list = counts.get(row.loadId) ?? [];
+    const key = loadMatchKey(row.loadId);
+    const list = counts.get(key) ?? [];
     list.push(row.manifestId);
-    counts.set(row.loadId, list);
+    counts.set(key, list);
   }
   const issues: IssueDraft[] = [];
   for (const [loadId, manifests] of counts) {
@@ -75,7 +78,7 @@ export function validateDuplicateLoadIds(
       issues.push({
         severity: "Warn",
         rule: "duplicate_load_id",
-        message: `Duplicate Load ID ${loadId} on ${manifests.length} manifests.`,
+        message: `Duplicate Load ID ${canonicalLoadId(loadId)} on ${manifests.length} manifests.`,
         ref: loadId,
       });
     }
@@ -128,9 +131,15 @@ export function validateRowCountDrop(
 export function matchTruckUnit(
   vektorUnit: string | null,
   knownUnits: Set<string>,
+  options?: { normalize?: boolean },
 ): { matched: boolean; unit: string | null } {
   if (!vektorUnit) return { matched: false, unit: null };
-  // Exact match: Vektor "02" must equal trucks.unit_number "02"
   if (knownUnits.has(vektorUnit)) return { matched: true, unit: vektorUnit };
+  if (options?.normalize) {
+    const key = unitKey(vektorUnit);
+    for (const known of knownUnits) {
+      if (unitKey(known) === key) return { matched: true, unit: known };
+    }
+  }
   return { matched: false, unit: vektorUnit };
 }

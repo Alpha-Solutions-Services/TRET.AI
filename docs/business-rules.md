@@ -76,6 +76,7 @@ This section is the statement close. The Dashboard and Management pages use the 
 - A credit (negative amount) is not a portal expense.
 - The weekly post uses the Management card income and Tolson payable. It is one journal entry. It does not run by itself.
 - Posting again for a week that already has a log row is allowed. The new QuickBooks id is logged too.
+- Unless `QUICKBOOKS_API_ENABLED` is `true`, Integrations does not show Connect QuickBooks. The weekly file is a journal entry CSV. The expense file is saved only after confirm, and a repeated row hash is skipped.
 
 ## Issues
 

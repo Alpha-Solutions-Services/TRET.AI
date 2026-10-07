@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.0.0.26 — 2026-10-07
+
+- Vektor orders CSV import accepts Order ID, Gross, Truck Reference ID, Drivers, Loaded Miles, Empty Miles, Origin Datetime, Order Date Delivered (or Destination Datetime), and Broker Name. Truck `03` matches truck `3`. City and state come from a full street address. `N/A` and a lone hyphen are empty. Only Delivered rows import. Booked, En Route, and In Transit stay in the preview with a reason. Manifest ID is not the load key. Settings can save that column mapping once.
+- A CSV import records an import run with source `csv`. That run does not set the row drop baseline for the next Vektor connection import.
+- Re-importing a load that was typed in by hand updates that row. It does not insert a second one. Load ids are stored and shown as `TBH--1192`. A sheet id `TBH1192` is converted for storage and display and still matches on letters and digits. Google Sheets cells are not rewritten to that form.
+- Sheet vs Vektor treats a short driver name and the full legal name as the same person, and blank deadhead as zero. A shared manifest date is labeled and is not a hard mismatch. An admin can Use sheet, Use Vektor, or Write to sheet for one cell when the Google account can edit. Each choice needs a short note and is kept on the row. Use sheet and Write to sheet close the matching issue.
+- Five more themes: Mono Minimal, Mint Breeze, Rose Quartz, Aurora Night, and Carbon Electric. Each option shows a swatch.
+- QuickBooks API screens stay in the code and stay hidden unless `QUICKBOOKS_API_ENABLED` is exactly `true`. Integrations uses a CSV export of the weekly fee income and Tolson payable, and a CSV import of a QuickBooks Transaction List or Expenses report. Account names and vendor maps are saved once. Rows save only after confirm, and a repeated row hash is skipped.
+- Migration `20261007220000_v26_load_ids_compare_qbo_file.sql` is not applied until the owner says go. It renames load ids only when that would not collide with a row that already uses the same match key.
+
 ## v0.0.0.25 — 2026-10-07
 
 - QuickBooks Online for the Legacy Inc books only. Admins (role owner or admin) connect one company from Integrations. Env names: `INTUIT_CLIENT_ID`, `INTUIT_CLIENT_SECRET`, `INTUIT_REDIRECT_URI`, `INTUIT_ENVIRONMENT` (`sandbox` or `production`), and `QUICKBOOKS_TOKEN_ENCRYPTION_KEY`. Tokens are encrypted with the same AES helper as Vektor, using the QuickBooks key. Access tokens refresh on their own. If those env names are missing, Integrations says QuickBooks not set up yet.

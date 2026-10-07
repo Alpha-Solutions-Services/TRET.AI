@@ -1,3 +1,4 @@
+import { cityStateFromAddress } from "@/lib/sheets/address";
 import type { LookupMaps } from "../map";
 import { isUuid, stableUuid } from "../stable-id";
 import type { VektorManifest, VektorStop } from "../types";
@@ -16,6 +17,9 @@ export type LoadImportRow = {
   brokerName: string | null;
   manifestId: string | null;
   status: string | null;
+  deliveryDateKind?: "order" | "manifest" | null;
+  pickupDateKind?: "order" | "manifest" | null;
+  sourceManifestRef?: string | null;
 };
 
 function centsToDecimal(cents: number): string {
@@ -29,14 +33,7 @@ function hundredthsToDecimal(hundredths: number): string {
 }
 
 function place(raw: string | null): { city: string | null; state: string | null } {
-  if (!raw) return { city: null, state: null };
-  const text = raw.replace(/\u00a0/g, " ").trim();
-  const index = text.lastIndexOf(",");
-  if (index < 0) return { city: text || null, state: null };
-  return {
-    city: text.slice(0, index).trim() || null,
-    state: text.slice(index + 1).trim() || null,
-  };
+  return cityStateFromAddress(raw);
 }
 
 function stop(
@@ -104,6 +101,9 @@ export function loadRowsToManifests(rows: LoadImportRow[]): {
       truckId,
       stops,
       orders: [{ friendlyId: loadId, brokerId }],
+      pickupDateKind: row.pickupDateKind ?? null,
+      deliveryDateKind: row.deliveryDateKind ?? null,
+      sourceManifestRef: row.sourceManifestRef ?? null,
     });
   }
   return { manifests, lookups };

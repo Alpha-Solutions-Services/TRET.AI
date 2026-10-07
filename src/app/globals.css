@@ -140,6 +140,141 @@
   --shadow-card: 0 1px 1px rgba(61, 51, 43, 0.03), 0 16px 36px rgba(61, 51, 43, 0.05);
 }
 
+[data-theme="mono"] {
+  color-scheme: light;
+  --color-bg: #ffffff;
+  --color-fg: #141414;
+  --color-fg-muted: #3a3a3a;
+  --color-border: #d6d6d6;
+  --color-muted: #f4f4f4;
+  --color-accent: #1a1a1a;
+  --color-accent-hover: #000000;
+  --color-on-accent: #ffffff;
+  --color-surface: #ffffff;
+  --color-field: #fafafa;
+  --color-chart-1: #1a1a1a;
+  --color-chart-2: #3f4c5a;
+  --color-chart-3: #1d4e89;
+  --color-chart-4: #0f6e62;
+  --color-glow: rgba(20, 20, 20, 0.04);
+  --color-glow-2: rgba(29, 78, 137, 0.06);
+  --color-danger: #8d3f3f;
+  --color-warn-bg: #f4ecdc;
+  --color-warn-fg: #5c4318;
+  --color-inset: rgba(255, 255, 255, 0.9);
+  --shadow-card: 0 1px 1px rgba(20, 20, 20, 0.04), 0 16px 36px rgba(20, 20, 20, 0.05);
+  --background: var(--color-bg);
+  --foreground: var(--color-fg);
+}
+
+[data-theme="mint"] {
+  color-scheme: light;
+  --color-bg: #f3faf6;
+  --color-fg: #12352a;
+  --color-fg-muted: #3d5c4e;
+  --color-border: #d3e7dc;
+  --color-muted: #e7f4ec;
+  --color-accent: #1b5e40;
+  --color-accent-hover: #144832;
+  --color-on-accent: #f4fbf7;
+  --color-surface: rgba(255, 255, 255, 0.78);
+  --color-field: #fbfefc;
+  --color-chart-1: #1b5e40;
+  --color-chart-2: #2f7d72;
+  --color-chart-3: #2a6280;
+  --color-chart-4: #5c6b32;
+  --color-glow: rgba(27, 94, 64, 0.08);
+  --color-glow-2: rgba(47, 125, 114, 0.08);
+  --color-danger: #8d3f3f;
+  --color-warn-bg: #f4ecdc;
+  --color-warn-fg: #5c4318;
+  --color-inset: rgba(255, 255, 255, 0.75);
+  --shadow-card: 0 1px 1px rgba(18, 53, 42, 0.03), 0 16px 36px rgba(18, 53, 42, 0.05);
+  --background: var(--color-bg);
+  --foreground: var(--color-fg);
+}
+
+[data-theme="rose"] {
+  color-scheme: light;
+  --color-bg: #faf6f5;
+  --color-fg: #3a2428;
+  --color-fg-muted: #69464c;
+  --color-border: #eadfdc;
+  --color-muted: #f3eae8;
+  --color-accent: #8c3d4e;
+  --color-accent-hover: #732f3e;
+  --color-on-accent: #fff8f7;
+  --color-surface: rgba(255, 252, 251, 0.82);
+  --color-field: #fffdfc;
+  --color-chart-1: #8c3d4e;
+  --color-chart-2: #9a5a4a;
+  --color-chart-3: #64547a;
+  --color-chart-4: #3f6558;
+  --color-glow: rgba(140, 61, 78, 0.07);
+  --color-glow-2: rgba(100, 84, 122, 0.06);
+  --color-danger: #8d3f3f;
+  --color-warn-bg: #f6e6d4;
+  --color-warn-fg: #6d4328;
+  --color-inset: rgba(255, 255, 255, 0.7);
+  --shadow-card: 0 1px 1px rgba(58, 36, 40, 0.03), 0 16px 36px rgba(58, 36, 40, 0.05);
+  --background: var(--color-bg);
+  --foreground: var(--color-fg);
+}
+
+[data-theme="aurora"] {
+  color-scheme: dark;
+  --color-bg: #140e22;
+  --color-fg: #f6f1ff;
+  --color-fg-muted: #d4c6ee;
+  --color-border: #3a2d55;
+  --color-muted: #221833;
+  --color-accent: #c4b5fd;
+  --color-accent-hover: #ddd4fe;
+  --color-on-accent: #1a1030;
+  --color-surface: rgba(26, 18, 42, 0.92);
+  --color-field: #1c142c;
+  --color-chart-1: #c4b5fd;
+  --color-chart-2: #7dd3fc;
+  --color-chart-3: #f0abfc;
+  --color-chart-4: #86efac;
+  --color-glow: rgba(196, 181, 253, 0.12);
+  --color-glow-2: rgba(125, 211, 252, 0.08);
+  --color-danger: #ffc9c9;
+  --color-warn-bg: #3d3118;
+  --color-warn-fg: #f3e2b8;
+  --color-inset: rgba(255, 255, 255, 0.06);
+  --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.28), 0 18px 36px rgba(0, 0, 0, 0.32);
+  --background: var(--color-bg);
+  --foreground: var(--color-fg);
+}
+
+[data-theme="carbon"] {
+  color-scheme: dark;
+  --color-bg: #101418;
+  --color-fg: #eef3f8;
+  --color-fg-muted: #c5d0dc;
+  --color-border: #2c3644;
+  --color-muted: #1a212b;
+  --color-accent: #7eb6ff;
+  --color-accent-hover: #a8ceff;
+  --color-on-accent: #071018;
+  --color-surface: rgba(18, 24, 32, 0.92);
+  --color-field: #161c24;
+  --color-chart-1: #7eb6ff;
+  --color-chart-2: #7ee0c6;
+  --color-chart-3: #f0c36a;
+  --color-chart-4: #d5deea;
+  --color-glow: rgba(126, 182, 255, 0.12);
+  --color-glow-2: rgba(126, 224, 198, 0.06);
+  --color-danger: #ffc9c9;
+  --color-warn-bg: #3a3118;
+  --color-warn-fg: #f6edd4;
+  --color-inset: rgba(255, 255, 255, 0.05);
+  --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.3), 0 18px 36px rgba(0, 0, 0, 0.34);
+  --background: var(--color-bg);
+  --foreground: var(--color-fg);
+}
+
 @theme inline {
   --color-background: var(--color-bg);
   --color-foreground: var(--color-fg);

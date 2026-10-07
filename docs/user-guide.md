@@ -93,7 +93,7 @@ If Connect Vektor reports that the database migration or `VEKTOR_TOKEN_ENCRYPTIO
 
 Open **Settings** and pick one source, then **Save**.
 
-- **CSV upload.** Working now. On Imports, choose a file. Columns: Delivery Date, Load ID, Rate, and Unit or Truck #. Optional: Pick Up Date, Loaded Miles, Deadhead Miles, Origin, Destination, Driver, Broker/Customer, Manifest ID, Status. A Truck # cell above the header is used when Unit is absent.
+- **CSV upload.** Working now. On Imports, choose a file. A Vektor orders export is accepted (Order ID, Gross, Truck Reference ID, and a delivery date). A Load Ledger export is still accepted (Delivery Date, Load ID, Rate, and Unit or Truck #). Save the Vektor column mapping once in Settings. Preview shows Booked, En Route, and In Transit rows and does not import them.
 - **Google Sheet Load Ledger.** Optional. Promotes each active truck Load Ledger into loads for the dates you choose. Ins and Outs still read the sheet directly and do not require this step.
 - **Vektor REST API.** Selectable when `VEKTOR_API_BASE_URL` and `VEKTOR_API_TOKEN` are set. The list path is still open. Set `VEKTOR_API_MANIFESTS_PATH` when Vektor confirms it. This path never calls MCP. It does not import fuel or tolls.
 - **Vektor MCP.** Kept for later. Available, currently broken on filters proto. Selectable after Test connection. Prefer CSV or the sheet until Vektor documents filters.
@@ -104,7 +104,7 @@ Switching sources does not delete loads.
 
 1. Make sure trucks exist with unit numbers that match the file or Vektor exactly (for example `02`, not `2`). A sheet import uses the unit number stored on the truck.
 2. Open **Imports**.
-3. Set the date range (defaults to the last 14 days). For CSV, choose the loads file.
+3. Set the date range (defaults to the last 14 days). For CSV, choose the loads file. Preview loads shows which rows will import. Load numbers are stored as `TBH--1192` even when the file says `TBH1192`.
 4. Click **Import loads**.
 5. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts. A zero-row result is written in Notes. A sign-in or REST failure is a Failed run, not a silent zero. Delivered loads from a successful list are the ones that land on **Loads**.
 6. Open **Loads** to review promoted rows. Filter by week (Monday to Sunday) and truck. Totals are at the bottom.
@@ -171,18 +171,21 @@ The footer is one short line under the page: whether the Google service account 
 1. Open **Sheet vs Vektor**.
 2. Pick the week and, if you want, one truck. All trucks is the default.
 3. The top table is the sheet load ledger for deliveries in that week. The bottom table is the Vektor `loads` rows for the same load numbers.
-4. A highlighted cell means the load is missing on one side, or the rate, delivery date, or miles differ. The Check column says which one in plain words.
-5. A missing sheet load or a different rate still opens the same Warn issue as before. Date and miles are shown here and are not stored as issues.
+4. A highlighted cell means the load is missing on one side, or the rate, date, miles, or driver differ. A short name and a full legal name match. Blank deadhead matches zero. A manifest date is labeled and is not highlighted.
+5. A missing sheet load or a different rate still opens the same Warn issue as before.
+6. An admin enters a short note, then clicks **Use sheet** (updates TRET and logs the old value), **Use Vektor** (accepts the Vektor value), or **Write to sheet** (one cell, only when the Google account can edit). The choice stays on the row. Use sheet does not rewrite the load id inside Google Sheets.
 
 ## QuickBooks
 
-Only an admin can use this. The owner role counts as an admin.
+Only an admin can use this. The owner role counts as an admin. The page uses files. Connect QuickBooks is hidden unless the server has `QUICKBOOKS_API_ENABLED` set to `true`.
 
 1. Open **Integrations**.
-2. If the page says **QuickBooks not set up yet**, the server keys are missing. Stop there. Nothing will crash.
-3. Click **Connect QuickBooks**. Sign in to Intuit and choose the Legacy Inc company. This app keeps one company.
-4. To import expenses, set **From** and **To**, then **Preview import**. Pick a category. Choose whether to remember the vendor or the account. Click **Save to portal expenses**. Rows are not saved before that click. A row that says Already saved is skipped.
-5. To post a week, load and save the four accounts once. Pick a week, click **Preview post**, then **Post journal entry**. Nothing is sent before that click. The QuickBooks id shows in **Push history**.
+2. Save the four QuickBooks account names once. A subaccount is `Parent: Sub`.
+3. Pick a week and click **Download journal CSV**. The file has the weekly management fee income and the Tolson payable.
+4. In QuickBooks Online, open the gear menu, choose Import data, then Journal entries, and upload that file. Map the columns. Turn account numbers off if you use names. A payable line may need a vendor name after the import.
+5. To bring expenses in, export a Transaction List or Expenses report from QuickBooks Online. Upload it here, preview the rows, map each vendor or account to a portal category, and click **Save selected expenses**. Nothing is saved before that click. A row that was saved before is skipped.
+
+When `QUICKBOOKS_API_ENABLED` is `true`, the older Connect QuickBooks screen is shown instead. That path still needs the Intuit app below.
 
 ### Intuit developer portal
 

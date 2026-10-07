@@ -1,3 +1,5 @@
+import { canonicalLoadId, loadMatchKey } from "@/lib/loads/load-id";
+
 export function sheetLedgerRefs(
   rows: Array<{
     unitNumber: string;
@@ -44,7 +46,7 @@ export function unitKey(unit: string): string {
 }
 
 function loadKey(loadId: string): string {
-  return loadId.trim().toLowerCase();
+  return loadMatchKey(loadId);
 }
 
 function dollars(cents: number): string {
@@ -89,9 +91,9 @@ export function compareSheetLoads(input: {
         rule: "sheet_load_missing",
         severity: "Warn",
         unitNumber: row.unitNumber,
-        loadId: row.loadId,
+        loadId: canonicalLoadId(row.loadId),
         ref: `sheet:${input.weekStart}:${unitKey(row.unitNumber)}:${loadKey(row.loadId)}`,
-        message: `Unit ${row.unitNumber} sheet load ${row.loadId} (week ${input.weekStart}) is not in the Vektor loads ledger.`,
+        message: `Unit ${row.unitNumber} sheet load ${canonicalLoadId(row.loadId)} (week ${input.weekStart}) is not in the Vektor loads ledger.`,
       });
       continue;
     }
@@ -102,9 +104,9 @@ export function compareSheetLoads(input: {
       rule: "sheet_rate_diff",
       severity: "Warn",
       unitNumber: row.unitNumber,
-      loadId: row.loadId,
+      loadId: canonicalLoadId(row.loadId),
       ref: `sheet:${input.weekStart}:${unitKey(row.unitNumber)}:${loadKey(row.loadId)}:${row.rateCents}`,
-      message: `Unit ${row.unitNumber} sheet load ${row.loadId} rate is ${dollars(row.rateCents)} and the Vektor loads ledger has ${listed}.`,
+      message: `Unit ${row.unitNumber} sheet load ${canonicalLoadId(row.loadId)} rate is ${dollars(row.rateCents)} and the Vektor loads ledger has ${listed}.`,
     });
   }
   return mismatches;

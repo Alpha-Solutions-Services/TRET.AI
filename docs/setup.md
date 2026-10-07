@@ -191,3 +191,12 @@ Do this before Connect QuickBooks. The migration is not applied until you say go
 5. Do not put any of those in a `NEXT_PUBLIC_` variable. Do not commit the values.
 6. Redeploy. Open Integrations as the owner. If the keys are missing, the page says QuickBooks not set up yet.
 7. Connect the Legacy Inc company only. Import and post both wait for a confirm.
+8. Leave `QUICKBOOKS_API_ENABLED` blank. Integrations then hides Connect QuickBooks and uses the CSV export and import. Set it to `true` only if an Intuit developer app exists.
+
+## 23. v0.0.0.26 database update
+
+Do this only when you are ready. It is not applied yet.
+
+1. In the Supabase SQL editor, run `supabase/migrations/20261007220000_v26_load_ids_compare_qbo_file.sql` after the v0.0.0.25 QuickBooks script.
+2. It renames load ids to the `TBH--1192` form when that would not collide, adds date kind columns, decision tables with Row Level Security, and the file expense function.
+3. Until it has run, Sheet vs Vektor still compares loads. Resolve buttons say the migration has not been applied. QuickBooks file import says the same before the first save. The journal CSV download does not need this script.

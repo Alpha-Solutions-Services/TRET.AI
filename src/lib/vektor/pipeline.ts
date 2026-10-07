@@ -46,7 +46,8 @@ export function decidePromotion(
   }
 
   // truckId → trucks lookup referenceId → match trucks.unit_number exactly
-  const truck = matchTruckUnit(mapped.truckUnitNumber, opts.knownTruckUnits);
+  const truck = matchTruckUnit(mapped.truckUnitNumber, opts.knownTruckUnits, { normalize: true });
+  if (truck.matched && truck.unit) mapped.truckUnitNumber = truck.unit;
   if (!truck.matched) {
     const msg = !mapped.truckId
       ? "Manifest has no truckId. Row stays in staging."

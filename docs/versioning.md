@@ -18,7 +18,7 @@ Reason: **npm cannot hold 4-part versions** (like `0.0.0.1`). Do not put `0.0.0.
 
 The `/health` page and other server code read `VERSION` through `readAppVersion` in `src/lib/version.ts`. That module uses Node `fs` and must not be imported by a client component.
 
-The signed-in footer is a client component. It imports `APP_VERSION` and `formatFooterLabel` from `src/lib/app-version.ts`. That file has no `node:fs` or `node:path`. `APP_VERSION` is the same text as the VERSION file (`0.0.0.25`). The footer label is `TRET.AI v…`. The footer sits in normal page flow. It is not fixed to the bottom of the screen.
+The signed-in footer is a client component. It imports `APP_VERSION` and `formatFooterLabel` from `src/lib/app-version.ts`. That file has no `node:fs` or `node:path`. `APP_VERSION` is the same text as the VERSION file (`0.0.0.26`). The footer label is `TRET.AI v…`. The footer sits in normal page flow. It is not fixed to the bottom of the screen.
 
 ## Tags and bumps
 

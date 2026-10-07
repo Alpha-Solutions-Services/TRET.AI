@@ -100,17 +100,16 @@ describe("Sample A — real completion timestamps promote clean", () => {
 });
 
 describe("truck match via truckId → referenceId", () => {
-  it("matches referenceId 02 to unit_number 02 only", () => {
-    // Hand-calc: truckId lookup → referenceId "02" must equal unit_number "02"
+  it("matches referenceId 02 to unit_number 2", () => {
     const m = loadFixtureManifest("sample-a-manifest-1152.json");
     const lookups = loadFixtureLookups("sample-a-manifest-1152.json");
-    const miss = decidePromotion(m, {
+    const hit = decidePromotion(m, {
       lookups,
       knownTruckUnits: new Set(["2"]),
       ...RANGE,
     });
-    expect(miss.promote).toBe(false);
-    expect(miss.issues.some((i) => i.rule === "truck_unmatched")).toBe(true);
+    expect(hit.promote).toBe(true);
+    expect(hit.mapped.truckUnitNumber).toBe("2");
   });
 });
 

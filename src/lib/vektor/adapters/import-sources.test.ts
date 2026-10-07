@@ -23,7 +23,7 @@ describe("CSV loads import", () => {
       rangeTo: RANGE.to,
     });
     expect(decision.promote).toBe(true);
-    expect(decision.mapped.loadId).toBe("TBH-1081");
+    expect(decision.mapped.loadId).toBe("TBH--1081");
     expect(decision.mapped.rateCents).toBe(160_000);
     expect(decision.mapped.truckUnitNumber).toBe("3");
     expect(decision.mapped.deliveryDate?.slice(0, 10)).toBe("2026-09-01");

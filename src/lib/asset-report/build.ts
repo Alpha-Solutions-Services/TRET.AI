@@ -1,4 +1,5 @@
 import { roundHalfUpDivide } from "@/lib/fee-engine/money";
+import { canonicalLoadId } from "@/lib/loads/load-id";
 import {
   centsPerLoad,
   centsPerLoadedMile,
@@ -333,7 +334,7 @@ function weekLedger(
   const rateCol = columnIndex(header, RATE);
   const rows: string[][] = [];
   for (const row of grid.slice(headerIndex + 1)) {
-    const loadId = (row[loadCol] ?? "").replace(/\s+/g, "").trim();
+    const loadId = canonicalLoadId((row[loadCol] ?? "").replace(/\s+/g, ""));
     if (!loadId || /^totals?$/i.test(loadId)) continue;
     const day = sheetDay(row[dateCol] ?? "");
     if (!inWeek(day, weekStart, weekEnd)) continue;

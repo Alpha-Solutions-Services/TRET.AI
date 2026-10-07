@@ -42,12 +42,75 @@ describe("sheet and Vektor alignment", () => {
         },
       ],
     });
-    expect(rows.map((row) => row.loadId)).toEqual(["TBH1179", "TBH1184", "TBH9999"]);
+    expect(rows.map((row) => row.loadId)).toEqual(["TBH--1179", "TBH--1184", "TBH--9999"]);
     expect(rows[0]?.highlights).toEqual(["rate", "date", "loaded_miles"]);
     expect(rows[0]?.notes.join(" ")).toContain("$7000.00");
     expect(rows[0]?.notes.join(" ")).toContain("2026-10-06");
     expect(rows[1]?.highlights).toEqual(["missing_vektor"]);
     expect(rows[2]?.highlights).toEqual(["missing_sheet"]);
     expect(rows[2]?.sheet).toBeNull();
+  });
+
+  it("matches TBH1192 to TBH--1192 and ignores blank deadhead versus zero", () => {
+    const rows = alignSheetAndVektor({
+      weekStart: "2026-10-05",
+      sheet: [
+        {
+          unitNumber: "8",
+          loadId: "TBH1192",
+          deliveryDay: "2026-10-08",
+          rateCents: 170_000,
+          loadedMilesHundredths: 92_400,
+          deadheadMilesHundredths: null,
+          driverName: "Quinn",
+        },
+      ],
+      vektor: [
+        {
+          unitNumber: "08",
+          loadId: "TBH--1192",
+          deliveryDay: "2026-10-08",
+          rateCents: 170_000,
+          loadedMilesHundredths: 92_400,
+          deadheadMilesHundredths: 0,
+          driverName: "Quinn Ellis Parker",
+        },
+      ],
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.loadId).toBe("TBH--1192");
+    expect(rows[0]?.highlights).toEqual([]);
+  });
+
+  it("labels a shared manifest date and does not flag it", () => {
+    const rows = alignSheetAndVektor({
+      weekStart: "2026-10-05",
+      sheet: [
+        {
+          unitNumber: "6",
+          loadId: "TBH--1183",
+          deliveryDay: "2026-10-06",
+          pickupDay: "2026-10-06",
+          rateCents: 80_000,
+          loadedMilesHundredths: 72_600,
+          deadheadMilesHundredths: 0,
+        },
+      ],
+      vektor: [
+        {
+          unitNumber: "6",
+          loadId: "TBH--1183",
+          deliveryDay: "2026-10-07",
+          pickupDay: "2026-10-05",
+          rateCents: 80_000,
+          loadedMilesHundredths: 72_600,
+          deadheadMilesHundredths: 0,
+          deliveryDateKind: "manifest",
+          pickupDateKind: "manifest",
+        },
+      ],
+    });
+    expect(rows[0]?.highlights).toEqual([]);
+    expect(rows[0]?.notes.join(" ")).toContain("manifest date");
   });
 });

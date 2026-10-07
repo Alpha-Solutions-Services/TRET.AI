@@ -58,6 +58,9 @@ export type VektorManifest = {
   lineage?: VektorLineage | null;
   stops?: VektorStop[];
   orders?: VektorOrder[];
+  pickupDateKind?: "order" | "manifest" | null;
+  deliveryDateKind?: "order" | "manifest" | null;
+  sourceManifestRef?: string | null;
 };
 
 export type IssueDraft = {
@@ -106,4 +109,7 @@ export type MappedLoad = {
   issues: IssueDraft[];
   eligible: boolean;
   skipReason: string | null;
+  pickupDateKind?: "order" | "manifest" | null;
+  deliveryDateKind?: "order" | "manifest" | null;
+  sourceManifestRef?: string | null;
 };

@@ -1,3 +1,4 @@
+import { canonicalLoadId } from "@/lib/loads/load-id";
 import { dollarStringToCents } from "@/lib/money/cents";
 
 /** Collapse odd spaces from sheet cells. */
@@ -5,11 +6,20 @@ export function cleanCell(raw: string): string {
   return raw.replace(/\u00a0/g, " ").replace(/[\r\n]+/g, " ").trim();
 }
 
+/** N/A and a lone hyphen are empty. A negative amount is not. */
+export function isEmptyCell(raw: string): boolean {
+  const text = cleanCell(raw);
+  return text === "" || text === "-" || /^n\/a$/i.test(text);
+}
+
 export function cleanLoadId(raw: string): string {
-  return cleanCell(raw).replace(/\s+/g, "");
+  const compact = cleanCell(raw).replace(/\s+/g, "");
+  if (!compact || isEmptyCell(compact)) return "";
+  return canonicalLoadId(compact);
 }
 
 export function sheetAmountToCents(raw: string): number | null {
+  if (isEmptyCell(raw)) return null;
   const trimmed = cleanCell(raw);
   if (!trimmed) return null;
   const negative = trimmed.startsWith("-") || /^\(.*\)$/.test(trimmed);
@@ -28,6 +38,7 @@ export function sheetAmountToCents(raw: string): number | null {
  * or a Google Sheets serial day (days since 1899-12-30).
  */
 export function sheetDay(raw: string): string | null {
+  if (isEmptyCell(raw)) return null;
   const text = cleanCell(raw);
   if (!text) return null;
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);

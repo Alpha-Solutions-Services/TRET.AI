@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { weekBoundsForDate } from "@/lib/fee-engine";
+import { canonicalLoadId } from "@/lib/loads/load-id";
 
 export type LoadListRow = {
   id: string;
@@ -146,7 +147,7 @@ export function LoadsClient({
             <tbody>
               {filtered.map((row) => (
                 <tr key={row.id} className="border-b border-[var(--color-border)]">
-                  <td className="px-3 py-2">{row.load_id ?? "—"}</td>
+                  <td className="px-3 py-2">{row.load_id ? canonicalLoadId(row.load_id) : "Blank"}</td>
                   <td className="px-3 py-2">{row.delivery_date}</td>
                   <td className="px-3 py-2">{row.truck_unit_number ?? "—"}</td>
                   <td className="px-3 py-2">{row.driver_name ?? "—"}</td>

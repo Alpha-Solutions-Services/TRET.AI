@@ -131,7 +131,7 @@ describe("weekly asset report", () => {
     expect(text).toContain("Weekly Asset Management Report");
     expect(text).toContain("Executive Summary");
     expect(text).toContain("Weekly Load Activity");
-    expect(text).toContain("TBH-1081");
+    expect(text).toContain("TBH--1081");
     expect(text).toContain("Owner Earnings");
     expect(text).toContain("Fuel Summary and Compliance");
     expect(text).toContain("John Reed");
