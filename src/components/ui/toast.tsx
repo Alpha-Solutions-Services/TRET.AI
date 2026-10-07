@@ -50,11 +50,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className={cn(
               "pointer-events-auto rounded-md border px-4 py-3 text-sm shadow-sm",
               item.tone === "error" &&
-                "border-red-200 bg-red-50 text-red-900",
+                "border-[var(--color-danger)] bg-red-50 text-red-900",
               item.tone === "success" &&
                 "border-emerald-200 bg-emerald-50 text-emerald-900",
               item.tone === "default" &&
-                "border-[var(--color-border)] bg-white text-[var(--color-fg)]",
+                "border-[var(--color-border)] bg-[var(--color-field)] text-[var(--color-fg)]",
             )}
           >
             {item.message}

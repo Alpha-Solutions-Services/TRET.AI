@@ -1,6 +1,7 @@
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { weekBoundsForDate, type TruckClass } from "@/lib/fee-engine";
 import { inWeek, sheetAmountToCents, sheetDay } from "@/lib/sheets/cell";
 import { parseLoadLedger } from "@/lib/sheets/ledger";
+import { isWeeklyExpenseLabel, outsFromWeeklyExpenses, WEEKLY_EXPENSE_LABELS } from "@/lib/sheets/weekly-expenses";
 
 export { sheetAmountToCents, sheetDay } from "@/lib/sheets/cell";
 
@@ -27,23 +28,34 @@ export type ExpenseCategoryTotal = {
   cents: number;
 };
 
+export type LedgerLoadRef = {
+  loadId: string;
+  rateCents: number | null;
+  deliveryDay: string;
+  loadedMilesHundredths: number | null;
+  deadheadMilesHundredths: number | null;
+};
+
 export type TruckWeekInsOuts = {
   unitNumber: string;
   truckName: string;
+  truckClass: TruckClass;
   /** Load ledger Rate for deliveries in the week. Integer cents. */
   insCents: number;
-  /** Mgmt Expenses amounts dated in the week. Integer cents. */
+  /** Weekly Expenses row for the week, or Mgmt Expenses when that tab is missing. Integer cents. */
   outsCents: number;
   netCents: number;
   loadCount: number;
   categories: ExpenseCategoryTotal[];
+  /** True when Outs came from the Weekly Expenses tab. */
+  outsFromWeekly: boolean;
   /** Easy-language cause when the sheet could not be read, a tab was missing, or a header did not parse. */
   note: string | null;
   /** Technical cause. Click copies this. Null when the note is already the full cause. */
   noteDetail: string | null;
   readable: boolean;
   /** Load ledger rows in this week. Rate is null when the cell was blank. */
-  ledgerLoads: Array<{ loadId: string; rateCents: number | null }>;
+  ledgerLoads: LedgerLoadRef[];
   /** This week and the seven Mondays before it, from the same sheet tabs. */
   recentWeeks: WeekMoney[];
 };
@@ -140,16 +152,22 @@ export function insFromLoadLedger(
   insCents: number;
   loadCount: number;
   headerFound: boolean;
-  loads: Array<{ loadId: string; rateCents: number | null }>;
+  loads: LedgerLoadRef[];
 } {
   const parsed = parseLoadLedger(grid);
   if (!parsed.headerFound) return { insCents: 0, loadCount: 0, headerFound: false, loads: [] };
   let insCents = 0;
   let loadCount = 0;
-  const loads: Array<{ loadId: string; rateCents: number | null }> = [];
+  const loads: LedgerLoadRef[] = [];
   for (const row of parsed.rows) {
     if (!inWeek(row.deliveryDay, weekStart, weekEnd)) continue;
-    loads.push({ loadId: row.loadId, rateCents: row.rateCents });
+    loads.push({
+      loadId: row.loadId,
+      rateCents: row.rateCents,
+      deliveryDay: row.deliveryDay,
+      loadedMilesHundredths: row.loadedMilesHundredths,
+      deadheadMilesHundredths: row.deadheadMilesHundredths,
+    });
     if (row.rateCents == null) continue;
     insCents += row.rateCents;
     loadCount += 1;
@@ -247,17 +265,36 @@ export function recentWeeksFromGrids(
   weekStart: string,
   loadLedger: SheetGrid | null,
   mgmtExpenses: SheetGrid | null,
+  weeklyExpenses: SheetGrid | null = null,
 ): WeekMoney[] {
   return trendWeekStarts(weekStart).map((start) => {
     const bounds = weekBoundsForDate(start);
     const ins = loadLedger ? insFromLoadLedger(loadLedger, bounds.start, bounds.end) : null;
-    const outs = mgmtExpenses ? outsFromMgmtExpenses(mgmtExpenses, bounds.start, bounds.end) : null;
+    const weekly = weeklyExpenses ? outsFromWeeklyExpenses(weeklyExpenses, bounds.start, bounds.end) : null;
+    const mgmt = mgmtExpenses ? outsFromMgmtExpenses(mgmtExpenses, bounds.start, bounds.end) : null;
+    const outs = weekly?.headerFound ? weekly : mgmt;
     return {
       weekStart: bounds.start,
       insCents: ins?.headerFound ? ins.insCents : 0,
       outsCents: outs?.headerFound ? outs.outsCents : 0,
     };
   });
+}
+
+/** Weekly lines when any truck used that tab. Otherwise the portal category list, including zeros. */
+export function displayExpenseColumns(rows: TruckWeekInsOuts[]): string[] {
+  const sawWeekly = rows.some(
+    (row) => row.outsFromWeekly || row.categories.some((category) => isWeeklyExpenseLabel(category.category)),
+  );
+  if (!sawWeekly) return [...MGMT_EXPENSE_CATEGORIES];
+  const extras: string[] = [];
+  for (const row of rows) {
+    for (const category of row.categories) {
+      if (isWeeklyExpenseLabel(category.category)) continue;
+      if (!extras.includes(category.category)) extras.push(category.category);
+    }
+  }
+  return [...WEEKLY_EXPENSE_LABELS, ...extras];
 }
 
 export function fleetWeekTrend(rows: TruckWeekInsOuts[]): WeekMoney[] {
@@ -281,17 +318,21 @@ export function fleetWeekTrend(rows: TruckWeekInsOuts[]): WeekMoney[] {
 export function buildTruckWeekInsOuts(input: {
   unitNumber: string;
   truckName: string;
+  truckClass?: TruckClass;
   weekStart: string;
   weekEnd: string;
   loadLedger: SheetGrid | null;
   mgmtExpenses: SheetGrid | null;
+  weeklyExpenses?: SheetGrid | null;
   note: string | null;
   noteDetail?: string | null;
 }): TruckWeekInsOuts {
   const noteDetail = input.noteDetail ?? null;
+  const truckClass = input.truckClass ?? "legacy_owned";
   const base = {
     unitNumber: input.unitNumber,
     truckName: input.truckName,
+    truckClass,
   };
   const empty = {
     ...base,
@@ -300,25 +341,34 @@ export function buildTruckWeekInsOuts(input: {
     netCents: 0,
     loadCount: 0,
     categories: [] as ExpenseCategoryTotal[],
-    ledgerLoads: [] as Array<{ loadId: string; rateCents: number | null }>,
+    outsFromWeekly: false,
+    ledgerLoads: [] as LedgerLoadRef[],
     recentWeeks: [] as WeekMoney[],
     noteDetail,
   };
-  if (!input.loadLedger && !input.mgmtExpenses) {
+  if (!input.loadLedger && !input.mgmtExpenses && !input.weeklyExpenses) {
     return { ...empty, note: input.note, readable: false };
   }
   const ins = input.loadLedger
     ? insFromLoadLedger(input.loadLedger, input.weekStart, input.weekEnd)
     : null;
-  const outs = input.mgmtExpenses
+  const weekly = input.weeklyExpenses
+    ? outsFromWeeklyExpenses(input.weeklyExpenses, input.weekStart, input.weekEnd)
+    : null;
+  const mgmt = input.mgmtExpenses
     ? outsFromMgmtExpenses(input.mgmtExpenses, input.weekStart, input.weekEnd)
     : null;
+  const useWeekly = Boolean(weekly?.headerFound);
+  const outs = useWeekly ? weekly : mgmt;
   const notes: string[] = [];
   if (input.note) notes.push(input.note);
   if (ins && !ins.headerFound) {
     notes.push("Load Ledger was opened but the header row was not found. Expected Delivery Date, Load ID, and Rate.");
   }
-  if (outs && !outs.headerFound) {
+  if (useWeekly && weekly && !weekly.rowFound) {
+    notes.push("Weekly Expenses row was not found for this week. Expense lines are zero.");
+  }
+  if (!useWeekly && mgmt && !mgmt.headerFound) {
     notes.push("Mgmt Expenses was opened but the header row was not found. Expected Date, Category, and Amount.");
   }
   const parsed = Boolean(ins?.headerFound || outs?.headerFound);
@@ -336,8 +386,14 @@ export function buildTruckWeekInsOuts(input: {
     netCents: (ins?.insCents ?? 0) - (outs?.outsCents ?? 0),
     loadCount: ins?.loadCount ?? 0,
     categories: outs?.categories ?? [],
+    outsFromWeekly: useWeekly,
     ledgerLoads: ins?.loads ?? [],
-    recentWeeks: recentWeeksFromGrids(input.weekStart, input.loadLedger, input.mgmtExpenses),
+    recentWeeks: recentWeeksFromGrids(
+      input.weekStart,
+      input.loadLedger,
+      input.mgmtExpenses,
+      input.weeklyExpenses ?? null,
+    ),
     note: notes.length ? notes.join(" ") : null,
     noteDetail,
     readable: true,

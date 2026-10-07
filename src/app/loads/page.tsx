@@ -18,7 +18,7 @@ async function LoadsContent() {
 
   if (error) {
     return (
-      <p className="text-sm text-red-700" role="alert">
+      <p className="text-sm text-[var(--color-danger)]" role="alert">
         Could not load loads. Apply the v0.0.0.4 migration if this table is missing.
         ({error.message})
       </p>

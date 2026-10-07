@@ -133,7 +133,7 @@ export function TrucksClient({ trucks, feeSummaries, googleSheetReady }: Props) 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Unit number or name"
-          className="h-10 w-full rounded-md border border-[var(--color-border)] bg-white px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         />
       </label>
 
@@ -144,7 +144,7 @@ export function TrucksClient({ trucks, feeSummaries, googleSheetReady }: Props) 
       ) : null}
 
       {trucks.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-white px-6 py-12 text-center">
+        <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-field)] px-6 py-12 text-center">
           <p className="text-[var(--color-fg-muted)]">No trucks yet.</p>
           <Button className="mt-4" onClick={openAdd}>
             Add truck
@@ -153,7 +153,7 @@ export function TrucksClient({ trucks, feeSummaries, googleSheetReady }: Props) 
       ) : filtered.length === 0 ? (
         <p className="text-sm text-[var(--color-fg-muted)]">No trucks match that search.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
               <tr>

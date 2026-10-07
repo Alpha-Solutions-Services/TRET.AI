@@ -25,7 +25,7 @@ import type { FixedExpenseBundle } from "@/lib/fixed-expenses/queries";
 import { centsToDollarString, tryDollarStringToCents } from "@/lib/money/cents";
 
 const fieldClass =
-  "h-10 w-full rounded-md border border-[var(--color-border)] bg-white px-3 text-sm";
+  "h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm";
 
 type Props = {
   truckId: string;
@@ -275,7 +275,7 @@ export function FixedExpensesPanel({ truckId, bundle, canDeleteLatest }: Props) 
             {groups.map((group) => (
               <li
                 key={group.kind}
-                className="rounded-lg border border-[var(--color-border)] bg-white px-4 py-3"
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-4 py-3"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-medium">{FIXED_EXPENSE_LABELS[group.kind]}</h3>
@@ -316,7 +316,7 @@ export function FixedExpensesPanel({ truckId, bundle, canDeleteLatest }: Props) 
             No week overrides. An override replaces the version for that Monday–Sunday week only.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+          <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
             <table className="min-w-full text-left text-sm">
               <thead className="text-[var(--color-fg-muted)]">
                 <tr>
@@ -356,7 +356,7 @@ export function FixedExpensesPanel({ truckId, bundle, canDeleteLatest }: Props) 
       </section>
 
       {bundle.ready ? (
-      <section className="space-y-3 rounded-lg border border-[var(--color-border)] bg-white p-4">
+      <section className="space-y-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] p-4">
         <h2 className="text-lg font-semibold">Week lookup</h2>
         <p className="text-sm text-[var(--color-fg-muted)]">
           Shows the amount that applies for a Monday. Does not save anything.
@@ -371,7 +371,7 @@ export function FixedExpensesPanel({ truckId, bundle, canDeleteLatest }: Props) 
           />
         </label>
         {lookupRows.error ? (
-          <p className="text-sm text-red-700" role="alert">
+          <p className="text-sm text-[var(--color-danger)]" role="alert">
             {lookupRows.error}
           </p>
         ) : (
@@ -456,7 +456,7 @@ export function FixedExpensesPanel({ truckId, bundle, canDeleteLatest }: Props) 
             />
           </label>
           {formError ? (
-            <p className="text-sm text-red-700" role="alert">
+            <p className="text-sm text-[var(--color-danger)]" role="alert">
               {formError}
             </p>
           ) : null}
@@ -531,7 +531,7 @@ export function FixedExpensesPanel({ truckId, bundle, canDeleteLatest }: Props) 
             />
           </label>
           {overrideError ? (
-            <p className="text-sm text-red-700" role="alert">
+            <p className="text-sm text-[var(--color-danger)]" role="alert">
               {overrideError}
             </p>
           ) : null}

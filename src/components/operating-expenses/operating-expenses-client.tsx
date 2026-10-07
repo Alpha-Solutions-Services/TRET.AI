@@ -17,14 +17,15 @@ import { centsToDollarString, tryDollarStringToCents } from "@/lib/money/cents";
 import type { OperatingExpenseList, OperatingExpenseRow } from "@/lib/operating-expenses/queries";
 
 const fieldClass =
-  "h-10 w-full rounded-md border border-[var(--color-border)] bg-white px-3 text-sm";
+  "h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm";
 
 type Props = {
   list: OperatingExpenseList;
   month: string;
+  embedded?: boolean;
 };
 
-export function OperatingExpensesClient({ list, month }: Props) {
+export function OperatingExpensesClient({ list, month, embedded = false }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -119,10 +120,16 @@ export function OperatingExpensesClient({ list, month }: Props) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Legacy expenses</h1>
+          {embedded ? (
+            <h2 className="text-lg font-semibold tracking-tight">Portal expenses for {month}</h2>
+          ) : (
+            <h1 className="text-2xl font-semibold tracking-tight">Legacy expenses</h1>
+          )}
           <p className="mt-1 max-w-2xl text-sm text-[var(--color-fg-muted)]">
-            Monthly costs for Legacy Inc Global. Pick a month, then add a date, a category, an amount, and a
-            note. These rows are not truck sheet outs and they are not the management fee on a load.
+            Monthly costs for Legacy Inc Global. Add a date, a category, an amount, and a note. Categories
+            are Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare
+            Expense 1 through 5. These rows are not truck sheet outs and they are not the management fee on
+            a load.
           </p>
         </div>
         <Button onClick={openCreate} disabled={!list.ready || pending}>
@@ -130,18 +137,20 @@ export function OperatingExpensesClient({ list, month }: Props) {
         </Button>
       </div>
 
-      <label className="text-sm">
-        <span className="mb-1 block text-[var(--color-fg-muted)]">Month</span>
-        <input
-          type="month"
-          value={month}
-          onChange={(event) => {
-            if (!event.target.value) return;
-            router.push(`/operating-expenses?month=${event.target.value}`);
-          }}
-          className="h-10 rounded-md border border-[var(--color-border)] bg-white px-3"
-        />
-      </label>
+      {embedded ? null : (
+        <label className="text-sm">
+          <span className="mb-1 block text-[var(--color-fg-muted)]">Month</span>
+          <input
+            type="month"
+            value={month}
+            onChange={(event) => {
+              if (!event.target.value) return;
+              router.push(`/operating-expenses?month=${event.target.value}`);
+            }}
+            className="h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3"
+          />
+        </label>
+      )}
 
       {!list.ready ? (
         <p className="text-sm text-[var(--color-fg-muted)]" role="status">
@@ -152,7 +161,7 @@ export function OperatingExpensesClient({ list, month }: Props) {
       {!list.ready ? null : list.rows.length === 0 ? (
         <p className="text-sm text-[var(--color-fg-muted)]">No Legacy expenses for {month}.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
           <table className="min-w-full text-left text-sm">
             <thead className="text-[var(--color-fg-muted)]">
               <tr>
@@ -256,7 +265,7 @@ export function OperatingExpensesClient({ list, month }: Props) {
             <input value={note} onChange={(event) => setNote(event.target.value)} className={fieldClass} />
           </label>
           {formError ? (
-            <p className="text-sm text-red-700" role="alert">
+            <p className="text-sm text-[var(--color-danger)]" role="alert">
               {formError}
             </p>
           ) : null}

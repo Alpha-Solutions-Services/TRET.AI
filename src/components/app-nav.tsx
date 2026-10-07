@@ -8,6 +8,7 @@ const NAV = [
   { href: "/", label: "Dashboard" },
   { href: "/management", label: "Management" },
   { href: "/ins-outs", label: "Ins and Outs" },
+  { href: "/sheet-compare", label: "Sheet vs Vektor" },
   { href: "/trucks", label: "Trucks" },
   { href: "/operating-expenses", label: "Legacy expenses" },
   { href: "/loads", label: "Loads" },
@@ -37,7 +38,7 @@ export function AppNav() {
             className={cn(
               "pressable inline-flex h-10 items-center rounded-lg px-3 text-sm font-medium no-underline transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]",
               active
-                ? "bg-[var(--color-accent)] text-white"
+                ? "bg-[var(--color-accent)] text-[var(--color-on-accent)]"
                 : "text-[var(--color-fg)] hover:bg-[var(--color-muted)]",
             )}
           >

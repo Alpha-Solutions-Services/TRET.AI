@@ -98,7 +98,7 @@ export function ImportsClient({
         </p>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--color-border)] bg-white p-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] p-4">
         <label className="text-sm">
           <span className="mb-1 block text-[var(--color-fg-muted)]">From</span>
           <input
@@ -161,7 +161,7 @@ export function ImportsClient({
       {runs.length === 0 ? (
         <p className="text-sm text-[var(--color-fg-muted)]">No import runs yet.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
               <tr>

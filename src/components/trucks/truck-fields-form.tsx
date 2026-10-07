@@ -102,7 +102,7 @@ export function TruckFieldsForm({
         </span>
       </label>
       {formError ? (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-sm text-[var(--color-danger)]" role="alert">
           {formError}
         </p>
       ) : null}

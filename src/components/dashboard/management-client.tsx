@@ -1,20 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AreaChart, BarChart, ChartCard, DonutChart } from "@/components/charts/charts";
+import { ManagementCards } from "@/components/dashboard/management-summary";
 import { LegacyEarningsPanel } from "@/components/ins-outs/legacy-earnings";
+import { OperatingExpensesClient } from "@/components/operating-expenses/operating-expenses-client";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { expensesByCategory, expensesByMonth } from "@/lib/legacy/expenses";
 import type { LegacyEarnings } from "@/lib/legacy/fees";
-import { centsToDollarString } from "@/lib/money/cents";
-import type { ManagementPnl } from "@/lib/overview/pnl";
+import type { ManagementCardSummary } from "@/lib/legacy/summary";
+import type { OperatingExpenseList } from "@/lib/operating-expenses/queries";
 import type { OverviewPageData } from "@/lib/overview/queries";
-
-function money(cents: number): string {
-  if (cents < 0) return `-$${centsToDollarString(-cents)}`;
-  return `$${centsToDollarString(cents)}`;
-}
 
 function shiftWeek(weekStart: string, delta: number): string {
   const date = new Date(`${weekStart}T00:00:00Z`);
@@ -28,12 +24,16 @@ export function ManagementClient({
   feeReady,
   feeError,
   orgFeeBp,
+  cards,
+  expenses,
 }: {
   data: OverviewPageData;
   earnings: LegacyEarnings;
   feeReady: boolean;
   feeError: string | null;
   orgFeeBp: number;
+  cards: ManagementCardSummary;
+  expenses: OperatingExpenseList;
 }) {
   const router = useRouter();
   const month = data.weekStart.slice(0, 7);
@@ -81,7 +81,7 @@ export function ManagementClient({
         </button>
       </div>
 
-      {data.pnl ? <PnlStrip pnl={data.pnl} /> : null}
+      <ManagementCards summary={cards} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Legacy earnings by truck">
@@ -103,11 +103,7 @@ export function ManagementClient({
         </ChartCard>
       </div>
 
-      <p className="text-sm">
-        <Link href={`/operating-expenses?month=${month}`} className="font-medium text-[var(--color-accent)]">
-          Add or edit Legacy expenses
-        </Link>
-      </p>
+      <OperatingExpensesClient list={expenses} month={month} embedded />
 
       <LegacyEarningsPanel
         weekStart={data.weekStart}
@@ -116,25 +112,6 @@ export function ManagementClient({
         error={feeError}
         orgFeeBp={orgFeeBp}
       />
-    </div>
-  );
-}
-
-function PnlStrip({ pnl }: { pnl: ManagementPnl }) {
-  const cards = [
-    { label: "Income", cents: pnl.incomeCents },
-    { label: "Expenses", cents: pnl.expenseCents },
-    { label: "Net", cents: pnl.netCents },
-    { label: "Tolson payable", cents: pnl.tolsonPayableCents },
-  ];
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {cards.map((card) => (
-        <div key={card.label} className="material rounded-xl border border-[var(--color-border)] px-4 py-3">
-          <p className="text-xs text-[var(--color-fg-muted)]">{card.label}</p>
-          <p className="mt-1 text-lg font-semibold">{money(card.cents)}</p>
-        </div>
-      ))}
     </div>
   );
 }

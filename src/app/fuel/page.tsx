@@ -20,7 +20,7 @@ async function FuelContent() {
   if (error) {
     const missing = isMissingSchemaError(error);
     return (
-      <p className="text-sm text-red-700" role="alert">
+      <p className="text-sm text-[var(--color-danger)]" role="alert">
         {missing
           ? "Fuel is not available until the v0.0.0.7 migration is applied."
           : `Could not load fuel. (${error.message})`}

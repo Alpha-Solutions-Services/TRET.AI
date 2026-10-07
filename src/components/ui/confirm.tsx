@@ -59,7 +59,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-title"
-            className="w-full max-w-md rounded-lg border border-[var(--color-border)] bg-white p-5 shadow-lg"
+            className="w-full max-w-md rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] p-5 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="confirm-title" className="text-lg font-semibold">

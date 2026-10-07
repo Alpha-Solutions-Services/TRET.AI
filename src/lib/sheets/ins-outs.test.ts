@@ -57,8 +57,20 @@ describe("sheet Ins and Outs", () => {
       loadCount: 2,
       headerFound: true,
       loads: [
-        { loadId: "TBH1178", rateCents: 275_000 },
-        { loadId: "TBH1186", rateCents: 320_000 },
+        {
+          loadId: "TBH1178",
+          rateCents: 275_000,
+          deliveryDay: "2026-10-05",
+          loadedMilesHundredths: null,
+          deadheadMilesHundredths: null,
+        },
+        {
+          loadId: "TBH1186",
+          rateCents: 320_000,
+          deliveryDay: "2026-10-07",
+          loadedMilesHundredths: null,
+          deadheadMilesHundredths: null,
+        },
       ],
     });
     const outs = outsFromMgmtExpenses(expenses, WEEK.weekStart, WEEK.weekEnd);
@@ -157,7 +169,7 @@ describe("sheet Ins and Outs", () => {
     expect(html).toContain("John Reed");
     expect(html).toContain("No Google Sheet link. Paste it on Trucks.");
     expect(html).not.toContain("Unread");
-    expect(html).toContain("Sheet mismatches: 1");
+    expect(html).toContain("Sheet vs Vektor: 1 open rate or missing-load checks");
     expect(html).toContain("GOOGLE_SERVICE_ACCOUNT_EMAIL");
     expect(html).toContain("Fleet");
     expect(html).toContain("$5950.00");
@@ -394,6 +406,77 @@ describe("sheet fetch", () => {
       },
     );
     expect(iss).toBe("json@example.iam.gserviceaccount.com");
+  });
+
+  it("uses the Weekly Expenses tab for outs when that tab is on the sheet", async () => {
+    const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const pem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+    const rows = await loadTruckWeekInsOuts(
+      [
+        {
+          unitNumber: "8",
+          truckName: "Brison Hunter",
+          googleSheetUrl: "https://docs.google.com/spreadsheets/d/sheet-8/edit",
+        },
+      ],
+      WEEK.weekStart,
+      WEEK.weekEnd,
+      {
+        env: {
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: "sheets@example.iam.gserviceaccount.com",
+          GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: pem,
+        },
+        fetchImpl: async (input) => {
+          const url = String(input);
+          if (url.includes("oauth2.googleapis.com/token")) {
+            return new Response(JSON.stringify({ access_token: "token-test" }), { status: 200 });
+          }
+          if (url.includes("/values:batchGet")) {
+            return new Response(
+              JSON.stringify({
+                valueRanges: [
+                  {
+                    values: [
+                      ["Delivery Date", "Load ID", "Rate"],
+                      ["10/06/2026", "TBH1179", "$7,000.00"],
+                    ],
+                  },
+                  {
+                    values: [
+                      ["Date", "Category", "Amount"],
+                      ["10/05/2026", "Vektor Fee", "$30.00"],
+                    ],
+                  },
+                  {
+                    values: [
+                      ["Week Start Date", "Driver Compensation", "Fuel"],
+                      ["10/05/2026", "$1,400.00", "$456.59"],
+                    ],
+                  },
+                ],
+              }),
+              { status: 200 },
+            );
+          }
+          return new Response(
+            JSON.stringify({
+              sheets: [
+                { properties: { title: "Truck #08 Load Ledger" } },
+                { properties: { title: "Mgmt Expenses" } },
+                { properties: { title: "Truck #08 Weekly Expenses" } },
+              ],
+            }),
+            { status: 200 },
+          );
+        },
+      },
+    );
+    expect(rows[0]).toMatchObject({
+      insCents: 700_000,
+      outsCents: 140_000 + 45_659,
+      outsFromWeekly: true,
+      readable: true,
+    });
   });
 
   it("names a bad private key in plain language and keeps the OpenSSL cause", async () => {

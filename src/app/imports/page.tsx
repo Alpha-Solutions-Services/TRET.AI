@@ -43,7 +43,7 @@ async function ImportsContent() {
   }
   if (error) {
     return (
-      <p className="text-sm text-red-700" role="alert">
+      <p className="text-sm text-[var(--color-danger)]" role="alert">
         Could not load import runs. If you just deployed, apply the v0.0.0.4 migration first.
         ({error.message})
       </p>

@@ -9,12 +9,12 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClass: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:bg-[var(--color-accent)]/50",
+    "bg-[var(--color-accent)] text-[var(--color-on-accent)] hover:bg-[var(--color-accent-hover)] disabled:bg-[var(--color-accent)]/50",
   secondary:
-    "border border-[var(--color-border)] bg-white text-[var(--color-fg)] hover:bg-[var(--color-muted)]",
+    "border border-[var(--color-border)] bg-[var(--color-field)] text-[var(--color-fg)] hover:bg-[var(--color-muted)]",
   ghost: "bg-transparent text-[var(--color-fg)] hover:bg-[var(--color-muted)]",
   danger:
-    "bg-red-700 text-white hover:bg-red-800 disabled:bg-red-700/50",
+    "bg-[#b91c1c] text-white hover:bg-[#991b1b] disabled:bg-[#b91c1c]/50",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

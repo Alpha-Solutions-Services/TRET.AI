@@ -3,14 +3,20 @@ import { ManagementClient } from "@/components/dashboard/management-client";
 import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { buildLegacyEarnings } from "@/lib/legacy/fees";
-import { loadLegacyFeeState } from "@/lib/legacy/queries";
+import { loadLegacyFeeState, loadManagementCardSummary } from "@/lib/legacy/queries";
+import { listOperatingExpenses } from "@/lib/operating-expenses/queries";
 import { loadOverview } from "@/lib/overview/queries";
 
 export const dynamic = "force-dynamic";
 
 async function ManagementContent({ week }: { week: string | undefined }) {
   const data = await loadOverview(week);
-  const fees = await loadLegacyFeeState(data.weekStart);
+  const month = data.weekStart.slice(0, 7);
+  const [fees, cards, expenses] = await Promise.all([
+    loadLegacyFeeState(data.weekStart),
+    loadManagementCardSummary(data.weekStart, data.insOuts, data.operatingExpenses),
+    listOperatingExpenses(month),
+  ]);
   const earnings = buildLegacyEarnings({
     trucks: data.insOuts,
     orgFeeBp: fees.orgFeeBp,
@@ -24,6 +30,8 @@ async function ManagementContent({ week }: { week: string | undefined }) {
       feeReady={fees.ready}
       feeError={fees.error}
       orgFeeBp={fees.orgFeeBp}
+      cards={cards}
+      expenses={expenses}
     />
   );
 }

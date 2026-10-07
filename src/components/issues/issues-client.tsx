@@ -98,7 +98,7 @@ export function IssuesClient({
         <button
           type="button"
           onClick={() => openQuery({ week: shiftWeek(data.weekStart, -1) })}
-          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Previous week
         </button>
@@ -121,7 +121,7 @@ export function IssuesClient({
         <button
           type="button"
           onClick={() => openQuery({ week: shiftWeek(data.weekStart, 1) })}
-          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Next week
         </button>
@@ -130,7 +130,7 @@ export function IssuesClient({
           <select
             value={severityFilter}
             onChange={(event) => openQuery({ severity: parseSeverityFilter(event.target.value) })}
-            className="h-10 rounded-md border border-[var(--color-border)] bg-white px-3"
+            className="h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3"
           >
             <option value="all">Warn and Block</option>
             <option value="Block">Block</option>
@@ -142,7 +142,7 @@ export function IssuesClient({
           <select
             value={statusFilter}
             onChange={(event) => openQuery({ status: parseStatusFilter(event.target.value) })}
-            className="h-10 rounded-md border border-[var(--color-border)] bg-white px-3"
+            className="h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3"
           >
             <option value="open">Open</option>
             <option value="resolved">Resolved</option>
@@ -156,7 +156,7 @@ export function IssuesClient({
       </p>
 
       {data.error ? (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-sm text-[var(--color-danger)]" role="alert">
           {data.error}
         </p>
       ) : null}
@@ -168,11 +168,11 @@ export function IssuesClient({
       ) : null}
 
       {rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-white px-6 py-12 text-center text-[var(--color-fg-muted)]">
+        <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-field)] px-6 py-12 text-center text-[var(--color-fg-muted)]">
           No issues for this filter.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-white">
+        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
           <table className="min-w-full text-left text-sm">
             <caption className="px-3 py-3 text-left font-medium">Issues</caption>
             <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">

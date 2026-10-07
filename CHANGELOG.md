@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.0.0.23 — 2026-10-07
+
+- Management cards and the Dashboard management P&L were reading the statement. Week 2026-10-05 has sheet loads and portal fees, and the statement for that week is empty, so Income, Expenses, Net, and Tolson payable stayed at $0.00 while the fee chart showed the loads. Income is now the summed management fee on this week's sheet loads. An own truck sends that whole fee to Tolson Blackhawk LLC. A third-party truck splits the fee ten fifteenths to Tolson and five fifteenths to Legacy. Net is income minus portal expenses. Tolson payable sits beside net.
+- Expenses on those cards are the portal costs dated in the expense month of the week's Monday. The whole month is shown, because those costs are entered by month. The same words are on the card and under the P&L table.
+- Portal expenses can be added, edited, and deleted on Management for that month. Every category saves, including Spare Expense 1 through 5. The month total and the charts use those rows.
+- Dashboard Outs and the expense donut read the Weekly Expenses row for the week, the same columns the asset report sums (driver compensation, management fee, dispatch, factoring, fuel, insurance, escrow, ELD, yard, GPS, tolls, and the other weekly lines). Moved to Management is left out. If that tab has no header, Outs fall back to the Mgmt Expenses rows.
+- Sheet vs Vektor is a new page. Sheet load records are on top and Vektor load records are below, lined up by load number for the chosen week and truck. A highlight means missing on one side, or the rate, delivery date, or miles differ. Rate and missing-from-Vektor checks reuse the existing mismatch rules.
+- Five themes: Glass Light, Midnight Navy and Gold, Graphite Dark, Ocean Blue, and Warm Sand. The choice is stored in this browser. Charts, cards, tables, and the footer use the theme colors.
+- No new migration.
+
 ## v0.0.0.21 — 2026-10-07
 
 - Dashboard (home) shows fleet sheet Ins and Outs, a load count, open issues, the sheet account check, and the version. Charts: bars by truck, an eight week area from the sheets already read, and a donut of this week's sheet expense categories.

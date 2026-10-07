@@ -47,6 +47,7 @@ export async function createOperatingExpenseAction(input: {
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/operating-expenses");
+  revalidatePath("/management");
   revalidatePath("/");
   return { ok: true, id: data };
 }
@@ -84,6 +85,7 @@ export async function updateOperatingExpenseAction(input: {
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/operating-expenses");
+  revalidatePath("/management");
   revalidatePath("/");
   return { ok: true, id: input.id };
 }
@@ -96,6 +98,7 @@ export async function deleteOperatingExpenseAction(id: string): Promise<ActionRe
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/operating-expenses");
+  revalidatePath("/management");
   revalidatePath("/");
   return { ok: true };
 }

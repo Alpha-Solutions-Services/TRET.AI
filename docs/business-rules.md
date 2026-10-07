@@ -49,7 +49,18 @@
 - Fuel on the PDF is the discounted amount. Diesel gallons are used for MPG. DEF gallons are listed and are not part of MPG.
 - The unlabeled $228 line is not printed.
 
+## Dashboard and Management cards
+
+- Income is the summed management fee on sheet loads for the selected Monday–Sunday week. The fee is the portal amount: org default, truck week percent, or a saved load percent or dollar amount.
+- An own truck sends that whole fee to Tolson Blackhawk LLC.
+- A third-party truck splits that fee ten fifteenths to Tolson and five fifteenths to Legacy. The two shares add back to the fee. Half up to the cent.
+- Expenses are portal operating costs whose date falls in the expense month of that week's Monday. The whole month is shown. It is not a one-seventh share of the month.
+- Net is income minus those expenses. Tolson payable is shown beside net.
+- Dashboard Outs are the Weekly Expenses row for that truck and week, using the same money columns as the asset report. Mgmt Expenses is used only when the Weekly Expenses header is missing. Portal monthly costs are not added into Outs.
+
 ## Management P&L
+
+This section is the statement close. The Dashboard and Management pages use the card rules above.
 
 - Income is Legacy retained on managed trucks, taken from the statement, plus the dispatch fee Legacy keeps. The retained rate is the contract rate. It is not hardcoded.
 - Legacy-owned trucks do not add Legacy retained, even if a number is stored on that unit.
