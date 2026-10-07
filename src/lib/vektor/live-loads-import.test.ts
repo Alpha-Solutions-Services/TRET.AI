@@ -3,6 +3,7 @@ import { McpAdapter } from "./adapters/mcp-adapter";
 import { loadFixtureLookups, loadFixtureManifest } from "./fixtures";
 import { decidePromotion, runImportPipeline } from "./pipeline";
 import { assertMcpToolAllowed } from "./mcp/allowlist";
+import { buildManifestsGetArgs } from "./mcp/args";
 import { IdCache } from "./mcp/cache";
 import { fetchManifestsFromTools } from "./mcp/fetch-manifests";
 import { withRetry } from "./mcp/retry";
@@ -265,11 +266,13 @@ describe("date window and Sample A acceptance", () => {
 
     const lookups = loadFixtureLookups("sample-a-manifest-1152.json");
     const calls: string[] = [];
+    const manifestGets: Record<string, unknown>[] = [];
     const all = [sampleA, sampleB, sampleC, deliversInWeekFirstStopEarlier, firstStopInWeekDeliversLater];
     const fetched = await fetchManifestsFromTools({
       ...WEEK,
       callTool: async (name, args) => {
         calls.push(name);
+        if (name === "core_Manifests_Get") manifestGets.push(args);
         if (name === "fleet_Trucks_GetByIDs") {
           return { trucks: Object.values(lookups.trucks ?? {}) };
         }
@@ -283,6 +286,9 @@ describe("date window and Sample A acceptance", () => {
     });
 
     expect(calls.filter((name) => name === "fleet_Trucks_GetByIDs")).toHaveLength(1);
+    expect(manifestGets).toEqual([
+      buildManifestsGetArgs({ queryFrom: "2026-09-07", queryTo: "2026-10-04", page: 1 }),
+    ]);
     expect(fetched.report?.queryFrom).toBe("2026-09-07");
     expect(fetched.report?.queryTo).toBe("2026-10-04");
     expect(fetched.report?.deliveredByFirstStopDate).toBe(2);

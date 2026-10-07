@@ -2,6 +2,7 @@ import type { FetchManifestsResult } from "../adapters/types";
 import type { VektorManifest } from "../types";
 import { assertMcpToolAllowed } from "./allowlist";
 import {
+  VEKTOR_LIST_PER_PAGE,
   buildManifestsGetArgs,
   buildOrderDetailsGetArgs,
   buildTrucksGetByIdsArgs,
@@ -72,24 +73,31 @@ export async function fetchManifestsFromTools(opts: {
 }): Promise<FetchManifestsResult> {
   const window = expandFirstStopWindow(opts.from, opts.to);
   const manifests: VektorManifest[] = [];
-  let pageToken = "";
+  const seenIds = new Set<string>();
   const seenTokens = new Set<string>();
 
-  for (let page = 0; page < MAX_PAGES; page++) {
+  for (let page = 1; page <= MAX_PAGES; page++) {
     const payload = await callAllowlisted(
       opts.callTool,
       "core_Manifests_Get",
       buildManifestsGetArgs({
         queryFrom: window.queryFrom,
         queryTo: window.queryTo,
-        pageToken,
+        page,
       }),
     );
-    manifests.push(...manifestsFromPayload(payload));
+    const batch = manifestsFromPayload(payload);
+    let added = 0;
+    for (const manifest of batch) {
+      if (seenIds.has(manifest.manifestId)) continue;
+      seenIds.add(manifest.manifestId);
+      manifests.push(manifest);
+      added += 1;
+    }
     const next = nextPageToken(payload);
-    if (!next || seenTokens.has(next)) break;
-    seenTokens.add(next);
-    pageToken = next;
+    if (added === 0) break;
+    if (batch.length < VEKTOR_LIST_PER_PAGE && (!next || seenTokens.has(next))) break;
+    if (next) seenTokens.add(next);
   }
 
   for (const manifest of manifests) {

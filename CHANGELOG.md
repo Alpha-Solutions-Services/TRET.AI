@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.0.0.12 — 2026-10-07
+
+- Live Test connection failed because `core_Manifests_Get` sent `first_stop_appointment_start_date`, `page_size`, and `page_token`. Vektor accepts `filters`, `page`, `perPage`, `sortDirection`, `sortKey`, and `aggregationKeys`.
+- Manifest list calls now send the first-stop date range inside `filters`, with 1-based `page` and `perPage` 100. Fuel and toll list calls use that same envelope. Truck and order-detail arguments are unchanged.
+- `mcp_verified` can become true only after the owner clicks Test connection again.
+
 ## v0.0.0.11 — 2026-10-07
 
 - Fixture smoke for Monday 2026-09-21 through Sunday 2026-09-27. Vitest imports Sample A/B/C, the fuel stand-in, and the toll fixture, resolves fixed expenses, computes the reference statement, locks it, reads the PDF, then checks Overview, the management P&L, and Issues.

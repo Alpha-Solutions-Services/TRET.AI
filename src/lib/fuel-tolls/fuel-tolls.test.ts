@@ -9,6 +9,7 @@ import {
   MCP_TOLLS_STATS_TOOL,
   assertMcpToolAllowed,
 } from "@/lib/vektor/mcp/allowlist";
+import { VEKTOR_LIST_PER_PAGE, buildTransactionDateArgs } from "@/lib/vektor/mcp/args";
 import { fetchFuelAndTollsFromTools } from "@/lib/vektor/mcp/fetch-fuel-tolls";
 import {
   defaultFuelCsvMapping,
@@ -362,6 +363,7 @@ describe("MCP allowlist", () => {
 
   it("maps a paged tool payload and resolves the toll truck id", async () => {
     const calls: string[] = [];
+    const listArgs: Record<string, unknown>[] = [];
     const fetched = await fetchFuelAndTollsFromTools({
       from: "2026-09-21",
       to: "2026-09-27",
@@ -372,8 +374,9 @@ describe("MCP allowlist", () => {
         MCP_TOLLS_STATS_TOOL,
         "fleet_Trucks_GetByIDs",
       ],
-      callTool: async (name) => {
+      callTool: async (name, args) => {
         calls.push(name);
+        if (name === MCP_FUEL_LIST_TOOL || name === MCP_TOLLS_LIST_TOOL) listArgs.push(args);
         if (name === MCP_FUEL_LIST_TOOL) {
           return {
             content: [
@@ -430,10 +433,41 @@ describe("MCP allowlist", () => {
     });
     expect(calls).toContain(MCP_FUEL_LIST_TOOL);
     expect(calls).not.toContain("fuel_Transactions_Create");
+    expect(listArgs).toEqual([
+      buildTransactionDateArgs({ from: "2026-09-21", to: "2026-09-27", page: 1 }),
+      buildTransactionDateArgs({ from: "2026-09-21", to: "2026-09-27", page: 1 }),
+    ]);
     expect(fetched.fuel[0]?.amountCents).toBe(35000);
     expect(fetched.fuel[0]?.unitNumber).toBe("02");
     expect(fetched.tolls[0]?.unitNumber).toBe("02");
     expect(fetched.tolls[0]?.amountCents).toBe(487);
+  });
+
+  it("requests the next fuel page until a short page", async () => {
+    const fuelPages: number[] = [];
+    await fetchFuelAndTollsFromTools({
+      from: "2026-09-21",
+      to: "2026-09-27",
+      listToolNames: async () => [
+        MCP_FUEL_LIST_TOOL,
+        MCP_TOLLS_LIST_TOOL,
+        "fleet_Trucks_GetByIDs",
+      ],
+      callTool: async (name, args) => {
+        if (name === MCP_FUEL_LIST_TOOL) {
+          fuelPages.push(Number(args.page));
+          const count = args.page === 1 ? VEKTOR_LIST_PER_PAGE : 1;
+          return {
+            transactions: Array.from({ length: count }, (_, index) => ({
+              transactionId: `fuel-${args.page}-${index}`,
+            })),
+          };
+        }
+        if (name === MCP_TOLLS_LIST_TOOL) return { tolls: [] };
+        return {};
+      },
+    });
+    expect(fuelPages).toEqual([1, 2]);
   });
 });
 

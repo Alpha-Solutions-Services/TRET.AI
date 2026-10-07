@@ -1,21 +1,42 @@
 /**
- * Working request for core_Manifests_Get.
- * The verified filter field is first_stop_appointment_start_date.
- * Exact envelope is recorded in docs/decisions.md until the first live Test connection confirms it.
+ * List-tool arguments for Vektor MCP.
+ *
+ * Live Test connection (v0.0.0.11) rejected top-level
+ * first_stop_appointment_start_date, page_size, and page_token.
+ * Accepted top-level arguments: aggregationKeys, filters, page, perPage,
+ * sortDirection, sortKey.
+ *
+ * Date ranges stay inside filters. Page is 1-based. perPage stays 100,
+ * the previous page size. Sort and aggregation are not sent.
  */
+
+export const VEKTOR_LIST_PER_PAGE = 100;
+
+function listEnvelope(
+  filters: Record<string, unknown>,
+  page: number | undefined,
+): Record<string, unknown> {
+  return {
+    filters,
+    page: page ?? 1,
+    perPage: VEKTOR_LIST_PER_PAGE,
+  };
+}
+
 export function buildManifestsGetArgs(input: {
   queryFrom: string;
   queryTo: string;
-  pageToken?: string;
+  page?: number;
 }): Record<string, unknown> {
-  return {
-    first_stop_appointment_start_date: {
-      from: input.queryFrom,
-      to: input.queryTo,
+  return listEnvelope(
+    {
+      first_stop_appointment_start_date: {
+        from: input.queryFrom,
+        to: input.queryTo,
+      },
     },
-    page_size: 100,
-    page_token: input.pageToken ?? "",
-  };
+    input.page,
+  );
 }
 
 export function buildOrderDetailsGetArgs(manifestId: string): Record<string, unknown> {
@@ -27,20 +48,22 @@ export function buildTrucksGetByIdsArgs(ids: string[]): Record<string, unknown> 
 }
 
 /**
- * Working date filter for fuel and toll list tools.
- * Exact envelope is OPEN until the first live fuel import confirms it.
+ * Date filter for fuel and toll list tools.
+ * Same top-level envelope as manifests. The inner transaction_date field
+ * stays the working name until the first live fuel import confirms it.
  */
 export function buildTransactionDateArgs(input: {
   from: string;
   to: string;
-  pageToken?: string;
+  page?: number;
 }): Record<string, unknown> {
-  return {
-    transaction_date: {
-      from: input.from,
-      to: input.to,
+  return listEnvelope(
+    {
+      transaction_date: {
+        from: input.from,
+        to: input.to,
+      },
     },
-    page_size: 100,
-    page_token: input.pageToken ?? "",
-  };
+    input.page,
+  );
 }
