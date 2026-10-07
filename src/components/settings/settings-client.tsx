@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
 import { useToast } from "@/components/ui/toast";
+import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import type { ImportSourceId } from "@/lib/vektor/adapters";
 
 type Settings = Awaited<ReturnType<typeof getImportSourceSettings>>;
@@ -30,9 +31,11 @@ const NOTICES: Record<string, string> = {
 export function SettingsClient({
   initial,
   notice,
+  sheetEnvMissing,
 }: {
   initial: Settings;
   notice?: string | null;
+  sheetEnvMissing: string[];
 }) {
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -91,9 +94,13 @@ export function SettingsClient({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Connect Vektor, then choose how loads are imported. Switching sources never deletes loads or history.
+          Use each truck Google Sheet for Ins and Outs. For loads, choose CSV or Google Sheet Load Ledger
+          until Vektor REST keys arrive. Vektor MCP stays available and is currently broken on filters proto.
+          Switching sources never deletes loads or history.
         </p>
       </div>
+
+      <SheetsEnvBanner missing={sheetEnvMissing} />
 
       {noticeText ? (
         <p className="rounded-md border border-[var(--color-border)] bg-white px-4 py-3 text-sm" role="status">
@@ -134,6 +141,12 @@ export function SettingsClient({
 
       <fieldset className="space-y-3 rounded-lg border border-[var(--color-border)] bg-white p-4">
         <legend className="px-1 text-sm font-medium">Import source</legend>
+        <p className="text-sm text-[var(--color-fg-muted)]">
+          CSV upload is the working file path. Google Sheet Load Ledger promotes sheet rows into loads for the
+          dates you choose and does not replace the Ins and Outs read. REST API turns on when
+          VEKTOR_API_BASE_URL and VEKTOR_API_TOKEN are set. The list path is still open. MCP is kept for later
+          and is currently broken on filters proto.
+        </p>
         <label className="flex items-start gap-2 text-sm">
           <input
             type="radio"

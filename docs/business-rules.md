@@ -3,14 +3,14 @@
 ## DECIDED
 
 - Reporting week runs Monday to Sunday (taken from the sample report). Week helper: for any date, Monday is the start and Sunday is the end (example: week of 2026-09-21 ends 2026-09-27).
-- Loads, fuel and tolls come from Vektor. v0.0.0.5 connects loads through Vektor MCP after the owner signs in once. v0.0.0.7 imports fuel and tolls through staging. v0.0.0.8 builds the weekly statement and can lock the week. v0.0.0.9 renders that statement as a PDF. v0.0.0.10 shows that week on Overview, with the management P&L and the Issues inbox. v0.0.0.11 runs 21–27 Sep 2026 from fixtures only.
+- Loads, fuel and tolls come from Vektor. v0.0.0.5 connects loads through Vektor MCP after the owner signs in once. v0.0.0.7 imports fuel and tolls through staging. v0.0.0.8 builds the weekly statement and can lock the week. v0.0.0.9 renders that statement as a PDF. v0.0.0.10 shows that week on Overview, with the management P&L and the Issues inbox. v0.0.0.11 runs 21–27 Sep 2026 from fixtures only. v0.0.0.17 also promotes loads from CSV or the truck Google Sheet Load Ledger, and can call Vektor REST when those variables are set. MCP stays available and is currently broken on filters proto.
 - Fuel is booked at the discounted amount (integer cents). Retail is stored beside it. Unit 03 in the week of 2026-09-21 differs by $1.00 (100 cents) between retail and discounted. See decisions.
 - Fuel matches `trucks.unit_number` exactly (`02` is not `2`). Tolls match the Vektor truck id, resolved to that same unit number. Unmatched rows stay in staging with a Warn issue.
 - Fee rules are per truck, stored in the database with effective dates, never hardcoded. The number of trucks is not fixed; adding a truck must be easy.
 - Legacy-owned trucks: 10% of each load goes to TOLSON BLACKHAWK LLC (MC authority). Their report goes to Legacy and shows the Tolson payable. Everything else belongs to Legacy. Legacy pays the expenses. Contracts for this class must not include `MANAGEMENT_FEE` or `LEGACY_RETAINED`.
 - Third-party trucks: owner is charged a 15% management fee. The report shows only "Management Fee 15%" and never names Tolson. Internally the split is 10% Tolson payable and 5% Legacy income and is recorded in the database. `TOLSON_PAYABLE` + `LEGACY_RETAINED` rates must equal `MANAGEMENT_FEE`, and all three use the same `base_pct_bp`.
 - Dispatch fee is a per-truck rate (currently 5.5% or 5%) and can change per truck.
-- If the database and a Google Sheet disagree on the same data, the database wins and an issue is flagged; nothing is overwritten silently.
+- If the database and a Google Sheet disagree on the same load, a Warn issue is flagged and nothing is overwritten silently. Overview and Ins and Outs still show the sheet figures. The Weekly Asset Management Report uses the sheet, then database fuel or tolls only when those sheet cells are blank.
 - An approved week is locked; later fixes are adjustment entries. v0.0.0.8 stores the locked snapshot and does not reopen it. Adjustment rows are not built yet.
 - A new fee rate version starts on a Monday.
 - Fixed weekly expenses are per truck and per kind, stored as integer cents, effective from a Monday. `charged_to` is `owner` (the default) or `management`.
@@ -74,7 +74,9 @@ Locked Assumption Log defaults are in `docs/decisions.md` (2026-10-07). Still op
 - The owner statement dollar table for 21–27 Sep 2026 was not in the uploaded handoff. `fixtures/statements/week-2026-09-21.json` is the close reference until a live compare. The PDF smoke uses those cents. Unit 02 net is 134686 cents. Unit 03 net is 305630 cents. Fleet net is 440316 cents.
 - Connect Vektor. The v0.0.0.11 smoke does not sign in and does not set `mcp_verified`. The owner still connects once in Settings and passes Test connection before a live import.
 - There is no Legacy logo file. The PDF prints the name Legacy Inc Global.
-- Trailer, VIN, dispatcher, compliance items, and an operations note are not stored. The PDF prints “Not stored”. Asset partner is `trucks.owner_name`.
+- Trailer, dispatcher, compliance items, and an operations note are not stored. The statement PDF and the asset report print “Not stored”. VIN is printed when Fleet Directory has it. Asset partner is `trucks.owner_name`.
+- Vektor REST list path. Probes are documented in decisions. Set `VEKTOR_API_MANIFESTS_PATH` when Vektor confirms it.
+- MC Lease on the asset report is Truck Pymts plus Trailer Pymts until the owner says to split them.
 - A separate PDF file per truck is OPEN. This version downloads one week file.
 - The locked snapshot does not store load rows. Current loads must still sum to the snapshot or the PDF is refused.
 - Whether an import may keep updating source rows inside a locked week. The snapshot itself does not change. Default: source updates are still allowed.

@@ -31,7 +31,13 @@ type RunRow = {
   error_summary: string | null;
 };
 
-export function ImportsClient({ runs }: { runs: RunRow[] }) {
+export function ImportsClient({
+  runs,
+  source,
+}: {
+  runs: RunRow[];
+  source: string | null;
+}) {
   const { toast } = useToast();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -40,6 +46,7 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
   const [to, setTo] = useState(initial.to);
   const [fuelCsv, setFuelCsv] = useState<string | null>(null);
   const [tollCsv, setTollCsv] = useState<string | null>(null);
+  const [loadsCsv, setLoadsCsv] = useState<string | null>(null);
 
   function readFile(file: File | undefined, setText: (value: string | null) => void) {
     if (!file) {
@@ -53,7 +60,7 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
 
   function onImport() {
     startTransition(async () => {
-      const result = await runVektorImportAction({ from, to });
+      const result = await runVektorImportAction({ from, to, csvText: loadsCsv });
       if (!result.ok) {
         toast(result.error, "error");
         return;
@@ -87,7 +94,7 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
         <h1 className="text-2xl font-semibold tracking-tight">Imports</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
           Manual import only. Loads, fuel, and tolls. No scheduler. Does not write to Google Sheets.
-          Overview reads each truck sheet for Ins and Outs.
+          Overview and Ins and Outs read each truck sheet. Current loads source: {source ?? "none"}.
         </p>
       </div>
 
@@ -113,6 +120,15 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
         <Button disabled={pending} onClick={onImport}>
           {pending ? "Importing…" : "Import loads"}
         </Button>
+        <label className="text-sm">
+          <span className="mb-1 block text-[var(--color-fg-muted)]">Loads CSV</span>
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            onChange={(e) => readFile(e.target.files?.[0], setLoadsCsv)}
+            className="block text-sm"
+          />
+        </label>
         <Button disabled={pending} onClick={onImportFuelTolls}>
           {pending ? "Importing…" : "Import fuel and tolls"}
         </Button>
@@ -135,6 +151,12 @@ export function ImportsClient({ runs }: { runs: RunRow[] }) {
           />
         </label>
       </div>
+      <p className="max-w-3xl text-sm text-[var(--color-fg-muted)]">
+        Loads CSV columns: Delivery Date, Load ID, Rate, and Unit or Truck #. Optional columns are Pick Up
+        Date, Loaded Miles, Deadhead Miles, Origin, Destination, Driver, and Broker/Customer. A Load Ledger
+        export matches those headers. Google Sheet import ignores this file and reads each truck ledger.
+        Fuel and tolls still use Vektor MCP or their own CSV mapping.
+      </p>
 
       {runs.length === 0 ? (
         <p className="text-sm text-[var(--color-fg-muted)]">No import runs yet.</p>

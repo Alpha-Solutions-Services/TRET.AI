@@ -136,4 +136,12 @@ Do these once (or when credentials change). The app cannot finish login or healt
    - `GOOGLE_SERVICE_ACCOUNT_EMAIL`
    - `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` (PEM; use `\n` for line breaks if the value must be one line)
 5. `GOOGLE_SHEETS_API_KEY` is optional and only works for sheets that are already public.
-6. Open **Overview**, pick the week, and check **Ins and Outs**. Unread means the link is missing or the server cannot open the sheet.
+6. Open **Overview**, pick the week, and check **Ins and Outs**. A truck that cannot be read shows the note in the Loads cell. A banner names `GOOGLE_SERVICE_ACCOUNT_EMAIL` or `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` when that variable is missing.
+7. Dates such as `2026-09-01 0:00:00` and `10/05/2026` count. A blank Amount is skipped.
+
+## 17. Import sources and the asset report (v0.0.0.17)
+
+1. No new migration.
+2. Optional server variable `VEKTOR_API_MANIFESTS_PATH`. Leave it empty until Vektor confirms the list path. `VEKTOR_API_BASE_URL` and `VEKTOR_API_TOKEN` turn on the REST source. That path never calls MCP.
+3. In **Settings**, read the four sources and save the one you want. CSV and Google Sheet Load Ledger work without Vektor keys. MCP stays listed and is labeled broken on filters proto.
+4. On **Ins and Outs**, **Download report** builds the Weekly Asset Management Report for that truck and week. Dispatcher, on-time, and compliance print Not stored. MC Lease adds Truck Pymts and Trailer Pymts.

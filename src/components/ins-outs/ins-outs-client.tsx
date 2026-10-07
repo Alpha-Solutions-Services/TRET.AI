@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { centsToDollarString } from "@/lib/money/cents";
+import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import {
   MGMT_EXPENSE_CATEGORIES,
   fleetInsOutsTotals,
@@ -29,11 +30,17 @@ export function InsOutsClient({
   weekEnd,
   rows,
   error,
+  sheetEnvMissing,
+  mismatchCount,
+  mismatchError,
 }: {
   weekStart: string;
   weekEnd: string;
   rows: TruckWeekInsOuts[];
   error: string | null;
+  sheetEnvMissing: string[];
+  mismatchCount: number | null;
+  mismatchError: string | null;
 }) {
   const router = useRouter();
   const fleet = fleetInsOutsTotals(rows);
@@ -51,9 +58,25 @@ export function InsOutsClient({
           Ins and outs for each active truck in the selected Monday to Sunday week. Ins are load earnings
           from that truck&apos;s Google Sheet load ledger (the Rate column, by delivery date). Outs are Mgmt
           Expenses dated in the week: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR,
-          Drug Test, and Spare Expense 1 through 5. Fleet totals include readable sheets only.
+          Drug Test, and Spare Expense 1 through 5. Fleet totals include readable sheets only. Use the
+          sheet for these figures. Use CSV or the Google Sheet load import until Vektor REST keys arrive.
         </p>
       </div>
+
+      <SheetsEnvBanner missing={sheetEnvMissing} />
+
+      {mismatchCount != null ? (
+        <a
+          href={`/issues?week=${weekStart}`}
+          className="inline-flex rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline hover:bg-[var(--color-muted)]"
+        >
+          Sheet mismatches: {mismatchCount}
+        </a>
+      ) : mismatchError ? (
+        <p className="text-sm text-red-700" role="status">
+          Sheet comparison could not be loaded. {mismatchError}
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
         <button
@@ -129,16 +152,24 @@ export function InsOutsClient({
                     {row.unitNumber}
                     <span className="block text-xs text-[var(--color-fg-muted)]">{row.truckName}</span>
                   </td>
-                  <td className="px-3 py-2">{row.readable ? row.loadCount : "Unread"}</td>
-                  <td className="px-3 py-2">{row.readable ? money(row.insCents) : "Unread"}</td>
+                  <td className="px-3 py-2">{row.readable ? row.loadCount : row.note ?? "Sheet was not read."}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.insCents) : ""}</td>
                   {MGMT_EXPENSE_CATEGORIES.map((category) => (
                     <td key={category} className="px-3 py-2 whitespace-nowrap">
                       {row.readable ? money(categoryCents(row, category)) : ""}
                     </td>
                   ))}
-                  <td className="px-3 py-2">{row.readable ? money(row.outsCents) : "Unread"}</td>
-                  <td className="px-3 py-2">{row.readable ? money(row.netCents) : "Unread"}</td>
-                  <td className="max-w-xs px-3 py-2 text-[var(--color-fg-muted)]">{row.note ?? ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.outsCents) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.netCents) : ""}</td>
+                  <td className="max-w-xs px-3 py-2 text-[var(--color-fg-muted)]">
+                    {row.note ?? ""}
+                    <a
+                      href={`/api/reports/asset?week=${weekStart}&unit=${encodeURIComponent(row.unitNumber)}`}
+                      className="mt-1 block font-medium text-[var(--color-accent)] no-underline hover:underline"
+                    >
+                      Download report
+                    </a>
+                  </td>
                 </tr>
               ))
             )}

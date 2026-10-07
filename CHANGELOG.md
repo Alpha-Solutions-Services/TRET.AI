@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.0.17 — 2026-10-07
+
+- Google Sheets stay the source for Overview and Ins and Outs. A sheet that cannot be read shows the real note (missing link, missing service account variables, share, HTTP error, or a missing header) in the Loads cell. Ins, Outs, and Net stay blank for that truck. The word Unread is no longer used. A banner names `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` when either is unset.
+- Sheet dates accept `2026-09-01 0:00:00`, `M/D/YYYY`, and a Google serial number. Values reads use `dateTimeRenderOption=FORMATTED_STRING` and a quoted range `A1:AZ`.
+- Import sources in Settings, all documented there: CSV upload (working now), Google Sheet Load Ledger (optional promote into `loads`), Vektor REST API (selectable when `VEKTOR_API_BASE_URL` and `VEKTOR_API_TOKEN` are set), and Vektor MCP (kept, labeled available but currently broken on filters proto). MCP code is unchanged. The REST list path is OPEN and is probed with GET only. Set `VEKTOR_API_MANIFESTS_PATH` to skip probing. The REST path never calls MCP.
+- Sheet Load IDs and rates are compared with `loads` for that truck and week. A missing load or a different rate opens a Warn issue. Overview and Ins and Outs show the open count. Resolved issues are not reopened.
+- Weekly Asset Management Report PDF from Ins and Outs: header, KPI strip, executive summary, load activity, weekly totals, owner earnings from the Weekly Expenses tab, asset status, and fuel and compliance. Dispatcher, on-time, and compliance print Not stored. MC Lease is Truck Pymts plus Trailer Pymts (OPEN if those should stay split). No new migration.
+
 ## v0.0.0.16 — 2026-10-07
 
 - Import loads failed proto decode on every manifest filter, including an empty object. Compact arguments `{"filters":{...}}` put `{` at column 12. Vektor reports `proto: syntax error (line 1:12): unexpected token {`. That token is what a string field rejects. `filters` is now a JSON string. A raw array is still not sent, because the server expands it to unknown arguments `filters[0].field`.

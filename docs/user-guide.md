@@ -75,26 +75,37 @@ On the truck page, enter a gross amount in dollars and a date. The table shows f
 2. Click **Connect Vektor**.
 3. Sign in on the Vektor page and approve read access. You return to Settings.
 4. Status should say **Connected**. Click **Test connection**.
-5. When the test passes, choose **Vektor MCP** under Import source and click **Save**.
-6. MCP stays unavailable until that test passes. **Disconnect** removes the saved sign-in. Loads already imported stay.
+5. When the test passes, Vektor MCP can be selected. It is labeled available, currently broken on filters proto. Prefer CSV or Google Sheet Load Ledger until Vektor documents filters.
+6. **Disconnect** removes the saved sign-in. Loads already imported stay.
 
 If Connect Vektor reports that the database migration or `VEKTOR_TOKEN_ENCRYPTION_KEY` is missing, finish those steps in the setup guide first, then click Connect Vektor again.
 
-## Import loads from Vektor
+## Choose an import source
 
-1. Make sure trucks exist with unit numbers that match Vektor exactly (for example `02`, not `2`).
-2. Connect Vektor and pass Test connection (above).
-3. Open **Imports**.
-4. Set the date range (defaults to the last 14 days) and click **Import loads**.
-5. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts. A zero-row result is written in Notes, including which list filters were tried and the payload shape (keys and counts only). If Vektor returns a tool error, the run is Failed and Notes name that filter and the error. A sign-in failure is a Failed run, not a silent zero. Delivered loads from a successful list are the ones that land on **Loads**.
-6. Open **Loads** to review promoted rows. Filter by week (Monday–Sunday) and truck. Totals are at the bottom.
+Open **Settings** and pick one source, then **Save**.
+
+- **CSV upload.** Working now. On Imports, choose a file. Columns: Delivery Date, Load ID, Rate, and Unit or Truck #. Optional: Pick Up Date, Loaded Miles, Deadhead Miles, Origin, Destination, Driver, Broker/Customer, Manifest ID, Status. A Truck # cell above the header is used when Unit is absent.
+- **Google Sheet Load Ledger.** Optional. Promotes each active truck Load Ledger into loads for the dates you choose. Ins and Outs still read the sheet directly and do not require this step.
+- **Vektor REST API.** Selectable when `VEKTOR_API_BASE_URL` and `VEKTOR_API_TOKEN` are set. The list path is still open. Set `VEKTOR_API_MANIFESTS_PATH` when Vektor confirms it. This path never calls MCP. It does not import fuel or tolls.
+- **Vektor MCP.** Kept for later. Available, currently broken on filters proto. Selectable after Test connection. Prefer CSV or the sheet until Vektor documents filters.
+
+Switching sources does not delete loads.
+
+## Import loads
+
+1. Make sure trucks exist with unit numbers that match the file or Vektor exactly (for example `02`, not `2`). A sheet import uses the unit number stored on the truck.
+2. Open **Imports**.
+3. Set the date range (defaults to the last 14 days). For CSV, choose the loads file.
+4. Click **Import loads**.
+5. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts. A zero-row result is written in Notes. A sign-in or REST failure is a Failed run, not a silent zero. Delivered loads from a successful list are the ones that land on **Loads**.
+6. Open **Loads** to review promoted rows. Filter by week (Monday to Sunday) and truck. Totals are at the bottom.
 
 ## Import fuel and tolls
 
 1. Trucks must use the same unit numbers as Vektor (`02`, not `2`). Import loads for the same week first so a fuel day can be checked against a load.
 2. Open **Imports**. Set From and To. For 21–27 Sep 2026 use `2026-09-21` and `2026-09-27`.
-3. Click **Import fuel and tolls**. MCP is used when Vektor MCP is the selected source and Test connection has passed.
-4. CSV is the fallback. It runs only when Settings has selected CSV and the fuel and toll column mappings are saved. Choose both CSV files, then click **Import fuel and tolls**.
+3. Click **Import fuel and tolls**. Vektor MCP is used when that source is selected and Test connection has passed. REST and Google Sheet Load Ledger do not import fuel or tolls.
+4. CSV runs when Settings has selected CSV and the fuel and toll column mappings are saved. Choose both CSV files, then click **Import fuel and tolls**.
 5. Open **Fuel** and **Tolls**. Pick the week starting `2026-09-21`. The summary is per unit. Fuel shows discounted and retail. Tolls show the transaction count and the amount.
 
 Importing the same Vektor transaction again updates that row. It does not add a second one. A truck that does not match stays in staging and opens a Warn issue.
@@ -122,8 +133,8 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 5. **Open issues** shows the count and opens Issues for that week.
 6. Management P&L is under the snapshot. Income is Legacy retained on managed trucks and the dispatch fee. Expenses are fixed costs charged to management and operating expenses dated in that week. Tolson payable is listed and is not in the net.
 7. **Ins and Outs** is one row per active truck. Ins are load earnings from that truck’s Google Sheet load ledger (the Rate column, loads whose delivery date is in the week). Outs are the Mgmt Expenses rows dated in the week: Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5.
-8. If a truck says Unread, paste the sheet link on **Trucks** and share the sheet so anyone with the link can view, or share it with the Google service account from the setup guide. A blank expense amount is not counted. The import does not write these sheets.
-9. **Open the Ins and Outs page** for the same week with one column per expense.
+8. If a truck cannot be read, the Loads cell shows the note (missing link, missing service account variables, share, or a missing header). Ins, Outs, and Net stay blank for that row. A blank expense amount is not counted. The dashboard read does not write these sheets.
+9. **Open the Ins and Outs page** for the same week with one column per expense. **Sheet mismatches** links to Issues when a sheet Load ID is missing from loads or the rate differs.
 
 ## Ins and Outs
 
@@ -131,14 +142,15 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 2. Pick the week. The date snaps to the Monday.
 3. Each active truck is one row. **Ins** are the Google Sheet load ledger Rate for deliveries in that week. **Outs** are Mgmt Expenses dated in that week.
 4. The expense columns are Vektor Fee, Sintra AI, Quickbooks, Job Post, Accountant Salary, MVR, Drug Test, and Spare Expense 1 through 5.
-5. The **Fleet** row adds the readable sheets. A truck that says Unread is left out of that total. The note on the row says why.
-6. This page does not change loads, statements, or the sheet.
+5. The **Fleet** row adds the readable sheets. A truck that was not read is left out of that total. The note on the row says why.
+6. **Download report** saves a Weekly Asset Management Report PDF for that truck and week. It uses the Load Ledger, Weekly Expenses, Fuel Log, and Fleet Directory on the sheet, plus fuel and toll rows in the database when the sheet fuel or toll cells are blank.
+7. This page does not change statements or the sheet. Promoting loads is a separate Import step.
 
 ## Issues
 
 1. Open **Issues**.
 2. Pick the week, severity, and status. The default is open Warn and Block issues.
-3. Import rows come from loads, fuel, and tolls imports whose dates overlap the week.
+3. Import rows come from loads, fuel, and tolls imports whose dates overlap the week. Sheet mismatch rows are only the week named in the issue.
 4. Close checks are listed for that week. They are not stored. They disappear when the check passes. They have no **Mark resolved** button.
 5. **Mark resolved** asks you to confirm. It changes only that issue’s status. Imported rows stay, and a locked week stays locked.
 
