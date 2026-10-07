@@ -65,3 +65,12 @@
 | 2026-10-07 | A locked week refuses a fixed-expense override | Resolves the v0.0.0.6 question. Delete-latest still refuses once any weekly statement exists for the truck. |
 | 2026-10-07 | OPEN: 21–27 Sep 2026 owner statement dollars | The uploaded handoff has no PDF dollar table. The fixture statement is the reference. Live per-unit fuel dollars stay OPEN. |
 | 2026-10-07 | OPEN: source edits after lock | The locked snapshot does not change. Whether imports should freeze source rows in that week is open. Default: imports may still update source rows. |
+| 2026-10-07 | Weekly PDF uses the locked snapshot when the week is locked | Otherwise it uses the computed statement when that week has no blockers. Net, lines, loads, discounted fuel, and tolls are checked again. A mismatch refuses the file. |
+| 2026-10-07 | PDF money is dollars formatted from integer cents | No floating-point money. Performance rates use the same half-up divide as fees. |
+| 2026-10-07 | Managed unit PDF omits the internal split | Tolson payable and Legacy retained stay off that unit. The fleet page shows them. The unlabeled $228 line is not printed. |
+| 2026-10-07 | Asset partner is `trucks.owner_name` | Trailer, VIN, and dispatcher are not columns. Compliance and the operations note are not stored. Those lines print “Not stored”. |
+| 2026-10-07 | OPEN: Legacy logo file | The handoff asks for a logo. None is in the repo. The PDF prints “Legacy Inc Global” in the navy bar. |
+| 2026-10-07 | OPEN: one PDF file per truck | This version downloads one week file: each unit, then fleet totals. |
+| 2026-10-07 | MPG on the PDF uses diesel gallons only | DEF gallons are listed and are not included in MPG. Gallons are not on the locked snapshot; they are read from current fuel rows, which must sum to the statement’s discounted cents. |
+| 2026-10-07 | OPEN: load rows are not in the snapshot | Current loads must sum to the statement gross and miles. If a later edit breaks that, the PDF is refused. |
+| 2026-10-07 | OPEN: 21–27 Sep 2026 owner PDF dollar table | The uploaded handoff still has no dollar table. The v0.0.0.8 fixture remains the reference the PDF is tested against. |

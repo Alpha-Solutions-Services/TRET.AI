@@ -107,3 +107,9 @@ Do these once (or when credentials change). The app cannot finish login or healt
 2. It adds `weekly_statements`, `weekly_statement_lines`, and `week_closes`, all with Row Level Security. Signed-in users can read. Only `lock_week` inserts. There is no reopen.
 3. Until that script has run, Statements still shows a computed week, and Close says the migration has not been applied.
 4. No new environment variables.
+
+## 13. Weekly PDF (v0.0.0.9)
+
+1. No new migration and no new environment variables.
+2. After the v0.0.0.8 statements migration is applied, **Download PDF** on Statements uses the locked snapshot when the week is locked.
+3. Before that migration, a week that is ready to close can still be downloaded from the computed statement. Close itself still waits on the v0.0.0.8 script.

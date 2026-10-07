@@ -14,7 +14,7 @@ Ingest → Staging → Validate → Ledger → Reports → Sync
 | **Staging** | Hold raw imported rows before they are trusted |
 | **Validate** | Check rules, flag issues, block bad data from becoming final |
 | **Ledger** | Store fee results, weekly statement snapshots, payables, income, expenses, and adjustments |
-| **Reports** | Weekly owner PDFs and management views |
+| **Reports** | Weekly owner PDF built in the app from the statement. It is not stored as a table. Management views are later. |
 | **Sync** | Push or compare with Google Sheets; Quicken export |
 
 ## Source of truth

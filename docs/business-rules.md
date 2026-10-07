@@ -3,7 +3,7 @@
 ## DECIDED
 
 - Reporting week runs Monday to Sunday (taken from the sample report). Week helper: for any date, Monday is the start and Sunday is the end (example: week of 2026-09-21 ends 2026-09-27).
-- Loads, fuel and tolls come from Vektor. v0.0.0.5 connects loads through Vektor MCP after the owner signs in once. v0.0.0.7 imports fuel and tolls through staging. v0.0.0.8 builds the weekly statement and can lock the week.
+- Loads, fuel and tolls come from Vektor. v0.0.0.5 connects loads through Vektor MCP after the owner signs in once. v0.0.0.7 imports fuel and tolls through staging. v0.0.0.8 builds the weekly statement and can lock the week. v0.0.0.9 renders that statement as a PDF.
 - Fuel is booked at the discounted amount (integer cents). Retail is stored beside it. Unit 03 in the week of 2026-09-21 differs by $1.00 (100 cents) between retail and discounted. See decisions.
 - Fuel matches `trucks.unit_number` exactly (`02` is not `2`). Tolls match the Vektor truck id, resolved to that same unit number. Unmatched rows stay in staging with a Warn issue.
 - Fee rules are per truck, stored in the database with effective dates, never hardcoded. The number of trucks is not fixed; adding a truck must be easy.
@@ -41,12 +41,24 @@
 - A fixed expense charged to management is stored and left out of owner net. A kind with no row is zero. Overlapping versions block the close.
 - Close is blocked by unlinked fuel, a row-count drop on an import whose dates overlap the week, a missing or mid-week contract, a load whose stored week disagrees with its delivery date, or a net that does not reconcile.
 
+## Weekly PDF
+
+- The file is one week: each unit, then fleet totals. Money on the page is dollars formatted from integer cents.
+- A locked week uses the snapshot. An unlocked week can be downloaded when that week has no blockers. The PDF is refused when the net, statement lines, load rows, discounted fuel, or tolls do not match those totals.
+- Owner earnings on a managed unit show one management fee. Tolson payable and Legacy retained stay off that unit. The fleet page shows them as internal totals.
+- Fuel on the PDF is the discounted amount. Diesel gallons are used for MPG. DEF gallons are listed and are not part of MPG.
+- The unlabeled $228 line is not printed.
+
 ## OPEN
 
 Locked Assumption Log defaults are in `docs/decisions.md` (2026-10-07). Still open:
 
 - Quicken export format (build last).
-- The owner statement dollar table for 21–27 Sep 2026 was not in the uploaded handoff. `fixtures/statements/week-2026-09-21.json` is the reference until a live compare.
+- The owner statement dollar table for 21–27 Sep 2026 was not in the uploaded handoff. `fixtures/statements/week-2026-09-21.json` is the reference until a live compare. The PDF uses those same cents.
+- Trailer, VIN, dispatcher, compliance items, and an operations note are not stored. The PDF prints “Not stored”. Asset partner is `trucks.owner_name`.
+- There is no Legacy logo file in this repo. The PDF prints the name Legacy Inc Global.
+- A separate PDF file per truck is OPEN. This version downloads one week file.
+- The locked snapshot does not store load rows. Current loads must still sum to the snapshot or the PDF is refused.
 - Whether an import may keep updating source rows inside a locked week. The snapshot itself does not change. Default: source updates are still allowed.
 - Per-load fee rounding. This version rounds once on the week’s gross.
 - Vektor long-lived access for scheduled server jobs.

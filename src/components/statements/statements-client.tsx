@@ -33,11 +33,39 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
   const { confirm } = useConfirm();
   const { toast } = useToast();
   const [pending, startTransition] = useTransition();
+  const [downloading, setDownloading] = useState(false);
   const [unitNumber, setUnitNumber] = useState(data.units[0]?.unitNumber ?? "");
   const selected = data.units.find((unit) => unit.unitNumber === unitNumber) ?? data.units[0];
+  const pdfAllowed = !data.error && data.units.length > 0 && (data.locked || data.blockers.length === 0);
 
   function openWeek(next: string) {
     router.push(`/statements?week=${next}`);
+  }
+
+  async function onDownload() {
+    setDownloading(true);
+    try {
+      const response = await fetch(`/api/statements/pdf?week=${encodeURIComponent(data.weekStart)}`);
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!response.ok || !contentType.includes("application/pdf")) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        toast(body?.error ?? "Could not build the PDF.", "error");
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `tret-statement-${data.weekStart}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast("Could not build the PDF.", "error");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   async function onClose() {
@@ -102,7 +130,20 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
         <p className="text-sm text-[var(--color-fg-muted)]">
           Showing {data.weekStart} → {data.weekEnd}
         </p>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onDownload}
+          disabled={!pdfAllowed || downloading}
+        >
+          {downloading ? "Preparing PDF…" : "Download PDF"}
+        </Button>
       </div>
+      {!pdfAllowed && !data.error && data.units.length > 0 ? (
+        <p className="text-sm text-[var(--color-fg-muted)]">
+          The PDF stays off while this week has blockers.
+        </p>
+      ) : null}
 
       {data.error ? (
         <p className="text-sm text-red-700" role="alert">
@@ -118,7 +159,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
 
       {data.liveDiffers ? (
         <p className="text-sm text-red-700" role="status">
-          Live loads, fuel, or tolls no longer match this locked snapshot.
+          Live loads, fuel, or tolls no longer match this locked snapshot. Download is refused when those totals do not match it.
         </p>
       ) : null}
 
