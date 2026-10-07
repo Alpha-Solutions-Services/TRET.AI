@@ -295,11 +295,11 @@ function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: 
     textIn(page, { x: 908, y, w: 46, h: 22 }, value, font, 5.6, BLACK, "right");
   });
 
+  // The template notes bar runs past the load table, into the gap under Weekly Totals.
+  paint(page, { x: 57, y: 450, w: 618, h: 44 }, WHITE);
   const note = report.notes.join(" ").trim();
   if (note) {
-    fill(page, { x: 62, y: 476, w: 603, h: 24 }, note, font, 5.5, BLACK, "left", CARD);
-  } else {
-    paint(page, { x: 57, y: 448, w: 600, h: 52 }, WHITE);
+    fill(page, { x: 62, y: 458, w: 590, h: 28 }, note, font, 5.5, BLACK, "left", WHITE);
   }
 }
 
