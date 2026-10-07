@@ -3,7 +3,7 @@
 ## DECIDED
 
 - Reporting week runs Monday to Sunday (taken from the sample report). Week helper: for any date, Monday is the start and Sunday is the end (example: week of 2026-09-21 ends 2026-09-27).
-- Loads, fuel and tolls come from Vektor. v0.0.0.5 connects loads through Vektor MCP after the owner signs in once. v0.0.0.7 imports fuel and tolls through staging. v0.0.0.8 builds the weekly statement and can lock the week. v0.0.0.9 renders that statement as a PDF.
+- Loads, fuel and tolls come from Vektor. v0.0.0.5 connects loads through Vektor MCP after the owner signs in once. v0.0.0.7 imports fuel and tolls through staging. v0.0.0.8 builds the weekly statement and can lock the week. v0.0.0.9 renders that statement as a PDF. v0.0.0.10 shows that week on Overview, with the management P&L and the Issues inbox.
 - Fuel is booked at the discounted amount (integer cents). Retail is stored beside it. Unit 03 in the week of 2026-09-21 differs by $1.00 (100 cents) between retail and discounted. See decisions.
 - Fuel matches `trucks.unit_number` exactly (`02` is not `2`). Tolls match the Vektor truck id, resolved to that same unit number. Unmatched rows stay in staging with a Warn issue.
 - Fee rules are per truck, stored in the database with effective dates, never hardcoded. The number of trucks is not fixed; adding a truck must be easy.
@@ -36,7 +36,7 @@
 - The week is the delivery date’s Monday–Sunday. Pickup does not choose the week.
 - One fee line per rule, on the sum of that truck’s gross for the week. Half up, once.
 - Legacy-owned net deducts Tolson payable. Managed net deducts the management fee only. Tolson payable and Legacy retained on a managed truck are stored and are not deducted a second time.
-- Dispatch is deducted from the owner. It is also kept on the statement as Legacy income. This is not the management-company P&L.
+- Dispatch is deducted from the owner. It is also Legacy income on the management P&L, on its own line.
 - Owner net = gross − driver − (management fee, or Tolson on a Legacy-owned truck) − dispatch − factoring − discounted fuel − tolls − fixed expenses charged to the owner.
 - A fixed expense charged to management is stored and left out of owner net. A kind with no row is zero. Overlapping versions block the close.
 - Close is blocked by unlinked fuel, a row-count drop on an import whose dates overlap the week, a missing or mid-week contract, a load whose stored week disagrees with its delivery date, or a net that does not reconcile.
@@ -48,6 +48,22 @@
 - Owner earnings on a managed unit show one management fee. Tolson payable and Legacy retained stay off that unit. The fleet page shows them as internal totals.
 - Fuel on the PDF is the discounted amount. Diesel gallons are used for MPG. DEF gallons are listed and are not part of MPG.
 - The unlabeled $228 line is not printed.
+
+## Management P&L
+
+- Income is Legacy retained on managed trucks, taken from the statement, plus the dispatch fee Legacy keeps. The retained rate is the contract rate. It is not hardcoded.
+- Legacy-owned trucks do not add Legacy retained, even if a number is stored on that unit.
+- Expenses are fixed weekly costs charged to management, plus operating expenses whose date is inside the Monday–Sunday week.
+- Net is income minus those expenses, in integer cents.
+- Tolson payable is shown and is not part of that net.
+- A locked week uses the statement snapshot for retained, dispatch, fixed-to-management, and Tolson. Operating expenses stay the current rows for those dates.
+
+## Issues
+
+- The inbox lists Warn and Block only. Info is not listed.
+- An import issue is in the week when its import run overlaps that week. An issue with no run range stays visible in every week.
+- Close checks are the live statement blockers. They are not stored. They cannot be marked resolved. They leave the list when the check passes.
+- Mark resolved changes `issues.status` for one open Warn or Block import issue. It does not change imported rows and does not unlock a week.
 
 ## OPEN
 

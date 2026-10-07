@@ -10,7 +10,8 @@
 | 4 | Fuel and tolls from Vektor (v0.0.0.7) | Done |
 | 5 | Weekly statements and Close (v0.0.0.8) | Done |
 | 5b | Weekly owner PDF (v0.0.0.9) | Done |
-| 6 | Validation, Issues inbox and AI (LLM gateway) | Not started |
-| 7 | Management company P&L, Tolson payable, recurring charges, Quicken export | Not started |
+| 5c | Overview and management P&L (v0.0.0.10) | Done |
+| 6 | Issues inbox (v0.0.0.10). AI (`llm-gateway`) is not started | Inbox done |
+| 7 | Tolson payable payments, recurring charges, Quicken export | Not started |
 | 8 | Google Sheets sync | Not started |
 | 9 | Dashboard polish and extra automation | Not started |

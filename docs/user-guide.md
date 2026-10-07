@@ -52,7 +52,7 @@ Amounts are stored as cents. `20.00` is 2000 cents.
 4. Click **Save expense**.
 5. Delete asks you to confirm.
 
-These rows are the management company’s own costs. They are not the truck’s weekly fixed expenses, and this page does not calculate profit and loss.
+These rows are the management company’s own costs. They are not the truck’s weekly fixed expenses. The week’s profit and loss is on Overview.
 
 ## Test calculator
 
@@ -101,6 +101,23 @@ Importing the same Vektor transaction again updates that row. It does not add a 
 9. If the download is refused, the message names what did not match (net, loads, discounted fuel, or tolls). A locked week uses the snapshot. The loads, fuel, and tolls in the file are the current rows, and they must still add up to that snapshot.
 
 A fixed-expense override cannot be saved for a unit and week that is already locked.
+
+## Overview
+
+1. Open **Overview**.
+2. Pick the week. The date snaps to the Monday.
+3. The table shows each unit and a fleet row: gross, fees, fuel, tolls, fixed expenses charged to the owner, and net.
+4. Close status says Open or Locked.
+5. **Open issues** shows the count and opens Issues for that week.
+6. Management P&L is under the snapshot. Income is Legacy retained on managed trucks and the dispatch fee. Expenses are fixed costs charged to management and operating expenses dated in that week. Tolson payable is listed and is not in the net.
+
+## Issues
+
+1. Open **Issues**.
+2. Pick the week, severity, and status. The default is open Warn and Block issues.
+3. Import rows come from loads, fuel, and tolls imports whose dates overlap the week.
+4. Close checks are listed for that week. They are not stored. They disappear when the check passes. They have no **Mark resolved** button.
+5. **Mark resolved** asks you to confirm. It changes only that issue’s status. Imported rows stay, and a locked week stays locked.
 
 Notes:
 

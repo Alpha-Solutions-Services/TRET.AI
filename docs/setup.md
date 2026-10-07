@@ -113,3 +113,9 @@ Do these once (or when credentials change). The app cannot finish login or healt
 1. No new migration and no new environment variables.
 2. After the v0.0.0.8 statements migration is applied, **Download PDF** on Statements uses the locked snapshot when the week is locked.
 3. Before that migration, a week that is ready to close can still be downloaded from the computed statement. Close itself still waits on the v0.0.0.8 script.
+
+## 14. Overview, P&L, and Issues (v0.0.0.10)
+
+1. In the Supabase SQL editor, run `supabase/migrations/20261007160000_resolve_issue.sql` only when you say go. It does not add a table. It lets **Mark resolved** write `change_log`.
+2. Until that script has run, Overview and Issues still load. **Mark resolved** says the migration has not been applied.
+3. No new environment variables.

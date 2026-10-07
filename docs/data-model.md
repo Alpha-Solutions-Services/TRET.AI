@@ -130,7 +130,7 @@ Manual management-company costs. Not a profit and loss statement.
 - `upsert_fixed_expense_override` / `delete_fixed_expense_override` — one week.
 - `create_mgmt_operating_expense` / `delete_mgmt_operating_expense` — manual operating costs.
 
-Each write function checks `allowed_users` and writes `change_log`. `change_log.entity_type` may now also be `truck_fixed_expense`, `truck_fixed_expense_override`, `mgmt_operating_expense`, `weekly_statement`, or `week_close`.
+Each write function checks `allowed_users` and writes `change_log`. `change_log.entity_type` may now also be `truck_fixed_expense`, `truck_fixed_expense_override`, `mgmt_operating_expense`, `weekly_statement`, `week_close`, or `issue`.
 
 ## weekly_statements / weekly_statement_lines / week_closes (v0.0.0.8)
 
@@ -140,8 +140,10 @@ There is no reopen. `lock_week` writes the snapshot in one transaction and refus
 
 v0.0.0.9 does not add a table. The PDF is built when the owner downloads it. A locked week reads `weekly_statements`. An unlocked week reads the computed statement. Load, fuel, and toll rows are read from the current tables and must match those totals.
 
+v0.0.0.10 does not add a table. Overview and the management P&L are computed when the page loads. `resolve_issue` updates one open Warn or Block row in `issues` and writes `change_log` with `entity_type` `issue`. It does not change imported rows.
+
 ## Access (RLS)
 
-`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, `mgmt_operating_expenses`, `vektor_fuel_staging`, `vektor_toll_staging`, `fuel_transactions`, `toll_transactions`, `weekly_statements`, `weekly_statement_lines`, and `week_closes` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Statement rows are inserted only by `lock_week`. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`.
+`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, `mgmt_operating_expenses`, `vektor_fuel_staging`, `vektor_toll_staging`, `fuel_transactions`, `toll_transactions`, `weekly_statements`, `weekly_statement_lines`, and `week_closes` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Statement rows are inserted only by `lock_week`. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`. `resolve_issue` is security definer, checks `allowed_users`, and is the only app path that marks an issue resolved.
 
 `vektor_mcp_connection` and `vektor_oauth_pending` have Row Level Security on and no policies. `anon` and `authenticated` have no table grants. Allowed users touch ciphertext only through security-definer functions. The encryption key stays in server env.

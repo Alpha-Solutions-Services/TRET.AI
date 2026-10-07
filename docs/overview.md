@@ -22,7 +22,7 @@ The **database** is always the source of truth. If a sheet disagrees with the da
 
 ## Current version
 
-`VERSION` is the source of truth. v0.0.0.9 downloads a weekly PDF from the locked or computed statement. See [modules.md](modules.md).
+`VERSION` is the source of truth. v0.0.0.10 shows the week on Overview, the management P&L, and the Issues inbox. See [modules.md](modules.md).
 
 ## What v0.0.0.1 included
 
