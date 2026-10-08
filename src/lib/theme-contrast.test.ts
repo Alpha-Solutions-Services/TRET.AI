@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const NEW_THEMES = ["mono", "mint", "rose", "aurora", "carbon"];
+const VIBE_THEMES = ["vibe", "vibe-light"];
 
 function channel(hex: string): number {
   const value = Number.parseInt(hex, 16) / 255;
@@ -44,6 +45,25 @@ describe("new theme contrast", () => {
       expect(contrast(tokens["color-fg-muted"]!, tokens["color-bg"]!), `${id} muted`).toBeGreaterThanOrEqual(4.5);
       expect(contrast(tokens["color-on-accent"]!, tokens["color-accent"]!), `${id} accent`).toBeGreaterThanOrEqual(4.5);
       expect(contrast(tokens["color-warn-fg"]!, tokens["color-warn-bg"]!), `${id} warn`).toBeGreaterThanOrEqual(4.5);
+      for (const chart of ["color-chart-1", "color-chart-2", "color-chart-3", "color-chart-4"]) {
+        expect(contrast(tokens[chart]!, tokens["color-bg"]!), `${id} ${chart}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  it("keeps Vibe text, tables, inputs, badges, warnings, and charts at AA", () => {
+    for (const id of VIBE_THEMES) {
+      const tokens = themeBlock(css, id);
+      expect(contrast(tokens["color-fg"]!, tokens["color-bg"]!), id).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(tokens["color-fg-muted"]!, tokens["color-bg"]!), `${id} muted`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(tokens["color-fg"]!, tokens["color-field"]!), `${id} field`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(tokens["color-fg-muted"]!, tokens["color-field"]!), `${id} field muted`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(tokens["color-fg"]!, tokens["color-surface"]!), `${id} surface`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(tokens["color-fg-muted"]!, tokens["color-surface"]!), `${id} surface muted`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(tokens["color-fg-muted"]!, tokens["color-muted"]!), `${id} table head`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(tokens["color-on-accent"]!, tokens["color-accent"]!), `${id} badge`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(tokens["color-warn-fg"]!, tokens["color-warn-bg"]!), `${id} warn`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(tokens["color-danger"]!, tokens["color-bg"]!), `${id} danger`).toBeGreaterThanOrEqual(4.5);
       for (const chart of ["color-chart-1", "color-chart-2", "color-chart-3", "color-chart-4"]) {
         expect(contrast(tokens[chart]!, tokens["color-bg"]!), `${id} ${chart}`).toBeGreaterThanOrEqual(3);
       }

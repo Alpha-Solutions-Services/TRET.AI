@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { ImportsClient } from "@/components/imports/imports-client";
+import { Waveform } from "@/components/motion/waveform";
 import { SignedInShell } from "@/components/signed-in-shell";
-import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/server";
 import { loadImportRegistry } from "@/lib/vektor/import-registry";
 
@@ -58,9 +58,8 @@ export default function ImportsPage() {
     <SignedInShell title="Imports">
       <Suspense
         fallback={
-          <div className="space-y-4" aria-busy="true">
-            <Skeleton className="h-8 w-40" />
-            <Skeleton className="h-24 w-full" />
+          <div className="h-16" aria-busy="true">
+            <Waveform label="Loading imports" />
           </div>
         }
       >

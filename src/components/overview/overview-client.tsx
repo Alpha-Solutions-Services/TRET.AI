@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { weekBoundsForDate } from "@/lib/fee-engine";
@@ -12,6 +13,10 @@ import { CopyableError } from "@/components/copyable-error";
 import { FleetCharts } from "@/components/dashboard/fleet-charts";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
+
+const SignalHeader = dynamic(() => import("@/components/motion/signal").then((mod) => mod.SignalHeader), {
+  loading: () => <div className="h-[72px]" aria-hidden="true" />,
+});
 
 function StatusCard({ label, value }: { label: string; value: string }) {
   return (
@@ -41,6 +46,7 @@ export function OverviewClient({
   cards: ManagementCardSummary;
 }) {
   const router = useRouter();
+  const connectedTrucks = data.insOuts.filter((row) => row.readable).length;
 
   function openWeek(next: string) {
     router.push(`/?week=${next}`);
@@ -48,6 +54,7 @@ export function OverviewClient({
 
   return (
     <div className="space-y-10">
+      <SignalHeader count={connectedTrucks} />
       <div>
         <h1 className="text-[1.75rem]">Dashboard</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">

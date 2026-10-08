@@ -1,3 +1,4 @@
+import { Waveform } from "@/components/motion/waveform";
 import type { AiStatus } from "@/lib/llm-gateway/gemini";
 
 export function AiStatusCard({ status }: { status: AiStatus }) {
@@ -8,6 +9,7 @@ export function AiStatusCard({ status }: { status: AiStatus }) {
         {status}
       </p>
       <p className="mt-1 text-sm text-[var(--color-fg-muted)]">A test call only. The key is not shown.</p>
+      <div className="h-16">{status === "Busy" ? <Waveform label="AI busy" /> : null}</div>
     </section>
   );
 }

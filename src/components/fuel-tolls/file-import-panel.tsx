@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import dynamic from "next/dynamic";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   approveFuelTollFileAction,
@@ -10,7 +11,13 @@ import {
 } from "@/app/fuel/file-actions";
 import { ReviewQueueList, UploadPreviewTable } from "@/components/fuel-tolls/upload-preview";
 import type { OpenQueueItem } from "@/lib/fuel-tolls/file/messages";
+import { filePreviewCounts } from "@/components/motion/counts";
+import { Waveform } from "@/components/motion/waveform";
 import type { ImportPreviewRow } from "@/lib/fuel-tolls/file/types";
+
+const DataFlow = dynamic(() => import("@/components/motion/data-flow").then((mod) => mod.DataFlow), {
+  loading: () => <div className="h-80" aria-hidden="true" />,
+});
 
 async function fileBody(file: File): Promise<{ csvText?: string; xlsxBase64?: string }> {
   const name = file.name.toLowerCase();
@@ -44,6 +51,7 @@ export function FileImportPanel({
   const [rows, setRows] = useState<ImportPreviewRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const counts = useMemo(() => filePreviewCounts(rows), [rows]);
 
   function onFile(next: File | null) {
     setFile(next);
@@ -88,6 +96,8 @@ export function FileImportPanel({
 
   return (
     <section className="space-y-4" aria-label="Upload fuel or toll file">
+      <DataFlow counts={counts} />
+      <div className="h-16">{pending ? <Waveform label="Reading the file" /> : null}</div>
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
           <span className="mb-1 block text-[var(--color-fg-muted)]">Fuel or toll file</span>

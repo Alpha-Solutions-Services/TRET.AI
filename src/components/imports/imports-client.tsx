@@ -1,11 +1,22 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { runFuelAndTollsImportAction } from "@/app/imports/fuel-toll-actions";
 import { previewLoadsCsvAction, runVektorImportAction } from "@/app/imports/actions";
+import { loadsPreviewCounts } from "@/components/motion/counts";
+import { Waveform } from "@/components/motion/waveform";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+
+const DataFlow = dynamic(() => import("@/components/motion/data-flow").then((mod) => mod.DataFlow), {
+  loading: () => <div className="h-80" aria-hidden="true" />,
+});
+
+const Pipeline = dynamic(() => import("@/components/motion/pipeline").then((mod) => mod.Pipeline), {
+  loading: () => <div className="h-36" aria-hidden="true" />,
+});
 
 function defaultRange(): { from: string; to: string } {
   const to = new Date();
@@ -58,6 +69,7 @@ export function ImportsClient({
       reason: string | null;
     }> | null
   >(null);
+  const counts = useMemo(() => loadsPreviewCounts(preview), [preview]);
 
   function readFile(file: File | undefined, setText: (value: string | null) => void) {
     if (!file) {
@@ -120,6 +132,9 @@ export function ImportsClient({
           Overview and Ins and Outs read each truck sheet. Current loads source: {source ?? "none"}.
         </p>
       </div>
+      <DataFlow counts={counts} />
+      <Pipeline />
+      <div className="h-16">{pending ? <Waveform label="Import working" /> : null}</div>
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] p-4">
         <label className="text-sm">

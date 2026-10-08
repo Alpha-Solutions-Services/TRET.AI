@@ -104,7 +104,7 @@ Switching sources does not delete loads.
 ## Import loads
 
 1. Make sure trucks exist with unit numbers that match the file or Vektor exactly (for example `02`, not `2`). A sheet import uses the unit number stored on the truck.
-2. Open **Imports**.
+2. Open **Imports**. The diagram shows Vektor, fuel, and tolls moving into TRET and then Google Sheets. New, Duplicate, and Flagged follow the current preview. The steps under it are Parse, Match, Review, and Sheets.
 3. Set the date range (defaults to the last 14 days). For CSV, choose the loads file. Preview loads shows which rows will import. Load numbers are stored as `TBH--1192` even when the file says `TBH1192`.
 4. Click **Import loads**.
 5. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts. A zero-row result is written in Notes. A sign-in or REST failure is a Failed run, not a silent zero. Delivered loads from a successful list are the ones that land on **Loads**.
@@ -159,7 +159,7 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 3. Charts show the Legacy fee by truck, portal expenses by month, and this month's category mix.
 4. **Portal expenses** on this page adds, edits, and deletes a cost for the month. Pick a category, including Spare Expense 1 through 5.
 5. **Legacy earnings** on this page is where you edit a load fee or a truck week percent.
-6. The header **Theme** list saves Glass Light, Midnight Navy and Gold, Graphite Dark, Ocean Blue, or Warm Sand in this browser.
+6. The header **Theme** list opens on Vibe. Vibe Light is the light companion. Glass Light, Midnight Navy and Gold, Graphite Dark, Ocean Blue, Warm Sand, Mono Minimal, Mint Breeze, Rose Quartz, Aurora Night, and Carbon Electric stay in the list. The choice is saved in this browser.
 
 On the Dashboard, pick the week. The date snaps to the Monday. The week snapshot uses the same sheet numbers as Ins and Outs. Gross is Ins. Fees, fuel, tolls, and fixed split the Outs. Net is Ins minus Outs. Close status says Open or Locked. **Open issues** opens Issues for that week. Management profit and loss is under the snapshot. Income is the management fee on this week's sheet loads. Expenses are the portal costs for that week's month. Tolson payable is its own line. Net subtracts portal expenses and Tolson payable. Legacy kept is income minus Tolson payable.
 
@@ -191,7 +191,7 @@ The footer shows the app version. It adds a plain sentence only when the Google 
 
 Only an admin can use this. The owner role counts as an admin. The page uses files. Connect QuickBooks is hidden unless the server has `QUICKBOOKS_API_ENABLED` set to `true`.
 
-1. Open **Integrations**. AI status shows OK, Busy, or Not set. It is a test call only. The key is not shown.
+1. Open **Integrations**. TRET sits in the center. Vektor, Google Sheets, QuickBooks files, and Gemini AI sit around it. A node glows when that connection is set. AI status shows OK, Busy, or Not set. It is a test call only. The key is not shown.
 2. Save the four QuickBooks account names once. A subaccount is `Parent: Sub`.
 3. Pick a week and click **Download journal CSV**. The file has the weekly management fee income and the Tolson payable.
 4. In QuickBooks Online, open the gear menu, choose Import data, then Journal entries, and upload that file. Map the columns. Turn account numbers off if you use names. A payable line may need a vendor name after the import.
