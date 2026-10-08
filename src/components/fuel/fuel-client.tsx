@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { FileImportPanel } from "@/components/fuel-tolls/file-import-panel";
+import type { OpenQueueItem } from "@/lib/fuel-tolls/file/messages";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { fuelWeekTotals } from "@/lib/fuel-tolls/totals";
 import { formatGallonsMilli } from "@/lib/fuel-tolls/quantity";
@@ -27,9 +29,13 @@ function money(cents: number): string {
 export function FuelClient({
   rows,
   truckUnits,
+  queue,
+  queueReady,
 }: {
   rows: FuelListRow[];
   truckUnits: string[];
+  queue: OpenQueueItem[];
+  queueReady: boolean;
 }) {
   const todayWeek = weekBoundsForDate(new Date().toISOString().slice(0, 10));
   const [weekStart, setWeekStart] = useState(todayWeek.start);
@@ -67,6 +73,7 @@ export function FuelClient({
 
   return (
     <div className="space-y-6">
+      <FileImportPanel queue={queue} truckUnits={truckUnits} queueReady={queueReady} />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Fuel</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">

@@ -150,7 +150,7 @@ v0.0.0.10 does not add a table. Overview and the management P&L are computed whe
 
 ## Access (RLS)
 
-`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, `mgmt_operating_expenses`, `legacy_org_settings`, `legacy_truck_week_fees`, `legacy_load_fees`, `vektor_fuel_staging`, `vektor_toll_staging`, `fuel_transactions`, `toll_transactions`, `weekly_statements`, `weekly_statement_lines`, `week_closes`, `load_field_decisions`, and `load_field_acceptances` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Statement rows are inserted only by `lock_week`. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`. `resolve_issue` is security definer, checks `allowed_users`, and is the only app path that marks an issue resolved.
+`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, `mgmt_operating_expenses`, `legacy_org_settings`, `legacy_truck_week_fees`, `legacy_load_fees`, `vektor_fuel_staging`, `vektor_toll_staging`, `fuel_transactions`, `toll_transactions`, `truck_fuel_cards`, `truck_plates`, `truck_toll_tags`, `fuel_file_imports`, `toll_file_imports`, `file_import_queue`, `weekly_statements`, `weekly_statement_lines`, `week_closes`, `load_field_decisions`, and `load_field_acceptances` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Statement rows are inserted only by `lock_week`. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`. `resolve_issue` is security definer, checks `allowed_users`, and is the only app path that marks an issue resolved.
 
 `vektor_mcp_connection` and `vektor_oauth_pending` have Row Level Security on and no policies. `anon` and `authenticated` have no table grants. Allowed users touch ciphertext only through security-definer functions. The encryption key stays in server env.
 
@@ -166,6 +166,17 @@ Migration `20261007210000_quickbooks.sql` is not applied until the owner says go
 - **mgmt_operating_expenses.qbo_source_id**. Unique when set. Stops the same Purchase or Bill line from being imported twice.
 
 `is_admin_user` is true when the signed-in email is in `allowed_users` with role `owner` or `admin`. Token functions call `require_admin_user`.
+
+## v0.0.0.29 fuel and toll files
+
+Migration `supabase/migrations/20261008180000_v29_fuel_toll_file.sql` is not applied until the owner says go.
+
+- **truck_fuel_cards**. One card number per row, unique, tied to a truck. Seeded with the Legacy cards when that truck already exists (`00003` on unit 3, `00060` on unit 8, and the rest of the list).
+- **truck_plates**. Plate and optional state. Seeded with XPV9531, XRH2610, UD12588 VA, 6OSB7382, 5OSB8618, 5OSB8623, YHM2482, and 5OSB8626 TX.
+- **truck_toll_tags**. E-ZPass tag number. Seeded for the tags that match those plates in the sample file.
+- **fuel_file_imports**. One row per unit, invoice, item, and quantity already written. Amount is integer cents. Quantity is milli-gallons.
+- **toll_file_imports**. One row per E-ZPass Transaction Id and the load it was added to.
+- **file_import_queue**. Open, approved, or dismissed. The payload is the row the owner can approve. Row Level Security uses `is_allowed_user()` on every table in this migration.
 
 ## v0.0.0.26 load ids, compare, and file expenses
 

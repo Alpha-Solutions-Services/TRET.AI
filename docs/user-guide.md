@@ -20,8 +20,9 @@ Short click-by-click steps for staff. You must be signed in.
 1. Open **Trucks**.
 2. On the row, click **Edit**. You can also open the truck and click **Edit** there.
 3. Change unit number, name, class, owner name, or the Google Sheet link.
-4. Click **Save changes**.
-5. The list and the truck page show the Google Sheet as a link. Click it to open the sheet.
+4. On the same Edit panel, card numbers, plates, and toll tags are one value per line. A plate can include a state, such as `UD12588 VA`. Click **Save card, plate, and tag**.
+5. Click **Save changes**.
+6. The list and the truck page show the Google Sheet as a link. Click it to open the sheet.
 
 Leave **Google Sheet** blank if this truck has no sheet yet. The link must start with `https://`.
 
@@ -118,6 +119,16 @@ Switching sources does not delete loads.
 5. Open **Fuel** and **Tolls**. Pick the week starting `2026-09-21`. The summary is per unit. Fuel shows discounted and retail. Tolls show the transaction count and the amount.
 
 Importing the same Vektor transaction again updates that row. It does not add a second one. A truck that does not match stays in staging and opens a Warn issue.
+
+## Upload a fuel card or E-ZPass file
+
+1. Open **Fuel** or **Tolls**.
+2. Choose a CSV or XLSX. A fuel card file and an E-ZPass file are detected from the headers.
+3. The preview lists each row: truck, week, linked load or trip, the sheet and cells that would change, and New, Duplicate, or Flagged. A flagged row includes a plain reason. AI suggested appears only when a model proposed a column map or a truck or load. Those rows are not written on their own.
+4. Click **Approve and write to sheets**. New fuel rows go on that truck's Fuel Log. New tolls add to Toll Expense on the load. Duplicates are skipped. Flagged rows go to the review queue.
+5. In **Review queue**, pick a truck or type a Load ID (`TBH--1192`) or Trip Group ID (`M-1195`), then click **Approve**. **Dismiss** leaves the sheet unchanged.
+
+Fees on a fuel row are not added to Total Cost. A fuel row with no load is still written, with Load ID and Trip Group ID blank, and it stays in the queue so you can link it later.
 
 ## Weekly statements
 

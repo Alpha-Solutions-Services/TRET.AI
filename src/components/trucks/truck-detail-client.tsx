@@ -9,6 +9,7 @@ import {
   updateTruckAction,
 } from "@/app/trucks/actions";
 import { FixedExpensesPanel } from "@/components/trucks/fixed-expenses-panel";
+import { TruckIdentityForm } from "@/components/trucks/truck-identity-form";
 import { GoogleSheetLink } from "@/components/trucks/google-sheet-link";
 import {
   TruckFieldsForm,
@@ -60,6 +61,10 @@ type Props = {
   canDeleteLatest: boolean;
   googleSheetReady: boolean;
   tolsonReady: boolean;
+  identityReady: boolean;
+  identityCards: string;
+  identityPlates: string;
+  identityTags: string;
 };
 
 function emptyRules(
@@ -86,6 +91,10 @@ export function TruckDetailClient({
   canDeleteLatest,
   googleSheetReady,
   tolsonReady,
+  identityReady,
+  identityCards,
+  identityPlates,
+  identityTags,
 }: Props) {
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -591,6 +600,13 @@ export function TruckDetailClient({
           submitLabel="Save changes"
           googleSheetReady={googleSheetReady}
           tolsonReady={tolsonReady}
+        />
+        <TruckIdentityForm
+          truckId={truck.id}
+          ready={identityReady}
+          cards={identityCards}
+          plates={identityPlates}
+          tags={identityTags}
         />
       </SidePanel>
     </div>

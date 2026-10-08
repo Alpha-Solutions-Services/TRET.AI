@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.0.29 — 2026-10-08
+
+- Fuel and Tolls can upload a fuel card CSV or an E-ZPass XLSX. The file type comes from the headers. The preview shows truck, week, linked load or trip, target sheet and cells, and New, Duplicate, or Flagged. Approve and write to sheets sends only the input cells through the Google service account, in one batch. Flagged rows wait in a review queue. The owner can pick a truck or load there and approve.
+- Fuel writes Date, Location, Load ID or Trip Group ID, Gallons, and Total Cost on `Truck #0N Fuel Log`. Formula columns are not written. ULSD and ULSR are fuel. DEFD is its own row. Fees are not added to Total Cost. A fill with no covering load is written with those ids blank and stays in the queue. Tolls add Amount to Load Ledger Toll Expense for the load that was active at the exit time. Post Date is not used. A Toll Expense cell that TRET did not write is left unchanged until the owner approves it.
+- Card, plate, and tag maps are editable on the truck Edit page. The built-in list is Truck 3 card 00003 and plate UD12588 VA, Truck 8 card 00060 and plate 5OSB8626 TX, and the other Legacy plates and cards. An unknown unit, a card for another truck, a negative amount, or a tag that is not on file is flagged and not entered.
+- Optional `GEMINI_API_KEY` calls gemini-2.5-flash through `llm-gateway` only to map an unknown header row or to suggest a truck or load for a flagged row. Those suggestions stay in the queue. With no key, the rules run on their own.
+- Migration `supabase/migrations/20261008180000_v29_fuel_toll_file.sql` is not applied. It adds the mapping tables, the fuel and toll import log, and the review queue, all with Row Level Security.
+
 ## v0.0.0.28 — 2026-10-07
 
 - The weekly report joins a sheet load to its Vektor manifest on letters and digits. A blank delivery date still matches. The Oct 5 export marks TBH--1188 and TBH--1195 In Transit with no delivery date, so a week filter left them off the manifest and the report counted every mile. Truck #08 Load Ledger marks trip M-1195 with Primary Yes on TBH--1188 only. TBH--1192 and TBH--1195 are partial. Loaded miles are 2,075.00 and dispatch miles are 2,316.00. The sheet Primary flag and trip group win. The Vektor manifest is the fallback. Revenue still sums every load.

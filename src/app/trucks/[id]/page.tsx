@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { SignedInShell } from "@/components/signed-in-shell";
 import { TruckDetailClient } from "@/components/trucks/truck-detail-client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
 import { listFixedExpensesForTruck } from "@/lib/fixed-expenses/queries";
 import {
@@ -46,6 +47,20 @@ async function TruckDetailContent({ id }: { id: string }) {
     canDeleteLatest = true;
   }
 
+  const [cards, plates, tags] = await Promise.all([
+    supabase.from("truck_fuel_cards").select("card_number").eq("truck_id", id),
+    supabase.from("truck_plates").select("plate, plate_state").eq("truck_id", id),
+    supabase.from("truck_toll_tags").select("tag_number").eq("truck_id", id),
+  ]);
+  const identityReady = ![cards.error, plates.error, tags.error].some(
+    (error) => error && isMissingSchemaError(error),
+  );
+  const identityCards = (cards.data ?? []).map((row) => row.card_number).join("\n");
+  const identityPlates = (plates.data ?? [])
+    .map((row) => (row.plate_state ? `${row.plate} ${row.plate_state}` : row.plate))
+    .join("\n");
+  const identityTags = (tags.data ?? []).map((row) => row.tag_number).join("\n");
+
   return (
     <TruckDetailClient
       truck={truck}
@@ -55,6 +70,10 @@ async function TruckDetailContent({ id }: { id: string }) {
       canDeleteLatest={canDeleteLatest}
       googleSheetReady={googleSheetReady}
       tolsonReady={tolsonReady}
+      identityReady={identityReady}
+      identityCards={identityCards}
+      identityPlates={identityPlates}
+      identityTags={identityTags}
     />
   );
 }
