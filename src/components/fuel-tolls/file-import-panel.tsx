@@ -112,7 +112,7 @@ export function FileImportPanel({
           type="button"
           disabled={!file || !rows || pending || rows.length === 0}
           onClick={approve}
-          className="inline-flex h-10 items-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-medium text-[var(--color-on-accent)] disabled:opacity-50"
+          className={`inline-flex h-10 items-center rounded-md px-3 text-sm font-medium disabled:opacity-50 ${pending ? "bg-[var(--color-warn-bg)] text-[var(--color-warn-fg)]" : "bg-[var(--color-accent)] text-[var(--color-on-accent)]"}`}
         >
           Approve and write to sheets
         </button>

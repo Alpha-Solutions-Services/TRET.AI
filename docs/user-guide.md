@@ -104,7 +104,7 @@ Switching sources does not delete loads.
 ## Import loads
 
 1. Make sure trucks exist with unit numbers that match the file or Vektor exactly (for example `02`, not `2`). A sheet import uses the unit number stored on the truck.
-2. Open **Imports**. The diagram shows Vektor, fuel, and tolls moving into TRET and then Google Sheets. New, Duplicate, and Flagged follow the current preview. The steps under it are Parse, Match, Review, and Sheets.
+2. Open **Imports**. The diagram shows Vektor, fuel, and tolls moving into TRET and then Google Sheets. New, Duplicate, and Flagged follow the current preview. The steps under it are Parse, Match, Review, and Sheets. Fuel and toll files write to Google Sheets after you approve them. A Vektor sheet cell writes only after you approve that cell.
 3. Set the date range (defaults to the last 14 days). For CSV, choose the loads file. Preview loads shows which rows will import. Load numbers are stored as `TBH--1192` even when the file says `TBH1192`.
 4. Click **Import loads**.
 5. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts. A zero-row result is written in Notes. A sign-in or REST failure is a Failed run, not a silent zero. Delivered loads from a successful list are the ones that land on **Loads**.
@@ -159,7 +159,7 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 3. Charts show the Legacy fee by truck, portal expenses by month, and this month's category mix.
 4. **Portal expenses** on this page adds, edits, and deletes a cost for the month. Pick a category, including Spare Expense 1 through 5.
 5. **Legacy earnings** on this page is where you edit a load fee or a truck week percent.
-6. The header **Theme** list opens on Vibe. Vibe Light is the light companion. Glass Light, Midnight Navy and Gold, Graphite Dark, Ocean Blue, Warm Sand, Mono Minimal, Mint Breeze, Rose Quartz, Aurora Night, and Carbon Electric stay in the list. The choice is saved in this browser.
+6. The header **Theme** list opens on Vibe Black. Vibe and Vibe Light stay in the list, with Glass Light, Midnight Navy and Gold, Graphite Dark, Ocean Blue, Warm Sand, Mono Minimal, Mint Breeze, Rose Quartz, Aurora Night, and Carbon Electric. The choice is saved in this browser.
 
 On the Dashboard, pick the week. The date snaps to the Monday. The week snapshot uses the same sheet numbers as Ins and Outs. Gross is Ins. Fees, fuel, tolls, and fixed split the Outs. Net is Ins minus Outs. Close status says Open or Locked. **Open issues** opens Issues for that week. Management profit and loss is under the snapshot. Income is the management fee on this week's sheet loads. Expenses are the portal costs for that week's month. Tolson payable is its own line. Net subtracts portal expenses and Tolson payable. Legacy kept is income minus Tolson payable.
 

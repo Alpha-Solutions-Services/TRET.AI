@@ -22,7 +22,7 @@ function ThemeBoot() {
     <script
       dangerouslySetInnerHTML={{
         __html:
-          '(function(){try{var t=localStorage.getItem("tret.theme");var ok={vibe:1,"vibe-light":1,glass:1,mono:1,ocean:1,mint:1,sand:1,rose:1,graphite:1,midnight:1,aurora:1,carbon:1};document.documentElement.setAttribute("data-theme",t&&ok[t]?t:"vibe");}catch(e){}})();',
+          '(function(){try{var t=localStorage.getItem("tret.theme");var ok={"vibe-black":1,vibe:1,"vibe-light":1,glass:1,mono:1,ocean:1,mint:1,sand:1,rose:1,graphite:1,midnight:1,aurora:1,carbon:1};document.documentElement.setAttribute("data-theme",t&&ok[t]?t:"vibe-black");}catch(e){}})();',
       }}
     />
   );

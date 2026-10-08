@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const NEW_THEMES = ["mono", "mint", "rose", "aurora", "carbon"];
-const VIBE_THEMES = ["vibe", "vibe-light"];
+const VIBE_THEMES = ["vibe", "vibe-light", "vibe-black"];
 
 function channel(hex: string): number {
   const value = Number.parseInt(hex, 16) / 255;
@@ -64,6 +64,9 @@ describe("new theme contrast", () => {
       expect(contrast(tokens["color-on-accent"]!, tokens["color-accent"]!), `${id} badge`).toBeGreaterThanOrEqual(4.5);
       expect(contrast(tokens["color-warn-fg"]!, tokens["color-warn-bg"]!), `${id} warn`).toBeGreaterThanOrEqual(4.5);
       expect(contrast(tokens["color-danger"]!, tokens["color-bg"]!), `${id} danger`).toBeGreaterThanOrEqual(4.5);
+      if (tokens["color-on-danger"] && tokens["color-danger-fill"]) {
+        expect(contrast(tokens["color-on-danger"], tokens["color-danger-fill"]), `${id} stop button`).toBeGreaterThanOrEqual(4.5);
+      }
       for (const chart of ["color-chart-1", "color-chart-2", "color-chart-3", "color-chart-4"]) {
         expect(contrast(tokens[chart]!, tokens["color-bg"]!), `${id} ${chart}`).toBeGreaterThanOrEqual(3);
       }

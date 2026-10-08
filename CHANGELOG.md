@@ -10,6 +10,7 @@
 - Migration `supabase/migrations/20261008180000_v29_fuel_toll_file.sql` is not applied. It adds the mapping tables, the fuel and toll import log, and the review queue, all with Row Level Security.
 - Imports shows a Data Flow of Vektor, Fuel, and Tolls into TRET and then Google Sheets, with New, Duplicate, and Flagged from the current preview, and a Pipeline of Parse, Match, Review, and Sheets. Fuel and Tolls use the same flow for a file preview. Integrations shows Origin with TRET in the center and Vektor, Google Sheets, QuickBooks files, and Gemini AI around it. A connection glows only when that check is connected. Gemini shows OK, Busy, or Not set. Waveform plays while an import or the AI check is working. The dashboard header shows how many truck sheets were readable. It shows 0 when none were. These pieces are copied from React Vibe (MIT) and run on `framer-motion`. `react-icons` is not installed.
 - Vibe is the new default theme: dark slate, soft off-white text, muted cards, one calm accent. Vibe Light is the light companion. The other ten themes stay in the list.
+- Vibe Black is the default. The page is black, cards are near black, text is white, and borders are thin. Green, yellow, and red dots and buttons follow real status. Vibe, Vibe Light, and the earlier ten themes stay in the list. Imports no longer says that nothing is written to Google Sheets. Fuel and toll files write after approval. A Vektor sheet cell writes only after that cell is approved.
 
 ## v0.0.0.28 — 2026-10-07
 

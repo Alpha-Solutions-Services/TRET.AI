@@ -13,15 +13,19 @@ import { CopyableError } from "@/components/copyable-error";
 import { FleetCharts } from "@/components/dashboard/fleet-charts";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
+import { StatusDot, type StatusTone } from "@/components/ui/status-dot";
 
 const SignalHeader = dynamic(() => import("@/components/motion/signal").then((mod) => mod.SignalHeader), {
   loading: () => <div className="h-[72px]" aria-hidden="true" />,
 });
 
-function StatusCard({ label, value }: { label: string; value: string }) {
+function StatusCard({ label, value, tone }: { label: string; value: string; tone?: StatusTone }) {
   return (
     <div className="material border border-[var(--color-border)] px-6 py-5">
-      <p className="text-xs tracking-wide text-[var(--color-fg-muted)]">{label}</p>
+      <p className="flex items-center gap-2 text-xs tracking-wide text-[var(--color-fg-muted)]">
+        {tone ? <StatusDot tone={tone} glow /> : null}
+        {label}
+      </p>
       <p className="num mt-2 text-sm font-medium">{value}</p>
     </div>
   );
@@ -66,10 +70,15 @@ export function OverviewClient({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatusCard label="Version" value={data.versionLabel} />
-        <StatusCard label="Sheets" value={data.sheetHealth} />
+        <StatusCard
+          label="Sheets"
+          value={data.sheetHealth}
+          tone={data.sheetHealth === "Sheet account is set." ? "ok" : "danger"}
+        />
         <StatusCard
           label="Open issues"
           value={data.openIssueCount == null ? "Unavailable" : String(data.openIssueCount)}
+          tone={data.openIssueCount == null || data.openIssueCount > 0 ? "danger" : "ok"}
         />
         <StatusCard
           label="Loads"
@@ -114,7 +123,8 @@ export function OverviewClient({
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <p className="material rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm">
+        <p className="material flex items-center gap-2 rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm">
+          <StatusDot tone={data.locked ? "warn" : "ok"} glow />
           Close status: {data.locked ? "Locked" : "Open"}
           {data.locked && data.closedAt ? ` ${data.closedAt.slice(0, 10)}` : ""}
         </p>
@@ -128,8 +138,9 @@ export function OverviewClient({
         ) : (
           <Link
             href={`/issues?week=${data.weekStart}`}
-            className="pressable material rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+            className="pressable material inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-fg)] no-underline hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
+            <StatusDot tone={data.openIssueCount > 0 ? "danger" : "ok"} glow />
             Open issues: {data.openIssueCount}
           </Link>
         )}

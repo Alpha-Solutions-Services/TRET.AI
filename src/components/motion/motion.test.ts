@@ -78,16 +78,31 @@ describe("motion counts and connection tones", () => {
     expect(origin).not.toContain("GEMINI_API_KEY");
   });
 
-  it("keeps every theme selectable and boots Vibe by default", () => {
-    expect(DEFAULT_THEME_ID).toBe("vibe");
-    expect(THEMES).toHaveLength(12);
+  it("keeps every theme selectable and boots Vibe Black by default", () => {
+    expect(DEFAULT_THEME_ID).toBe("vibe-black");
+    expect(THEMES.map((theme) => theme.id)).toEqual([
+      "vibe-black",
+      "vibe",
+      "vibe-light",
+      "glass",
+      "mono",
+      "ocean",
+      "mint",
+      "sand",
+      "rose",
+      "graphite",
+      "midnight",
+      "aurora",
+      "carbon",
+    ]);
     const layout = readFileSync("src/app/layout.tsx", "utf8");
     const css = readFileSync("src/app/globals.css", "utf8");
     for (const theme of THEMES) {
-      expect(layout).toContain(theme.id === "vibe-light" ? '"vibe-light":1' : `${theme.id}:1`);
+      const token = theme.id.includes("-") ? `"${theme.id}":1` : `${theme.id}:1`;
+      expect(layout).toContain(token);
       expect(css).toContain(`[data-theme="${theme.id}"]`);
     }
-    expect(layout).toContain(':"vibe"');
-    expect(css).toMatch(/:root,\s*\[data-theme="vibe"\]/);
+    expect(layout).toContain(':"vibe-black"');
+    expect(css).toMatch(/:root,\s*\[data-theme="vibe-black"\]/);
   });
 });
