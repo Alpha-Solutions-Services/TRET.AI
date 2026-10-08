@@ -15,7 +15,7 @@ import { canonicalLoadId, loadIdLookupForms } from "@/lib/loads/load-id";
 import { unitKey } from "@/lib/sheets/mismatch";
 import { formatImportResultMessage } from "@/lib/vektor/mcp/window";
 import { NeedsSignInError } from "@/lib/vektor/oauth/needs-sign-in";
-import { runImportPipeline } from "@/lib/vektor/pipeline";
+import { runSharedImport } from "@/lib/import-pipeline/run";
 import type { Database, Json } from "@/lib/supabase/database.types";
 
 export type ImportActionResult =
@@ -175,14 +175,15 @@ export async function runVektorImportAction(input?: {
     const unitToId = new Map((trucks ?? []).map((t) => [t.unit_number, t.id]));
     const knownUnits = new Set(unitToId.keys());
 
-    const pipeline = runImportPipeline(manifests, {
-      lookups: fetched.lookups,
+    const shared = await runSharedImport({
+      vektorManifests: manifests,
+      vektorLookups: fetched.lookups,
       knownTruckUnits: knownUnits,
-      rangeFrom: range.from,
-      rangeTo: range.to,
+      range: { from: range.from, to: range.to },
       previousFetched,
       settings: { rowCountDropBlockPct: dropSetting?.value_int ?? 50 },
     });
+    const pipeline = shared.loadMatch;
 
     if (pipeline.blocked && pipeline.blockIssue) {
       await supabase.from("issues").insert({

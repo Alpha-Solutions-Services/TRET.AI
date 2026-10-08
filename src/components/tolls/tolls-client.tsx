@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { FileImportPanel } from "@/components/fuel-tolls/file-import-panel";
+import type { OpenQueueItem } from "@/lib/fuel-tolls/file/messages";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { tollWeekTotals } from "@/lib/fuel-tolls/totals";
 import { centsToDollarString } from "@/lib/money/cents";
@@ -23,9 +25,13 @@ function money(cents: number): string {
 export function TollsClient({
   rows,
   truckUnits,
+  queue,
+  queueReady,
 }: {
   rows: TollListRow[];
   truckUnits: string[];
+  queue: OpenQueueItem[];
+  queueReady: boolean;
 }) {
   const [weekStart, setWeekStart] = useState(
     weekBoundsForDate(new Date().toISOString().slice(0, 10)).start,
@@ -61,6 +67,7 @@ export function TollsClient({
 
   return (
     <div className="space-y-6">
+      <FileImportPanel queue={queue} truckUnits={truckUnits} queueReady={queueReady} />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Tolls</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">

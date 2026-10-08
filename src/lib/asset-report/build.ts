@@ -520,6 +520,15 @@ export function buildAssetReport(input: {
   dbTollCents?: number;
   /** Vektor manifest id by load match key. Used when the sheet has no manifest column. */
   manifestRefs?: Record<string, string | null>;
+  /** Approved import totals. Fuel, tolls, gallons, and miles use these when they are set. */
+  importTotals?: {
+    fuelCostCents: number;
+    tollCents: number;
+    dieselGallonsMilli: number;
+    loadedMilesHundredths: number;
+    deadheadMilesHundredths: number;
+    dispatchMilesHundredths: number;
+  } | null;
 }): AssetReport {
   const parsed = input.ledger ? parseLoadLedger(input.ledger) : null;
   const weekLoads = (parsed?.rows ?? []).filter((row) => inWeek(row.deliveryDay, input.weekStart, input.weekEnd));
@@ -552,12 +561,12 @@ export function buildAssetReport(input: {
     return load;
   });
   const grossCents = loads.reduce((sum, row) => sum + row.rateCents, 0);
-  const loadedMilesHundredths = loads.reduce(
+  let loadedMilesHundredths = loads.reduce(
     (sum, row) => sum + countedLoadedHundredths(row.manifestRole, row.loadedHundredths),
     0,
   );
-  const deadheadMilesHundredths = loads.reduce((sum, row) => sum + row.deadheadHundredths, 0);
-  const dispatchMilesHundredths = loadedMilesHundredths + deadheadMilesHundredths;
+  let deadheadMilesHundredths = loads.reduce((sum, row) => sum + row.deadheadHundredths, 0);
+  let dispatchMilesHundredths = loadedMilesHundredths + deadheadMilesHundredths;
   const weekly = weeklyRow(input.weekly, input.weekStart, input.weekEnd);
   const notes: string[] = [];
   if (input.sheetNote) notes.push(input.sheetNote);
@@ -583,6 +592,22 @@ export function buildAssetReport(input: {
   if (tollCents === 0 && (input.dbTollCents ?? 0) > 0) {
     tollCents = input.dbTollCents ?? 0;
     notes.push("Toll charges came from toll transactions because the sheet toll cell was blank.");
+  }
+  if (input.importTotals) {
+    if (input.importTotals.fuelCostCents > 0) {
+      fuelCents = input.importTotals.fuelCostCents;
+      if (input.importTotals.dieselGallonsMilli > 0) gallonsMilli = input.importTotals.dieselGallonsMilli;
+      notes.push("Fuel cost uses the import total.");
+    }
+    if (input.importTotals.tollCents > 0) {
+      tollCents = input.importTotals.tollCents;
+      notes.push("Toll charges use the import total.");
+    }
+    if (input.importTotals.dispatchMilesHundredths > 0) {
+      loadedMilesHundredths = input.importTotals.loadedMilesHundredths;
+      deadheadMilesHundredths = input.importTotals.deadheadMilesHundredths;
+      dispatchMilesHundredths = input.importTotals.dispatchMilesHundredths;
+    }
   }
   const lines = {
     driver: read(["driver compensation"]),
@@ -665,7 +690,12 @@ export function buildAssetReport(input: {
   const assetStatus = rawStatus || (loads.length > 0 ? "Active" : "Review");
   const active = /^active$/i.test(assetStatus);
   const ratePerMileCents = centsPerLoadedMile(grossCents, dispatchMilesHundredths);
-  const economyMiles = fuelLog.milesHundredths > 0 ? fuelLog.milesHundredths : dispatchMilesHundredths;
+  const economyMiles =
+    input.importTotals && input.importTotals.dispatchMilesHundredths > 0
+      ? input.importTotals.dispatchMilesHundredths
+      : fuelLog.milesHundredths > 0
+        ? fuelLog.milesHundredths
+        : dispatchMilesHundredths;
   const fuelEconomy = formatDieselMpg(economyMiles, gallonsMilli) ?? "n/a";
   const fuelPerMileCents = centsPerLoadedMile(fuelCents, dispatchMilesHundredths);
   const netCents = grossCents - expenseCents;

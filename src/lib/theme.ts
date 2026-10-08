@@ -1,6 +1,11 @@
 export const THEME_STORAGE_KEY = "tret.theme";
 
+export const DEFAULT_THEME_ID = "vibe-black" as const;
+
 export const THEMES = [
+  { id: "vibe-black", label: "Vibe Black", scheme: "dark", swatch: ["#000000", "#3ddc6a", "#ff5f57"] },
+  { id: "vibe", label: "Vibe", scheme: "dark", swatch: ["#1c232c", "#8fb4c8", "#c4b49a"] },
+  { id: "vibe-light", label: "Vibe Light", scheme: "light", swatch: ["#e8edf2", "#2f5d73", "#6d5a32"] },
   { id: "glass", label: "Glass Light", scheme: "light", swatch: ["#f3f2ee", "#5d726b", "#b6a48c"] },
   { id: "mono", label: "Mono Minimal", scheme: "light", swatch: ["#ffffff", "#141414", "#1d4e89"] },
   { id: "ocean", label: "Ocean Blue", scheme: "light", swatch: ["#f3f6f7", "#3e7c8a", "#6d8ea0"] },

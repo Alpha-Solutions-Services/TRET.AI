@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { isThemeId, THEME_STORAGE_KEY, THEMES, type ThemeId } from "@/lib/theme";
+import { DEFAULT_THEME_ID, isThemeId, THEME_STORAGE_KEY, THEMES, type ThemeId } from "@/lib/theme";
 
 function applyTheme(theme: ThemeId) {
   document.documentElement.setAttribute("data-theme", theme);
@@ -13,16 +13,16 @@ function applyTheme(theme: ThemeId) {
 }
 
 function storedTheme(): ThemeId {
-  if (typeof document === "undefined") return "glass";
+  if (typeof document === "undefined") return DEFAULT_THEME_ID;
   const current = document.documentElement.getAttribute("data-theme");
   if (isThemeId(current)) return current;
   try {
     const saved = localStorage.getItem(THEME_STORAGE_KEY);
     if (isThemeId(saved)) return saved;
   } catch {
-    return "glass";
+    return DEFAULT_THEME_ID;
   }
-  return "glass";
+  return DEFAULT_THEME_ID;
 }
 
 function Swatch({ colors }: { colors: readonly string[] }) {
@@ -36,7 +36,7 @@ function Swatch({ colors }: { colors: readonly string[] }) {
 }
 
 export function ThemePicker() {
-  const [theme, setTheme] = useState<ThemeId>("glass");
+  const [theme, setTheme] = useState<ThemeId>(DEFAULT_THEME_ID);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -82,7 +82,7 @@ export function ThemePicker() {
           id={listId}
           role="listbox"
           aria-label="Theme"
-          className="absolute right-0 z-30 mt-2 max-h-80 w-64 overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-field)] p-1 shadow-lg"
+          className="absolute right-0 z-30 mt-2 max-h-96 w-64 overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-field)] p-1 shadow-lg"
         >
           {THEMES.map((item) => (
             <li key={item.id} role="presentation">

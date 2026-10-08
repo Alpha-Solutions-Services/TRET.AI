@@ -1,11 +1,22 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { runFuelAndTollsImportAction } from "@/app/imports/fuel-toll-actions";
 import { previewLoadsCsvAction, runVektorImportAction } from "@/app/imports/actions";
+import { loadsPreviewCounts } from "@/components/motion/counts";
+import { Waveform } from "@/components/motion/waveform";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+
+const DataFlow = dynamic(() => import("@/components/motion/data-flow").then((mod) => mod.DataFlow), {
+  loading: () => <div className="h-80" aria-hidden="true" />,
+});
+
+const Pipeline = dynamic(() => import("@/components/motion/pipeline").then((mod) => mod.Pipeline), {
+  loading: () => <div className="h-36" aria-hidden="true" />,
+});
 
 function defaultRange(): { from: string; to: string } {
   const to = new Date();
@@ -58,6 +69,7 @@ export function ImportsClient({
       reason: string | null;
     }> | null
   >(null);
+  const counts = useMemo(() => loadsPreviewCounts(preview), [preview]);
 
   function readFile(file: File | undefined, setText: (value: string | null) => void) {
     if (!file) {
@@ -116,10 +128,14 @@ export function ImportsClient({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Imports</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Manual import only. Loads, fuel, and tolls. No scheduler. Does not write to Google Sheets.
-          Overview and Ins and Outs read each truck sheet. Current loads source: {source ?? "none"}.
+          Manual import only. Loads, fuel, and tolls. No scheduler. Fuel and toll files write to Google Sheets
+          after you approve them. A Vektor sheet cell writes only after you approve that cell. Overview and Ins
+          and Outs read each truck sheet. Current loads source: {source ?? "none"}.
         </p>
       </div>
+      <DataFlow counts={counts} />
+      <Pipeline pending={pending} />
+      <div className="h-16">{pending ? <Waveform label="Import working" /> : null}</div>
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] p-4">
         <label className="text-sm">
@@ -140,10 +156,10 @@ export function ImportsClient({
             className="h-10 rounded-md border border-[var(--color-border)] px-3"
           />
         </label>
-        <Button disabled={pending} onClick={onPreview}>
+        <Button variant={pending ? "warn" : "secondary"} disabled={pending} onClick={onPreview}>
           {pending ? "Working…" : "Preview loads"}
         </Button>
-        <Button disabled={pending} onClick={onImport}>
+        <Button variant={pending ? "warn" : "primary"} disabled={pending} onClick={onImport}>
           {pending ? "Importing…" : "Import loads"}
         </Button>
         <label className="text-sm">
@@ -155,7 +171,7 @@ export function ImportsClient({
             className="block text-sm"
           />
         </label>
-        <Button disabled={pending} onClick={onImportFuelTolls}>
+        <Button variant={pending ? "warn" : "primary"} disabled={pending} onClick={onImportFuelTolls}>
           {pending ? "Importing…" : "Import fuel and tolls"}
         </Button>
         <label className="text-sm">

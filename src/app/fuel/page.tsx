@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { OpenQueueItem } from "@/lib/fuel-tolls/file/messages";
 import { FuelClient } from "@/components/fuel/fuel-client";
 import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,7 +34,23 @@ async function FuelContent() {
     .select("unit_number")
     .order("unit_number");
   const truckUnits = [...new Set((trucks ?? []).map((truck) => truck.unit_number))];
-  return <FuelClient rows={data ?? []} truckUnits={truckUnits} />;
+  const queueResult = await supabase
+    .from("file_import_queue")
+    .select("id, kind, reason, ai_suggested, unit_number, load_id, trip_id")
+    .eq("status", "open")
+    .order("created_at", { ascending: true })
+    .limit(200);
+  const queueReady = !queueResult.error;
+  const queue: OpenQueueItem[] = (queueResult.data ?? []).map((row) => ({
+    id: row.id,
+    kind: row.kind,
+    reason: row.reason,
+    aiSuggested: row.ai_suggested,
+    unitNumber: row.unit_number,
+    loadId: row.load_id,
+    tripId: row.trip_id,
+  }));
+  return <FuelClient rows={data ?? []} truckUnits={truckUnits} queue={queue} queueReady={queueReady} />;
 }
 
 export default function FuelPage() {

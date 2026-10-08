@@ -524,6 +524,198 @@ export type Database = {
         };
         Relationships: [];
       };
+      truck_fuel_cards: {
+        Row: {
+          id: string;
+          truck_id: string;
+          card_number: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          truck_id: string;
+          card_number: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          truck_id?: string;
+          card_number?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      truck_plates: {
+        Row: {
+          id: string;
+          truck_id: string;
+          plate: string;
+          plate_state: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          truck_id: string;
+          plate: string;
+          plate_state?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          truck_id?: string;
+          plate?: string;
+          plate_state?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      truck_toll_tags: {
+        Row: {
+          id: string;
+          truck_id: string;
+          tag_number: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          truck_id: string;
+          tag_number: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          truck_id?: string;
+          tag_number?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      fuel_file_imports: {
+        Row: {
+          id: string;
+          unit_number: string;
+          invoice: string;
+          item: string;
+          qty_milli: number;
+          amount_cents: number;
+          transacted_date: string;
+          location: string;
+          load_id: string | null;
+          trip_id: string | null;
+          sheet_tab: string | null;
+          sheet_row: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          unit_number: string;
+          invoice: string;
+          item: string;
+          qty_milli: number;
+          amount_cents: number;
+          transacted_date: string;
+          location: string;
+          load_id?: string | null;
+          trip_id?: string | null;
+          sheet_tab?: string | null;
+          sheet_row?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          unit_number?: string;
+          invoice?: string;
+          item?: string;
+          qty_milli?: number;
+          amount_cents?: number;
+          transacted_date?: string;
+          location?: string;
+          load_id?: string | null;
+          trip_id?: string | null;
+          sheet_tab?: string | null;
+          sheet_row?: number | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      toll_file_imports: {
+        Row: {
+          id: string;
+          transaction_id: string;
+          unit_number: string;
+          load_id: string;
+          amount_cents: number;
+          transacted_at: string;
+          location: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          transaction_id: string;
+          unit_number: string;
+          load_id: string;
+          amount_cents: number;
+          transacted_at: string;
+          location?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          transaction_id?: string;
+          unit_number?: string;
+          load_id?: string;
+          amount_cents?: number;
+          transacted_at?: string;
+          location?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      file_import_queue: {
+        Row: {
+          id: string;
+          dedupe_key: string;
+          kind: string;
+          status: string;
+          reason: string;
+          ai_suggested: boolean;
+          unit_number: string | null;
+          load_id: string | null;
+          trip_id: string | null;
+          payload: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          dedupe_key: string;
+          kind: string;
+          status?: string;
+          reason: string;
+          ai_suggested?: boolean;
+          unit_number?: string | null;
+          load_id?: string | null;
+          trip_id?: string | null;
+          payload: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          dedupe_key?: string;
+          kind?: string;
+          status?: string;
+          reason?: string;
+          ai_suggested?: boolean;
+          unit_number?: string | null;
+          load_id?: string | null;
+          trip_id?: string | null;
+          payload?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       fuel_transactions: {
         Row: {
           id: string;

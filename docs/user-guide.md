@@ -20,8 +20,9 @@ Short click-by-click steps for staff. You must be signed in.
 1. Open **Trucks**.
 2. On the row, click **Edit**. You can also open the truck and click **Edit** there.
 3. Change unit number, name, class, owner name, or the Google Sheet link.
-4. Click **Save changes**.
-5. The list and the truck page show the Google Sheet as a link. Click it to open the sheet.
+4. On the same Edit panel, card numbers, plates, and toll tags are one value per line. A plate can include a state, such as `UD12588 VA`. Click **Save card, plate, and tag**.
+5. Click **Save changes**.
+6. The list and the truck page show the Google Sheet as a link. Click it to open the sheet.
 
 Leave **Google Sheet** blank if this truck has no sheet yet. The link must start with `https://`.
 
@@ -103,7 +104,7 @@ Switching sources does not delete loads.
 ## Import loads
 
 1. Make sure trucks exist with unit numbers that match the file or Vektor exactly (for example `02`, not `2`). A sheet import uses the unit number stored on the truck.
-2. Open **Imports**.
+2. Open **Imports**. The diagram shows Vektor, fuel, and tolls moving into TRET and then Google Sheets. New, Duplicate, and Flagged follow the current preview. The steps under it are Parse, Match, Review, and Sheets. Fuel and toll files write to Google Sheets after you approve them. A Vektor sheet cell writes only after you approve that cell.
 3. Set the date range (defaults to the last 14 days). For CSV, choose the loads file. Preview loads shows which rows will import. Load numbers are stored as `TBH--1192` even when the file says `TBH1192`.
 4. Click **Import loads**.
 5. Wait for the success or error toast. The table shows fetched / promoted / updated / rejected counts. A zero-row result is written in Notes. A sign-in or REST failure is a Failed run, not a silent zero. Delivered loads from a successful list are the ones that land on **Loads**.
@@ -118,6 +119,17 @@ Switching sources does not delete loads.
 5. Open **Fuel** and **Tolls**. Pick the week starting `2026-09-21`. The summary is per unit. Fuel shows discounted and retail. Tolls show the transaction count and the amount.
 
 Importing the same Vektor transaction again updates that row. It does not add a second one. A truck that does not match stays in staging and opens a Warn issue.
+
+## Upload a fuel card or E-ZPass file
+
+1. Open **Fuel** or **Tolls**.
+2. Choose a CSV or XLSX. A fuel card file and an E-ZPass file are detected from the headers.
+3. The preview lists each row: truck, week, linked load or trip, the sheet and cells that would change, and New, Duplicate, or Flagged. A flagged row includes a plain reason. AI suggested appears only when a model proposed a column map or a truck or load. Those rows are not written on their own. If the model is busy, the review queue says AI busy, try again, and the rules still decide the rows.
+4. Click **Approve and write to sheets**. New fuel rows go on that truck's Fuel Log. New tolls add to Toll Expense on the load. Vektor load fields stay on Write to sheet until you approve that cell. Duplicates are skipped. Flagged rows go to the review queue. Nothing is written before that approval.
+5. After approval, the dashboard fuel and toll lines, the weekly report fuel and toll lines, and the sheet cells use the same totals: fuel gallons and cost, DEF, tolls per load, loaded miles, dispatch miles, and MPG.
+6. In **Review queue**, pick a truck or type a Load ID (`TBH--1192`) or Trip Group ID (`M-1195`), then click **Approve**. **Dismiss** leaves the sheet unchanged.
+
+Fees on a fuel row are not added to Total Cost. A fuel row with no load is still written, with Load ID and Trip Group ID blank, and it stays in the queue so you can link it later.
 
 ## Weekly statements
 
@@ -147,7 +159,7 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 3. Charts show the Legacy fee by truck, portal expenses by month, and this month's category mix.
 4. **Portal expenses** on this page adds, edits, and deletes a cost for the month. Pick a category, including Spare Expense 1 through 5.
 5. **Legacy earnings** on this page is where you edit a load fee or a truck week percent.
-6. The header **Theme** list saves Glass Light, Midnight Navy and Gold, Graphite Dark, Ocean Blue, or Warm Sand in this browser.
+6. The header **Theme** list opens on Vibe Black. Vibe and Vibe Light stay in the list, with Glass Light, Midnight Navy and Gold, Graphite Dark, Ocean Blue, Warm Sand, Mono Minimal, Mint Breeze, Rose Quartz, Aurora Night, and Carbon Electric. The choice is saved in this browser.
 
 On the Dashboard, pick the week. The date snaps to the Monday. The week snapshot uses the same sheet numbers as Ins and Outs. Gross is Ins. Fees, fuel, tolls, and fixed split the Outs. Net is Ins minus Outs. Close status says Open or Locked. **Open issues** opens Issues for that week. Management profit and loss is under the snapshot. Income is the management fee on this week's sheet loads. Expenses are the portal costs for that week's month. Tolson payable is its own line. Net subtracts portal expenses and Tolson payable. Legacy kept is income minus Tolson payable.
 
@@ -179,7 +191,7 @@ The footer shows the app version. It adds a plain sentence only when the Google 
 
 Only an admin can use this. The owner role counts as an admin. The page uses files. Connect QuickBooks is hidden unless the server has `QUICKBOOKS_API_ENABLED` set to `true`.
 
-1. Open **Integrations**.
+1. Open **Integrations**. TRET sits in the center. Vektor, Google Sheets, QuickBooks files, and Gemini AI sit around it. A node glows when that connection is set. AI status shows OK, Busy, or Not set. It is a test call only. The key is not shown.
 2. Save the four QuickBooks account names once. A subaccount is `Parent: Sub`.
 3. Pick a week and click **Download journal CSV**. The file has the weekly management fee income and the Tolson payable.
 4. In QuickBooks Online, open the gear menu, choose Import data, then Journal entries, and upload that file. Map the columns. Turn account numbers off if you use names. A payable line may need a vendor name after the import.
