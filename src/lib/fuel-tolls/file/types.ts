@@ -95,4 +95,6 @@ export type PlanResult = {
   rows: ImportPreviewRow[];
   message: string | null;
   headers: string[];
+  /** Set when the model was busy. Null when the rules ran on their own. */
+  aiNotice: string | null;
 };

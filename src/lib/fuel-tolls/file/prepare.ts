@@ -1,8 +1,11 @@
 import { geminiConfigured, suggestAssignment, suggestColumnMap } from "@/lib/llm-gateway/gemini";
 import { SEEDED_IDENTITIES, truckLabel, type TruckIdentity } from "./mappings";
+import { AI_BUSY_NOTE } from "./messages";
 import { markAiMapped, planImport } from "./plan";
 import { applyColumnMap, parseGrid } from "./parse";
 import type { ImportContext, ImportPreviewRow, PlanResult } from "./types";
+
+type Sleep = (ms: number) => Promise<void>;
 
 export async function prepareImport(
   grid: string[][],
@@ -10,22 +13,38 @@ export async function prepareImport(
   identities: readonly TruckIdentity[] = SEEDED_IDENTITIES,
   env: Record<string, string | undefined> = process.env,
   fetchImpl: typeof fetch = fetch,
+  sleep?: Sleep,
 ): Promise<PlanResult> {
   let working = grid;
   let aiMapped = false;
+  let aiBusy = false;
   const first = parseGrid(grid);
   if (first.kind === "unknown" && geminiConfigured(env)) {
     const headers = first.header.map((header) => header.trim()).filter(Boolean);
-    const mapped = await suggestColumnMap(headers, env, fetchImpl);
-    if (mapped) {
-      working = applyColumnMap(grid, mapped.kind, mapped.columns);
-      aiMapped = parseGrid(working).kind === mapped.kind;
+    const mapped = await suggestColumnMap(headers, env, fetchImpl, sleep);
+    if (mapped.busy) aiBusy = true;
+    else if (mapped.map) {
+      working = applyColumnMap(grid, mapped.map.kind, mapped.map.columns);
+      aiMapped = parseGrid(working).kind === mapped.map.kind;
     }
   }
   const planned = planImport(working, context, identities);
   let rows = aiMapped ? markAiMapped(planned.rows) : planned.rows;
-  if (geminiConfigured(env)) rows = await addSuggestions(rows, context, identities, env, fetchImpl);
-  return { ...planned, rows };
+  if (geminiConfigured(env) && !aiBusy) {
+    const suggested = await addSuggestions(rows, context, identities, env, fetchImpl, sleep);
+    rows = suggested.rows;
+    aiBusy = suggested.busy;
+  }
+  if (aiBusy) rows = rows.map(withBusyNote);
+  return { ...planned, rows, aiNotice: aiBusy ? AI_BUSY_NOTE : null };
+}
+
+function withBusyNote(row: ImportPreviewRow): ImportPreviewRow {
+  if (row.status !== "flagged" && !row.queue) return row;
+  if (row.reason?.includes(AI_BUSY_NOTE)) return row;
+  const reason = row.reason ? `${row.reason} ${AI_BUSY_NOTE}.` : AI_BUSY_NOTE;
+  const payload = row.payload ? { ...row.payload, reason } : row.payload;
+  return { ...row, reason, payload };
 }
 
 async function addSuggestions(
@@ -34,7 +53,8 @@ async function addSuggestions(
   identities: readonly TruckIdentity[],
   env: Record<string, string | undefined>,
   fetchImpl: typeof fetch,
-): Promise<ImportPreviewRow[]> {
+  sleep?: Sleep,
+): Promise<{ rows: ImportPreviewRow[]; busy: boolean }> {
   const next = rows.slice();
   let calls = 0;
   for (let index = 0; index < next.length && calls < 8; index++) {
@@ -43,7 +63,7 @@ async function addSuggestions(
     const choices = choicesFor(row, context, identities);
     if (choices.length === 0) continue;
     calls += 1;
-    const choice = await suggestAssignment(
+    const suggested = await suggestAssignment(
       {
         kind: row.kind,
         unit: row.unitNumber ?? "",
@@ -56,9 +76,14 @@ async function addSuggestions(
       },
       env,
       fetchImpl,
+      sleep,
     );
-    if (!choice) continue;
-    const label = row.kind === "fuel" && identities.some((item) => item.unitNumber === choice) ? truckLabel(choice) : choice;
+    if (suggested.busy) return { rows: next, busy: true };
+    if (!suggested.choice) continue;
+    const label =
+      row.kind === "fuel" && identities.some((item) => item.unitNumber === suggested.choice)
+        ? truckLabel(suggested.choice)
+        : suggested.choice;
     next[index] = {
       ...row,
       aiSuggested: true,
@@ -66,7 +91,7 @@ async function addSuggestions(
       reason: row.reason ? `${row.reason} AI suggested ${label}.` : `AI suggested ${label}.`,
     };
   }
-  return next;
+  return { rows: next, busy: false };
 }
 
 function choicesFor(

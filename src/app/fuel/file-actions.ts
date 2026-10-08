@@ -48,7 +48,7 @@ function decodeUpload(input: Upload): { ok: true; grid: string[][] } | { ok: fal
 }
 
 export async function previewFuelTollFileAction(input: Upload): Promise<
-  | { ok: true; kind: string; message: string | null; rows: ImportPreviewRow[] }
+  | { ok: true; kind: string; message: string | null; aiNotice: string | null; rows: ImportPreviewRow[] }
   | { ok: false; error: string }
 > {
   const auth = await gate();
@@ -57,7 +57,7 @@ export async function previewFuelTollFileAction(input: Upload): Promise<
   if (!decoded.ok) return decoded;
   const { context, identities } = await contextForUnits(auth.supabase, []);
   const plan = await prepareImport(decoded.grid, context, identities);
-  return { ok: true, kind: plan.kind, message: plan.message, rows: plan.rows };
+  return { ok: true, kind: plan.kind, message: plan.message, aiNotice: plan.aiNotice, rows: plan.rows };
 }
 
 export async function approveFuelTollFileAction(input: Upload): Promise<

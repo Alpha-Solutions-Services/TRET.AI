@@ -64,12 +64,25 @@ export function planImport(
       rows: [],
       headers: parsed.header,
       message: "This file is not a fuel card CSV or an E-ZPass workbook.",
+      aiNotice: null,
     };
   }
   if (parsed.kind === "fuel") {
-    return { kind: "fuel", rows: planFuel(parsed.rows, context, identities), headers: parsed.header, message: null };
+    return {
+      kind: "fuel",
+      rows: planFuel(parsed.rows, context, identities),
+      headers: parsed.header,
+      message: null,
+      aiNotice: null,
+    };
   }
-  return { kind: "toll", rows: planToll(parsed.rows, context, identities), headers: parsed.header, message: null };
+  return {
+    kind: "toll",
+    rows: planToll(parsed.rows, context, identities),
+    headers: parsed.header,
+    message: null,
+    aiNotice: null,
+  };
 }
 
 function productOf(item: string): "diesel" | "def" | null {

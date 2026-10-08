@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { suggestAssignment, suggestColumnMap } from "@/lib/llm-gateway/gemini";
+import { AI_BUSY_NOTE } from "./messages";
+import { SEEDED_IDENTITIES } from "./mappings";
+import { prepareImport } from "./prepare";
 import { gridFromUpload, parseGrid } from "./parse";
 import { parseXlsxGrid } from "./xlsx";
 import {
@@ -257,12 +260,14 @@ describe("toll time", () => {
 
 describe("AI fallback", () => {
   it("does nothing without a key", async () => {
-    expect(await suggestColumnMap(["A", "B"], {})).toBeNull();
+    expect((await suggestColumnMap(["A", "B"], {})).map).toBeNull();
     expect(
-      await suggestAssignment(
-        { kind: "fuel", unit: "03", card: "", plate: "", tag: "", date: "", location: "", choices: ["3"] },
-        {},
-      ),
+      (
+        await suggestAssignment(
+          { kind: "fuel", unit: "03", card: "", plate: "", tag: "", date: "", location: "", choices: ["3"] },
+          {},
+        )
+      ).choice,
     ).toBeNull();
   });
 
@@ -275,8 +280,14 @@ describe("AI fallback", () => {
   });
 
   it("accepts only a header the file actually has", async () => {
-    const fetchImpl = (async () =>
-      new Response(
+    const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+      expect(String(url)).toBe(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+      );
+      expect(String(url)).not.toContain("test-key");
+      const headers = new Headers(init?.headers);
+      expect(headers.get("X-goog-api-key")).toBe("test-key");
+      return new Response(
         JSON.stringify({
           candidates: [
             {
@@ -293,9 +304,55 @@ describe("AI fallback", () => {
             },
           ],
         }),
-      )) as typeof fetch;
-    const mapped = await suggestColumnMap(["Posted", "Unit", "Item", "Qty", "Amt"], { GEMINI_API_KEY: "test" }, fetchImpl);
-    expect(mapped?.columns.tranDate).toBe("Posted");
-    expect(mapped?.columns.unit).toBe("Unit");
+      );
+    }) as typeof fetch;
+    const mapped = await suggestColumnMap(
+      ["Posted", "Unit", "Item", "Qty", "Amt"],
+      { GEMINI_API_KEY: "test-key" },
+      fetchImpl,
+    );
+    expect(mapped.map?.columns.tranDate).toBe("Posted");
+    expect(mapped.map?.columns.unit).toBe("Unit");
+    expect(mapped.busy).toBe(false);
+  });
+
+  it("keeps the rules and marks the queue when the model stays busy", async () => {
+    const grid = gridFromUpload({ csvText: fuelCsv }).map((row) => row.slice());
+    const unit = grid[0]?.indexOf("Unit") ?? -1;
+    grid[1]![unit] = "99";
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls += 1;
+      return new Response("high demand", { status: 503 });
+    }) as typeof fetch;
+    const plan = await prepareImport(
+      grid,
+      fuelContext(),
+      SEEDED_IDENTITIES,
+      { GEMINI_API_KEY: "secret-key" },
+      fetchImpl,
+      async () => {},
+    );
+    const flagged = plan.rows.find((row) => row.status === "flagged")!;
+    expect(calls).toBe(3);
+    expect(plan.aiNotice).toBe(AI_BUSY_NOTE);
+    expect(flagged.reason).toContain(AI_BUSY_NOTE);
+    expect(flagged.aiSuggested).toBe(false);
+    expect(flagged.cells).toEqual([]);
+  });
+
+  it("stays on the rules when the key is rejected", async () => {
+    const fetchImpl = (async () => new Response("API key not valid", { status: 400 })) as typeof fetch;
+    const plan = await prepareImport(
+      [["Nope", "Also"], ["x", "y"]],
+      {},
+      SEEDED_IDENTITIES,
+      { GEMINI_API_KEY: "secret-key" },
+      fetchImpl,
+      async () => {},
+    );
+    expect(plan.kind).toBe("unknown");
+    expect(plan.aiNotice).toBeNull();
+    expect(plan.message).toMatch(/not a fuel card/);
   });
 });

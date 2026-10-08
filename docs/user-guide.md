@@ -124,7 +124,7 @@ Importing the same Vektor transaction again updates that row. It does not add a 
 
 1. Open **Fuel** or **Tolls**.
 2. Choose a CSV or XLSX. A fuel card file and an E-ZPass file are detected from the headers.
-3. The preview lists each row: truck, week, linked load or trip, the sheet and cells that would change, and New, Duplicate, or Flagged. A flagged row includes a plain reason. AI suggested appears only when a model proposed a column map or a truck or load. Those rows are not written on their own.
+3. The preview lists each row: truck, week, linked load or trip, the sheet and cells that would change, and New, Duplicate, or Flagged. A flagged row includes a plain reason. AI suggested appears only when a model proposed a column map or a truck or load. Those rows are not written on their own. If the model is busy, the review queue says AI busy, try again, and the rules still decide the rows.
 4. Click **Approve and write to sheets**. New fuel rows go on that truck's Fuel Log. New tolls add to Toll Expense on the load. Duplicates are skipped. Flagged rows go to the review queue.
 5. In **Review queue**, pick a truck or type a Load ID (`TBH--1192`) or Trip Group ID (`M-1195`), then click **Approve**. **Dismiss** leaves the sheet unchanged.
 

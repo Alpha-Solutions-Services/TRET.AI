@@ -40,6 +40,7 @@ export function FileImportPanel({
   const [file, setFile] = useState<File | null>(null);
   const [kind, setKind] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [aiNotice, setAiNotice] = useState<string | null>(null);
   const [rows, setRows] = useState<ImportPreviewRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
@@ -48,6 +49,8 @@ export function FileImportPanel({
     setFile(next);
     setRows(null);
     setKind(null);
+    setMessage(null);
+    setAiNotice(null);
     setResult(null);
     setError(null);
     if (!next) return;
@@ -60,6 +63,7 @@ export function FileImportPanel({
       }
       setKind(preview.kind);
       setMessage(preview.message);
+      setAiNotice(preview.aiNotice);
       setRows(preview.rows);
     });
   }
@@ -119,7 +123,13 @@ export function FileImportPanel({
         </p>
       ) : null}
       {rows && rows.length > 0 ? <UploadPreviewTable rows={rows} /> : null}
-      <QueueBlock queue={queue} truckUnits={truckUnits} queueReady={queueReady} pending={pending} />
+      <QueueBlock
+        queue={queue}
+        truckUnits={truckUnits}
+        queueReady={queueReady}
+        pending={pending}
+        aiNotice={aiNotice}
+      />
     </section>
   );
 }
@@ -129,11 +139,13 @@ function QueueBlock({
   truckUnits,
   queueReady,
   pending,
+  aiNotice,
 }: {
   queue: OpenQueueItem[];
   truckUnits: string[];
   queueReady: boolean;
   pending: boolean;
+  aiNotice: string | null;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -142,6 +154,7 @@ function QueueBlock({
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-semibold">Review queue</h2>
+      {aiNotice ? <p className="text-sm">{aiNotice}</p> : null}
       {!queueReady ? (
         <p className="text-sm text-[var(--color-fg-muted)]">
           The review queue is not available until the v0.0.0.29 migration is applied.
