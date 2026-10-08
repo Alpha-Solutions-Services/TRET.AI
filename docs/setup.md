@@ -200,7 +200,7 @@ Do this only when you are ready. It is not applied yet.
 1. In the Supabase SQL editor, run `supabase/migrations/20261008180000_v29_fuel_toll_file.sql` after the earlier scripts.
 2. It adds card, plate, and tag tables, the fuel and toll file import log, and the review queue. Each table has Row Level Security for allowed users. The seed fills cards, plates, and tags for trucks that already exist.
 3. Until it has run, Fuel and Tolls can still preview a file with the built-in truck list. Approve and the truck Edit maps say the migration has not been applied.
-4. Optional: set `GEMINI_API_KEY` (server only) on Vercel Production and Preview, and locally, if you want a suggestion on an unknown file layout. The default model is `gemini-flash-latest`. Set `GEMINI_MODEL` only to override it. Leave the key blank, or leave a rejected key in place: the import stays on the rules and does not show an error. If the model answers that it is busy, the review queue says AI busy, try again.
+4. Optional: set `GEMINI_API_KEY` (server only) on Vercel Production and Preview, and locally, if you want a suggestion on an unknown file layout. The default model is `gemini-flash-latest`. Set `GEMINI_MODEL` only to override it. Leave the key blank, or leave a rejected key in place: the import stays on the rules and does not show an error. If the model answers that it is busy, the review queue says AI busy, try again. Integrations shows AI status as OK, Busy, or Not set. The check does not print the key.
 
 ## 23. v0.0.0.26 database update
 

@@ -1,7 +1,8 @@
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { formatFooterLabel } from "@/lib/app-version";
 import { buildManagementPnl, type ManagementPnl } from "@/lib/overview/pnl";
-import { buildSheetWeekSnapshot, buildWeekSnapshot, type WeekSnapshot } from "@/lib/overview/snapshot";
+import { loadStoredWeekTotals } from "@/lib/import-pipeline/stored";
+import { applyImportedFuelToll, buildSheetWeekSnapshot, buildWeekSnapshot, type WeekSnapshot } from "@/lib/overview/snapshot";
 import { listOperatingExpenses } from "@/lib/operating-expenses/queries";
 import { buildInbox, countOpenIssues } from "@/lib/issues/inbox";
 import { listImportIssues } from "@/lib/issues/queries";
@@ -42,7 +43,10 @@ export async function loadOverview(weekRaw: string | undefined): Promise<Overvie
     listImportIssues(),
   ]);
 
-  const sheetSnapshot = ins.rows.some((row) => row.readable) ? buildSheetWeekSnapshot(ins.rows) : null;
+  const imported = await loadStoredWeekTotals(bounds.start);
+  const sheetSnapshot = ins.rows.some((row) => row.readable)
+    ? applyImportedFuelToll(buildSheetWeekSnapshot(ins.rows), imported)
+    : null;
 
   const base = {
     weekStart: statements.weekStart,

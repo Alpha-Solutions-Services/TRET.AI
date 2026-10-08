@@ -133,8 +133,74 @@ export async function suggestColumnMap(
   return { map: { kind: record.kind, columns }, busy: false };
 }
 
+const LOAD_FIELDS = [
+  "load_id",
+  "rate",
+  "unit",
+  "driver",
+  "loaded_miles",
+  "deadhead_miles",
+  "pickup_date",
+  "delivery_date",
+  "broker",
+  "status",
+] as const;
+
+export type LoadColumnMapResult = { map: Record<string, string> | null; busy: boolean };
+
+/** Header names only. Used when a loads file is not the Vektor orders export. */
+export async function suggestLoadColumnMap(
+  headers: string[],
+  env: Record<string, string | undefined>,
+  fetchImpl: typeof fetch = fetch,
+  sleep?: Sleep,
+): Promise<LoadColumnMapResult> {
+  if (!geminiConfigured(env)) return { map: null, busy: false };
+  const prompt = [
+    "Map these spreadsheet headers to load fields. Return JSON only.",
+    `Fields: ${LOAD_FIELDS.join(", ")}.`,
+    "Use a header only if it appears in the list below. Do not invent headers.",
+    `Headers: ${JSON.stringify(headers)}`,
+    'Return {"columns":{"field":"Header text"}}.',
+  ].join("\n");
+  const parsed = await geminiJson(prompt, env, fetchImpl, sleep);
+  if (!parsed.ok) return { map: null, busy: parsed.busy };
+  if (!parsed.value || typeof parsed.value !== "object") return { map: null, busy: false };
+  const columns = (parsed.value as { columns?: unknown }).columns;
+  if (!columns || typeof columns !== "object") return { map: null, busy: false };
+  const allowed = new Set<string>(LOAD_FIELDS);
+  const known = new Set(headers.map((header) => header.trim()));
+  const map: Record<string, string> = {};
+  for (const [field, header] of Object.entries(columns as Record<string, unknown>)) {
+    if (!allowed.has(field)) continue;
+    if (typeof header !== "string" || !known.has(header.trim())) continue;
+    map[field] = header.trim();
+  }
+  if (["load_id", "rate", "unit", "delivery_date"].some((field) => !map[field])) return { map: null, busy: false };
+  return { map, busy: false };
+}
+
+export const AI_STATUS_OK = "OK";
+export const AI_STATUS_BUSY = "Busy";
+export const AI_STATUS_NOT_SET = "Not set";
+
+export type AiStatus = typeof AI_STATUS_OK | typeof AI_STATUS_BUSY | typeof AI_STATUS_NOT_SET;
+
+/** One tiny call. The key is never included in the result. */
+export async function readAiStatus(
+  env: Record<string, string | undefined>,
+  fetchImpl: typeof fetch = fetch,
+  sleep?: Sleep,
+): Promise<AiStatus> {
+  if (!geminiConfigured(env)) return AI_STATUS_NOT_SET;
+  const parsed = await geminiJson('Return {"ok":true} as JSON.', env, fetchImpl, sleep);
+  if (parsed.ok) return AI_STATUS_OK;
+  if (parsed.busy) return AI_STATUS_BUSY;
+  return AI_STATUS_NOT_SET;
+}
+
 export type AssignmentHint = {
-  kind: "fuel" | "toll";
+  kind: "fuel" | "toll" | "load";
   unit: string;
   card: string;
   plate: string;

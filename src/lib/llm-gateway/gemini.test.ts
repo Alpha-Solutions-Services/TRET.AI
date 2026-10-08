@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  AI_STATUS_BUSY,
+  AI_STATUS_NOT_SET,
+  AI_STATUS_OK,
   GEMINI_BUSY_BACKOFF_MS,
   GEMINI_DEFAULT_MODEL,
   geminiJson,
+  readAiStatus,
   suggestColumnMap,
 } from "./gemini";
 
@@ -77,6 +81,36 @@ describe("gemini gateway", () => {
     const mapped = await suggestColumnMap(["Posted"], { GEMINI_API_KEY: "nope" }, fetchImpl, async () => {});
     expect(calls).toBe(1);
     expect(mapped).toEqual({ map: null, busy: false });
+  });
+
+  it("reports AI status without putting the key in the result", async () => {
+    const missing = await readAiStatus({}, async () => {
+      throw new Error("should not call");
+    });
+    expect(missing).toBe(AI_STATUS_NOT_SET);
+
+    let seenUrl = "";
+    const ok = await readAiStatus({ GEMINI_API_KEY: "secret-key" }, (async (url: string | URL | Request) => {
+      seenUrl = String(url);
+      return jsonResponse({ candidates: [{ content: { parts: [{ text: "{\"ok\":true}" }] } }] });
+    }) as typeof fetch);
+    expect(ok).toBe(AI_STATUS_OK);
+    expect(seenUrl).not.toContain("secret-key");
+    expect(JSON.stringify(ok)).not.toContain("secret-key");
+
+    const busy = await readAiStatus(
+      { GEMINI_API_KEY: "secret-key" },
+      (async () => new Response("high demand", { status: 503 })) as typeof fetch,
+      async () => {},
+    );
+    expect(busy).toBe(AI_STATUS_BUSY);
+
+    const invalid = await readAiStatus(
+      { GEMINI_API_KEY: "secret-key" },
+      (async () => new Response("API key not valid", { status: 400 })) as typeof fetch,
+      async () => {},
+    );
+    expect(invalid).toBe(AI_STATUS_NOT_SET);
   });
 
   it("does not call the model when the key is missing", async () => {

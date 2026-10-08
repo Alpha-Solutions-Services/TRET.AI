@@ -6,7 +6,7 @@ import { weekBoundsForDate } from "@/lib/fee-engine/week";
 import { contextForUnits, tollTargetsFromLedgerGrid } from "@/lib/fuel-tolls/file/context";
 import { canonicalStoredLoadId, canonicalTripId } from "@/lib/fuel-tolls/file/link";
 import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
-import { prepareImport } from "@/lib/fuel-tolls/file/prepare";
+import { runSharedImport } from "@/lib/import-pipeline/run";
 import { gridFromUpload } from "@/lib/fuel-tolls/file/parse";
 import { cellA1, fuelLogTab, ledgerTab, locateFuelLogColumns } from "@/lib/fuel-tolls/file/sheet-columns";
 import type { FuelQueuePayload, ImportPreviewRow, TollQueuePayload } from "@/lib/fuel-tolls/file/types";
@@ -56,7 +56,9 @@ export async function previewFuelTollFileAction(input: Upload): Promise<
   const decoded = decodeUpload(input);
   if (!decoded.ok) return decoded;
   const { context, identities } = await contextForUnits(auth.supabase, []);
-  const plan = await prepareImport(decoded.grid, context, identities);
+  const shared = await runSharedImport({ fileGrid: decoded.grid, context, identities });
+  const plan = shared.file;
+  if (!plan) return { ok: false, error: "This file is not a fuel card CSV or an E-ZPass workbook." };
   return { ok: true, kind: plan.kind, message: plan.message, aiNotice: plan.aiNotice, rows: plan.rows };
 }
 
@@ -69,9 +71,10 @@ export async function approveFuelTollFileAction(input: Upload): Promise<
   const decoded = decodeUpload(input);
   if (!decoded.ok) return decoded;
   const { context, identities } = await contextForUnits(auth.supabase, []);
-  const plan = await prepareImport(decoded.grid, context, identities);
-  if (plan.kind === "unknown") {
-    return { ok: false, error: plan.message ?? "This file is not a fuel card CSV or an E-ZPass workbook." };
+  const shared = await runSharedImport({ fileGrid: decoded.grid, context, identities });
+  const plan = shared.file;
+  if (!plan || plan.kind === "unknown") {
+    return { ok: false, error: plan?.message ?? "This file is not a fuel card CSV or an E-ZPass workbook." };
   }
 
   const trucks = await auth.supabase.from("trucks").select("id, unit_number, google_sheet_url");

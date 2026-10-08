@@ -125,8 +125,9 @@ Importing the same Vektor transaction again updates that row. It does not add a 
 1. Open **Fuel** or **Tolls**.
 2. Choose a CSV or XLSX. A fuel card file and an E-ZPass file are detected from the headers.
 3. The preview lists each row: truck, week, linked load or trip, the sheet and cells that would change, and New, Duplicate, or Flagged. A flagged row includes a plain reason. AI suggested appears only when a model proposed a column map or a truck or load. Those rows are not written on their own. If the model is busy, the review queue says AI busy, try again, and the rules still decide the rows.
-4. Click **Approve and write to sheets**. New fuel rows go on that truck's Fuel Log. New tolls add to Toll Expense on the load. Duplicates are skipped. Flagged rows go to the review queue.
-5. In **Review queue**, pick a truck or type a Load ID (`TBH--1192`) or Trip Group ID (`M-1195`), then click **Approve**. **Dismiss** leaves the sheet unchanged.
+4. Click **Approve and write to sheets**. New fuel rows go on that truck's Fuel Log. New tolls add to Toll Expense on the load. Vektor load fields stay on Write to sheet until you approve that cell. Duplicates are skipped. Flagged rows go to the review queue. Nothing is written before that approval.
+5. After approval, the dashboard fuel and toll lines, the weekly report fuel and toll lines, and the sheet cells use the same totals: fuel gallons and cost, DEF, tolls per load, loaded miles, dispatch miles, and MPG.
+6. In **Review queue**, pick a truck or type a Load ID (`TBH--1192`) or Trip Group ID (`M-1195`), then click **Approve**. **Dismiss** leaves the sheet unchanged.
 
 Fees on a fuel row are not added to Total Cost. A fuel row with no load is still written, with Load ID and Trip Group ID blank, and it stays in the queue so you can link it later.
 
@@ -190,7 +191,7 @@ The footer shows the app version. It adds a plain sentence only when the Google 
 
 Only an admin can use this. The owner role counts as an admin. The page uses files. Connect QuickBooks is hidden unless the server has `QUICKBOOKS_API_ENABLED` set to `true`.
 
-1. Open **Integrations**.
+1. Open **Integrations**. AI status shows OK, Busy, or Not set. It is a test call only. The key is not shown.
 2. Save the four QuickBooks account names once. A subaccount is `Parent: Sub`.
 3. Pick a week and click **Download journal CSV**. The file has the weekly management fee income and the Tolson payable.
 4. In QuickBooks Online, open the gear menu, choose Import data, then Journal entries, and upload that file. Map the columns. Turn account numbers off if you use names. A payable line may need a vendor name after the import.

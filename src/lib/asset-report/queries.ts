@@ -1,9 +1,10 @@
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { buildAssetReport } from "@/lib/asset-report/build";
+import { loadStoredWeekTotals } from "@/lib/import-pipeline/stored";
+import { unitKey } from "@/lib/sheets/mismatch";
 import { renderAssetReportPdf } from "@/lib/asset-report/pdf";
 import { manifestRefsByLoad } from "@/lib/asset-report/manifest-refs";
 import { loadTruckWorkbook } from "@/lib/sheets/read";
-import { unitKey } from "@/lib/sheets/mismatch";
 import { createClient } from "@/lib/supabase/server";
 import { listTrucks } from "@/lib/trucks/queries";
 
@@ -19,6 +20,9 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
     googleSheetUrl: truck.google_sheet_url,
   });
   const extras = await loadDbFuelAndTolls(truck.unit_number, bounds.start);
+  const imported = (await loadStoredWeekTotals(bounds.start)).find(
+    (row) => unitKey(row.unitNumber) === unitKey(truck.unit_number),
+  );
   const report = buildAssetReport({
     weekStart: bounds.start,
     weekEnd: bounds.end,
@@ -34,6 +38,16 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
     dbGallonsMilli: extras.gallonsMilli,
     dbTollCents: extras.tollCents,
     manifestRefs: await loadManifestRefs(truck.unit_number),
+    importTotals: imported
+      ? {
+          fuelCostCents: imported.fuelCostCents,
+          tollCents: imported.tollCents,
+          dieselGallonsMilli: imported.dieselGallonsMilli,
+          loadedMilesHundredths: imported.loadedMilesHundredths,
+          deadheadMilesHundredths: imported.deadheadMilesHundredths,
+          dispatchMilesHundredths: imported.dispatchMilesHundredths,
+        }
+      : null,
   });
   return renderAssetReportPdf(report);
 }

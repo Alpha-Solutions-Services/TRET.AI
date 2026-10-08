@@ -2,6 +2,7 @@ import { assertInteger, assertNonNegativeInteger } from "@/lib/fee-engine/money"
 import { expectedNetCents } from "@/lib/statements/engine";
 import type { TruckClass } from "@/lib/fee-engine";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
+import { unitKey } from "@/lib/sheets/mismatch";
 import type { UnitStatement } from "@/lib/statements/types";
 
 const SHEET_FEE_LABELS = new Set([
@@ -102,6 +103,53 @@ function sheetSnapshotRow(row: TruckWeekInsOuts): SnapshotRow {
   assertSnapshotMoney(snapshot, row.unitNumber);
   assertSnapshotIdentity(snapshot, row.unitNumber);
   return snapshot;
+}
+
+/**
+ * After an import, fuel and toll lines use those totals.
+ * Net stays Ins minus Outs. The remainder of Outs stays in fixed.
+ * A total that would push fixed below zero leaves the sheet split in place.
+ */
+export function applyImportedFuelToll(
+  snapshot: WeekSnapshot,
+  imported: readonly { unitNumber: string; fuelCostCents: number; tollCents: number }[],
+): WeekSnapshot {
+  if (imported.length === 0) return snapshot;
+  const byUnit = new Map<string, { fuelCents: number; tollsCents: number }>();
+  for (const row of imported) {
+    const key = unitKey(row.unitNumber);
+    const current = byUnit.get(key) ?? { fuelCents: 0, tollsCents: 0 };
+    current.fuelCents += row.fuelCostCents;
+    current.tollsCents += row.tollCents;
+    byUnit.set(key, current);
+  }
+  const units = snapshot.units.map((row) => {
+    const next = byUnit.get(unitKey(row.unitNumber));
+    if (!next || (next.fuelCents === 0 && next.tollsCents === 0)) return row;
+    const fixedCents = row.grossCents - row.feesCents - next.fuelCents - next.tollsCents - row.netCents;
+    if (fixedCents < 0) return row;
+    const updated: SnapshotRow = {
+      ...row,
+      fuelCents: next.fuelCents,
+      tollsCents: next.tollsCents,
+      fixedCents,
+    };
+    assertSnapshotMoney(updated, row.unitNumber);
+    assertSnapshotIdentity(updated, row.unitNumber);
+    return updated;
+  });
+  const fleet = emptyFleet();
+  for (const row of units) {
+    fleet.grossCents += row.grossCents;
+    fleet.feesCents += row.feesCents;
+    fleet.fuelCents += row.fuelCents;
+    fleet.tollsCents += row.tollsCents;
+    fleet.fixedCents += row.fixedCents;
+    fleet.netCents += row.netCents;
+  }
+  assertSnapshotMoney(fleet, "fleet");
+  assertSnapshotIdentity(fleet, "fleet");
+  return { units, fleet };
 }
 
 export function buildWeekSnapshot(units: UnitStatement[]): WeekSnapshot {
