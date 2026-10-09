@@ -9,6 +9,10 @@ import {
   updateTruckAction,
 } from "@/app/trucks/actions";
 import { FixedExpensesPanel } from "@/components/trucks/fixed-expenses-panel";
+import { InlineFixedExpenses, type QueuedSheetWrite } from "@/components/trucks/inline-fixed-expenses";
+import { TruckFeeCard } from "@/components/trucks/truck-fee-card";
+import { PrepareReportButtons, ReportWeekLabel } from "@/components/reports/report-week";
+import type { FeeSettingView } from "@/lib/fees/fee-settings";
 import { TruckIdentityForm } from "@/components/trucks/truck-identity-form";
 import { GoogleSheetLink } from "@/components/trucks/google-sheet-link";
 import {
@@ -66,6 +70,10 @@ type Props = {
   identityCards: string;
   identityPlates: string;
   identityTags: string;
+  weekStart: string;
+  queue: QueuedSheetWrite[];
+  fee: FeeSettingView | null;
+  feeReady: boolean;
 };
 
 function emptyRules(
@@ -96,6 +104,10 @@ export function TruckDetailClient({
   identityCards,
   identityPlates,
   identityTags,
+  weekStart,
+  queue,
+  fee,
+  feeReady,
 }: Props) {
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -351,6 +363,12 @@ export function TruckDetailClient({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ReportWeekLabel weekStart={weekStart} />
+        <PrepareReportButtons weekStart={weekStart} unitNumber={truck.unit_number} showAll />
+      </div>
+      {fee ? <TruckFeeCard row={fee} ready={feeReady} /> : null}
+
       <div role="tablist" aria-label="Truck sections" className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -385,7 +403,15 @@ export function TruckDetailClient({
       </div>
 
       {tab === "expenses" ? (
-        <div role="tabpanel" id="truck-panel-expenses" aria-labelledby="truck-tab-expenses">
+        <div role="tabpanel" id="truck-panel-expenses" aria-labelledby="truck-tab-expenses" className="space-y-8">
+          <InlineFixedExpenses
+            truckId={truck.id}
+            unitNumber={truck.unit_number}
+            sheetUrl={truck.google_sheet_url}
+            weekStart={weekStart}
+            bundle={expenses}
+            queue={queue}
+          />
           <FixedExpensesPanel
             truckId={truck.id}
             bundle={expenses}

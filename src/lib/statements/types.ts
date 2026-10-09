@@ -2,12 +2,25 @@ import type { TruckClass } from "@/lib/fee-engine";
 import type { ChargedTo, FixedExpenseKind } from "@/lib/fixed-expenses/kinds";
 import type { FeeRuleInput } from "@/lib/fee-engine";
 
+export type FeeModel = "lease_to_tolson" | "owner_management";
+
 export type StatementTruck = {
   id: string;
   unitNumber: string;
   truckClass: TruckClass;
-  /** Basis points when Edit truck stores percent of gross. Null uses the 10 percent default. */
+  /** Blank follows the truck class. Lease is a 10 percent Tolson lease fee. Owner is a 10 percent management fee. */
+  feeModel?: FeeModel | null;
+  /** Basis points when Tolson is a percent. Null means not set. */
   tolsonRateBp?: number | null;
+  /** Cents when Tolson is a fixed weekly amount. */
+  tolsonFixedCents?: number | null;
+  tolsonEffectiveFrom?: string | null;
+  /** Basis points. Null means the 10 percent management fallback. */
+  managementFeeBp?: number | null;
+  managementEffectiveFrom?: string | null;
+  legacyRateBp?: number | null;
+  legacyFixedCents?: number | null;
+  legacyEffectiveFrom?: string | null;
 };
 
 export type StatementContract = {

@@ -1,0 +1,3 @@
+unit,fee_type,management_fee_pct,tolson_payable_pct,tolson_payable_fixed_weekly,legacy_retained_pct,legacy_retained_fixed_weekly,effective_from
+02,lease_to_tolson,,10,,,,
+03,owner_management,10,,,,,

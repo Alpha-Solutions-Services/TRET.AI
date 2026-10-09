@@ -1,4 +1,5 @@
 import { weekBoundsForDate, type FeeRuleKind, type TruckClass } from "@/lib/fee-engine";
+import { lastFinishedWeekStart } from "@/lib/reports/delivery";
 import { isFixedExpenseKind, isChargedTo } from "@/lib/fixed-expenses/kinds";
 import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +12,7 @@ import type {
   StatementBlocker,
   StatementContract,
   StatementLine,
+  StatementTruck,
   UnitStatement,
   WeekStatementInput,
   WeekStatements,
@@ -62,12 +64,62 @@ const EMPTY_FLEET: FleetStatement = {
 
 export function resolveWeekStart(raw: string | undefined): string {
   const today = new Date().toISOString().slice(0, 10);
-  if (!raw) return weekBoundsForDate(today).start;
+  if (!raw) return lastFinishedWeekStart(today);
   try {
     return weekBoundsForDate(raw).start;
   } catch {
-    return weekBoundsForDate(today).start;
+    return lastFinishedWeekStart(today);
   }
+}
+
+const FEE_TRUCK_COLUMNS =
+  "id, unit_number, truck_class, fee_model, tolson_payable_type, tolson_payable_value, tolson_payable_effective_from, management_fee_bp, management_fee_effective_from, legacy_retained_type, legacy_retained_value, legacy_retained_effective_from";
+
+type TruckFeeRow = {
+  id: string;
+  unit_number: string;
+  truck_class: TruckClass;
+  fee_model?: string | null;
+  tolson_payable_type?: string | null;
+  tolson_payable_value?: number | null;
+  tolson_payable_effective_from?: string | null;
+  management_fee_bp?: number | null;
+  management_fee_effective_from?: string | null;
+  legacy_retained_type?: string | null;
+  legacy_retained_value?: number | null;
+  legacy_retained_effective_from?: string | null;
+};
+
+async function loadStatementTrucks(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const full = await supabase.from("trucks").select(FEE_TRUCK_COLUMNS);
+  if (!full.error) return { data: (full.data ?? []) as TruckFeeRow[], error: null };
+  const missing =
+    isMissingSchemaError(full.error) ||
+    /fee_model|management_fee_bp|legacy_retained|tolson_payable_effective/i.test(full.error.message);
+  if (!missing) return { data: null, error: full.error };
+  const base = await supabase
+    .from("trucks")
+    .select("id, unit_number, truck_class, tolson_payable_type, tolson_payable_value");
+  return { data: (base.data ?? null) as TruckFeeRow[] | null, error: base.error };
+}
+
+function mapStatementTruck(truck: TruckFeeRow): StatementTruck {
+  const feeModel =
+    truck.fee_model === "lease_to_tolson" || truck.fee_model === "owner_management" ? truck.fee_model : null;
+  return {
+    id: truck.id,
+    unitNumber: truck.unit_number,
+    truckClass: truck.truck_class,
+    feeModel,
+    tolsonRateBp: truck.tolson_payable_type === "percent_of_gross" ? (truck.tolson_payable_value ?? null) : null,
+    tolsonFixedCents: truck.tolson_payable_type === "fixed_weekly" ? (truck.tolson_payable_value ?? null) : null,
+    tolsonEffectiveFrom: truck.tolson_payable_effective_from ?? null,
+    managementFeeBp: truck.management_fee_bp ?? null,
+    managementEffectiveFrom: truck.management_fee_effective_from ?? null,
+    legacyRateBp: truck.legacy_retained_type === "percent_of_gross" ? (truck.legacy_retained_value ?? null) : null,
+    legacyFixedCents: truck.legacy_retained_type === "fixed_weekly" ? (truck.legacy_retained_value ?? null) : null,
+    legacyEffectiveFrom: truck.legacy_retained_effective_from ?? null,
+  };
 }
 
 export async function loadStatements(weekStart: string): Promise<StatementsPageData> {
@@ -88,7 +140,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
     settingsRes,
     closeRes,
   ] = await Promise.all([
-    supabase.from("trucks").select("id, unit_number, truck_class, tolson_payable_type, tolson_payable_value"),
+    loadStatementTrucks(supabase),
     supabase.from("fee_contracts").select("id, truck_id, effective_from, effective_to"),
     supabase.from("fee_rules").select("contract_id, kind, rate_bp, base_pct_bp"),
     Promise.all([
@@ -175,15 +227,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
   const contracts = groupContracts(contractsRes.data ?? [], rulesRes.data ?? []);
   const input: WeekStatementInput = {
     weekStart: bounds.start,
-    trucks: (trucksRes.data ?? []).map((truck) => ({
-      id: truck.id,
-      unitNumber: truck.unit_number,
-      truckClass: truck.truck_class,
-      tolsonRateBp:
-        truck.tolson_payable_type === "percent_of_gross" && truck.tolson_payable_value != null
-          ? truck.tolson_payable_value
-          : null,
-    })),
+    trucks: (trucksRes.data ?? []).map(mapStatementTruck),
     contracts,
     loads: (loadsRes.error ? [] : (loadsRes.data ?? [])).map((load) => ({
       id: load.id,

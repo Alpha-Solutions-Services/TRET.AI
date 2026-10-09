@@ -60,6 +60,8 @@ export type TruckWeekInsOuts = {
   deadheadMilesHundredths?: number;
   rpmCents?: number | null;
   mpg?: string | null;
+  /** Diesel gallons already used for mpg. Thousandths. Omitted when the sheet was not read. */
+  dieselGallonsMilli?: number;
   categories: ExpenseCategoryTotal[];
   /** True when Outs came from the Weekly Expenses tab. */
   outsFromWeekly: boolean;
@@ -439,6 +441,7 @@ function milesForLoads(loads: LedgerLoadRef[], dieselGallonsMilli: number): {
   deadheadMilesHundredths: number;
   rpmCents: number | null;
   mpg: string | null;
+  dieselGallonsMilli: number;
 } {
   const laid = layoutManifestGroups(
     loads.map((load) => ({
@@ -460,6 +463,7 @@ function milesForLoads(loads: LedgerLoadRef[], dieselGallonsMilli: number): {
     deadheadMilesHundredths: deadhead,
     rpmCents: centsPerLoadedMile(gross, loaded),
     mpg: formatDieselMpg(loaded, dieselGallonsMilli),
+    dieselGallonsMilli,
   };
 }
 

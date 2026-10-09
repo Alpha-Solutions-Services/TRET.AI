@@ -207,19 +207,21 @@ describe("invalid inputs", () => {
     ).toThrow(/rateBp/);
   });
 
-  it("rejects Tolson + Legacy not equal to management", () => {
-    // Hand-calc: 1000 + 400 = 1400 ≠ 1500 management
-    expect(() =>
-      calculateFeeLines({
-        grossCents: 580_000,
-        truckClass: "third_party",
-        rules: [
-          { kind: "MANAGEMENT_FEE", rateBp: 1500, basePctBp: FULL_GROSS },
-          { kind: "TOLSON_PAYABLE", rateBp: 1000, basePctBp: FULL_GROSS },
-          { kind: "LEGACY_RETAINED", rateBp: 400, basePctBp: FULL_GROSS },
-        ],
-      }),
-    ).toThrow(/must equal MANAGEMENT_FEE/);
+  it("allows Tolson and Legacy that do not add up to management", () => {
+    // Hand-calc: management 15% of 580000 = 87000. Tolson 10% = 58000. Legacy 4% = 23200.
+    const lines = calculateFeeLines({
+      grossCents: 580_000,
+      truckClass: "third_party",
+      rules: [
+        { kind: "MANAGEMENT_FEE", rateBp: 1500, basePctBp: FULL_GROSS },
+        { kind: "TOLSON_PAYABLE", rateBp: 1000, basePctBp: FULL_GROSS },
+        { kind: "LEGACY_RETAINED", rateBp: 400, basePctBp: FULL_GROSS },
+      ],
+    });
+    const byKind = Object.fromEntries(lines.map((line) => [line.kind, line.amountCents]));
+    expect(byKind.MANAGEMENT_FEE).toBe(87_000);
+    expect(byKind.TOLSON_PAYABLE).toBe(58_000);
+    expect(byKind.LEGACY_RETAINED).toBe(23_200);
   });
 });
 

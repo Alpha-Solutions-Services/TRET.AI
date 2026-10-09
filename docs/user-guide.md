@@ -136,8 +136,8 @@ Fees on a fuel row are not added to Total Cost. A fuel row with no load is still
 1. Open **Statements**.
 2. Pick the week. The date snaps to the Monday. For 21–27 Sep 2026 choose `2026-09-21`.
 3. The fleet table lists each unit. Click a unit number to see its lines.
-4. Legacy-owned units show Tolson payable. Managed units show one management fee. Lines marked internal are the Tolson and Legacy split and are not subtracted again.
-5. If Close is blocked, the reasons are listed above the button. Fix those, then come back.
+4. Legacy owned trucks show a 10 percent lease fee to Tolson when no rate version is stored. Owner trucks show a 10 percent management fee. The Legacy and Tolson split says Not set until both percents are saved on Fee settings and they add up to the fee. Lines marked internal are not subtracted again.
+5. The week opens on the last finished week. The line says which week the report is for and the Monday it is delivered. Prepare report downloads that truck. Prepare Monday reports downloads every truck. If Close is blocked, the reasons are listed above the button. Fix those, then come back.
 6. **Close week** asks you to confirm. After that the week is locked. The numbers on the page are the snapshot. There is no reopen on this screen.
 7. **Download PDF** saves one file for that week. Each unit has its own pages, then a fleet page. Amounts on the PDF are dollars.
 8. The button stays off while this week has blockers. Fix the listed reasons first.
@@ -148,8 +148,8 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 ## Dashboard
 
 1. Open **Dashboard**.
-2. The top row shows the version, the sheet account check, open issues, and how many loads the readable sheets have this week.
-3. Charts show Ins and Outs by truck, the last eight weeks from those same sheets, and the sheet expense mix. Outs and the mix come from each truck's Weekly Expenses row.
+2. The cards are Ins, Outs, Net, Loads, Loaded miles, Deadhead, RPM, MPG, and Open issues. Loaded miles are whole miles. The hub shows whether Vektor, Sheets, Fuel, Tolls, and Gemini are reaching TRET. A green, yellow, or red dot is a status. Other colors are categories.
+3. Charts show Ins and Outs by truck across the full width, the last eight weeks from those same sheets, and the sheet expense mix. Outs and the mix come from each truck's Weekly Expenses row. Each truck is also a card with loads, miles, RPM, MPG, and net.
 4. The tables below are the week snapshot, the management profit and loss, and the sheet Ins and Outs. The week snapshot uses those same sheet totals. Gross is Ins. Fees, fuel, tolls, and fixed split the Outs. Net is Ins minus Outs. The profit and loss income is the management fee on this week's sheet loads. Expenses are the portal costs for that week's month. Tolson payable is its own line. Net subtracts portal expenses and Tolson payable.
 
 ## Management

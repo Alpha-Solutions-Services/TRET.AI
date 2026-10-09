@@ -1,6 +1,7 @@
 "use client";
 
-import { AreaChart, BarChart, ChartCard, DonutChart, type ChartSeries } from "@/components/charts/charts";
+import { AnimatedBarChart, AnimatedTrendChart } from "@/components/dashboard/animated-charts";
+import { ChartCard, DonutChart, type ChartSeries } from "@/components/charts/charts";
 import { categoryColor } from "@/lib/charts/palette";
 import { fleetInsOutsTotals, fleetWeekTrend, type TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 
@@ -24,16 +25,12 @@ export function FleetCharts({ rows }: { rows: TruckWeekInsOuts[] }) {
     .map((row) => ({ label: row.category, cents: row.cents }));
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="space-y-4">
       <ChartCard title="Ins and outs by truck">
-        <BarChart rows={bars} series={SHEET_SERIES} empty="No readable truck sheets for this week." />
+        <AnimatedBarChart rows={bars} series={SHEET_SERIES} empty="No readable truck sheets for this week." />
       </ChartCard>
       <ChartCard title="Eight week trend">
-        <AreaChart
-          rows={trend}
-          series={SHEET_SERIES}
-          empty="No sheet money in the last eight weeks."
-        />
+        <AnimatedTrendChart rows={trend} series={SHEET_SERIES} empty="No sheet money in the last eight weeks." />
       </ChartCard>
       <ChartCard title="Sheet expense mix">
         <DonutChart slices={slices} empty="No sheet expenses for this week." />

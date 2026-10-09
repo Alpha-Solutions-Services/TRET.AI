@@ -12,15 +12,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
   }
 
-  const week = new URL(request.url).searchParams.get("week") ?? undefined;
+  const url = new URL(request.url);
+  const week = url.searchParams.get("week") ?? undefined;
+  const unit = url.searchParams.get("unit") ?? undefined;
   const weekStart = resolveWeekStart(week);
   try {
-    const bytes = await buildWeeklyStatementPdf(weekStart);
+    const bytes = await buildWeeklyStatementPdf(weekStart, unit || undefined);
     return new NextResponse(Buffer.from(bytes), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="tret-statement-${weekStart}.pdf"`,
+        "Content-Disposition": `attachment; filename="tret-statement-${weekStart}${unit ? `-unit-${unit}` : ""}.pdf"`,
         "Cache-Control": "no-store",
       },
     });

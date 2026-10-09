@@ -6,9 +6,9 @@ import { milesValueToHundredths } from "@/lib/statements/miles";
 import { loadStatements } from "@/lib/statements/queries";
 import { weeklyStatementPdf } from "./build";
 import { ReportBlockedError } from "./prepare";
-import type { ReportFuelRow, ReportLoadRow, ReportTollRow, ReportTruckHeader } from "./types";
+import type { ReportFuelRow, ReportLoadRow, ReportTollRow, ReportTruckHeader, WeeklyReportSource } from "./types";
 
-export async function buildWeeklyStatementPdf(weekStart: string): Promise<Uint8Array> {
+export async function buildWeeklyStatementPdf(weekStart: string, unitNumber?: string): Promise<Uint8Array> {
   assertMonday(weekStart, "Week start");
   const page = await loadStatements(weekStart);
   if (page.error) throw new ReportBlockedError(page.error);
@@ -29,7 +29,7 @@ export async function buildWeeklyStatementPdf(weekStart: string): Promise<Uint8A
     needsTolls,
   });
 
-  return weeklyStatementPdf({
+  const source = {
     weekStart: page.weekStart,
     weekEnd: page.weekEnd,
     locked: page.locked,
@@ -37,7 +37,40 @@ export async function buildWeeklyStatementPdf(weekStart: string): Promise<Uint8A
     units: page.units,
     fleet: page.fleet,
     ...details,
-  });
+  };
+  return weeklyStatementPdf(unitNumber ? onlyUnit(source, unitNumber) : source);
+}
+
+function onlyUnit(source: WeeklyReportSource, unitNumber: string): WeeklyReportSource {
+  const units = source.units.filter((unit) => unit.unitNumber === unitNumber);
+  if (units.length !== 1) {
+    throw new ReportBlockedError(`Truck ${unitNumber} is not on this week.`);
+  }
+  const unit = units[0]!;
+  const fleet = {
+    grossCents: unit.grossCents,
+    driverPayCents: unit.driverPayCents,
+    managementFeeCents: unit.managementFeeCents,
+    tolsonPayableCents: unit.tolsonPayableCents,
+    legacyRetainedCents: unit.legacyRetainedCents,
+    dispatchFeeCents: unit.dispatchFeeCents,
+    factoringFeeCents: unit.factoringFeeCents,
+    fuelCents: unit.fuelCents,
+    tollsCents: unit.tollsCents,
+    fixedOwnerCents: unit.fixedOwnerCents,
+    fixedManagementCents: unit.fixedManagementCents,
+    netCents: unit.netCents,
+    loadCount: unit.loadCount,
+    unitCount: 1,
+  };
+  return {
+    ...source,
+    units,
+    fleet,
+    loads: source.loads.filter((load) => load.truckId === unit.truckId),
+    fuel: source.fuel.filter((row) => row.unitNumber === unit.unitNumber),
+    tolls: source.tolls.filter((row) => row.unitNumber === unit.unitNumber),
+  };
 }
 
 async function loadReportDetails(

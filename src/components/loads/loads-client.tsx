@@ -1,7 +1,9 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import { ReportWeekLabel } from "@/components/reports/report-week";
 import { weekBoundsForDate } from "@/lib/fee-engine";
+import { lastFinishedWeekStart } from "@/lib/reports/delivery";
 import { canonicalLoadId } from "@/lib/loads/load-id";
 import { loadsInWeek } from "@/lib/loads/week-membership";
 import { countedLoadedHundredths, layoutManifestGroups } from "@/lib/loads/manifest-miles";
@@ -54,8 +56,7 @@ export function LoadsClient({
   loads: LoadListRow[];
   truckUnits: string[];
 }) {
-  const todayWeek = weekBoundsForDate(new Date().toISOString().slice(0, 10));
-  const [weekStart, setWeekStart] = useState(todayWeek.start);
+  const [weekStart, setWeekStart] = useState(() => lastFinishedWeekStart());
   const [truck, setTruck] = useState("");
 
   const weekEnd = useMemo(
@@ -116,6 +117,7 @@ export function LoadsClient({
           <Buttonish onClick={() => shiftWeek(-1)}>Previous week</Buttonish>
           <label className="text-sm">
             <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
+            <ReportWeekLabel weekStart={weekStart} />
             <input
               type="date"
               value={weekStart}

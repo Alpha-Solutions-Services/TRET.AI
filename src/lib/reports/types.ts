@@ -59,6 +59,19 @@ export type PreparedLoad = {
   rate: string;
 };
 
+export type PreparedChart = {
+  summary: string;
+  earnedCents: number;
+  spentCents: number;
+  keepsCents: number;
+  expenses: Array<{ label: string; cents: number }>;
+  loads: Array<{ label: string; cents: number }>;
+  loadedHundredths: number;
+  deadheadHundredths: number;
+  mpg: string | null;
+  rpmCents: number | null;
+};
+
 export type PreparedUnit = {
   unitNumber: string;
   truckClassLabel: string;
@@ -76,6 +89,7 @@ export type PreparedUnit = {
   fixedManagement: PreparedPair[];
   compliance: string;
   operationsNote: string;
+  chart: PreparedChart;
 };
 
 export type PreparedReport = {
@@ -85,4 +99,6 @@ export type PreparedReport = {
   units: PreparedUnit[];
   fleetRows: PreparedPair[];
   fleetNote: string;
+  deliveryLabel: string;
+  fleetChart: PreparedChart;
 };

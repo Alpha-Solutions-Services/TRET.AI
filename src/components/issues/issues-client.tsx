@@ -7,6 +7,7 @@ import { CopyableError } from "@/components/copyable-error";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
 import { useToast } from "@/components/ui/toast";
+import { ReportWeekLabel } from "@/components/reports/report-week";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import {
   canResolveIssue,
@@ -152,6 +153,7 @@ export function IssuesClient({
       </div>
 
       <p className="text-sm text-[var(--color-fg-muted)]">
+        <ReportWeekLabel weekStart={data.weekStart} />
         Showing {data.weekStart} through {data.weekEnd}
       </p>
 
