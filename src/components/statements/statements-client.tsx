@@ -13,6 +13,14 @@ import { formatStatementDollars } from "@/lib/reports/format";
 import type { StatementsPageData } from "@/lib/statements/queries";
 import type { UnitStatement } from "@/lib/statements/types";
 import { truckClassLabel } from "@/lib/fees/kinds";
+import { PrepareReportButtons, ReportWeekLabel } from "@/components/reports/report-week";
+
+function rateCell(line: { lineCode: string; rateBp: number | null }): string {
+  if (line.rateBp == null) {
+    return line.lineCode === "TOLSON_PAYABLE" || line.lineCode === "LEGACY_RETAINED" ? "Not set" : "";
+  }
+  return `${bpToPercentString(line.rateBp)}%`;
+}
 
 function money(cents: number): string {
   return formatStatementDollars(cents);
@@ -119,9 +127,13 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
         <Button type="button" variant="secondary" onClick={() => openWeek(shiftWeek(data.weekStart, 1))}>
           Next week
         </Button>
-        <p className="text-sm text-[var(--color-fg-muted)]">
-          Showing {data.weekStart} through {data.weekEnd}
-        </p>
+        <div className="space-y-1">
+          <ReportWeekLabel weekStart={data.weekStart} />
+          <p className="text-sm text-[var(--color-fg-muted)]">
+            Showing {data.weekStart} through {data.weekEnd}
+          </p>
+        </div>
+        <PrepareReportButtons weekStart={data.weekStart} unitNumber={selected?.unitNumber} showAll />
         <Button
           type="button"
           variant="secondary"
@@ -249,7 +261,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                 ))}
                 <tr className="bg-[var(--color-muted)] font-medium">
                   <td className="px-3 py-2">Fleet</td>
-                  <td className="px-3 py-2">—</td>
+                  <td className="px-3 py-2"></td>
                   <td className="px-3 py-2">{data.fleet.loadCount}</td>
                   <td className="px-3 py-2">{money(data.fleet.grossCents)}</td>
                   <td className="px-3 py-2">{money(data.fleet.driverPayCents)}</td>
@@ -292,14 +304,18 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                         {line.label}
                         {line.ownerVisible ? "" : " (internal)"}
                       </td>
+                      <td className="px-3 py-2">{rateCell(line)}</td>
                       <td className="px-3 py-2">
-                        {line.rateBp == null ? "—" : `${bpToPercentString(line.rateBp)}%`}
+                        {line.basePctBp == null ? "" : `${bpToPercentString(line.basePctBp)}%`}
                       </td>
                       <td className="px-3 py-2">
-                        {line.basePctBp == null ? "—" : `${bpToPercentString(line.basePctBp)}%`}
-                      </td>
-                      <td className="px-3 py-2">
-                        {line.chargedTo == null ? "—" : line.chargedTo === "owner" ? "Owner" : "Management"}
+                        {line.chargedTo == null
+                          ? line.lineCode === "TOLSON_PAYABLE" || line.lineCode === "LEGACY_RETAINED"
+                            ? "Not set"
+                            : ""
+                          : line.chargedTo === "owner"
+                            ? "Owner"
+                            : "Management"}
                       </td>
                       <td className="px-3 py-2">{money(line.amountCents)}</td>
                     </tr>

@@ -225,9 +225,10 @@ describe("close blockers", () => {
     expect(result.closeAllowed).toBe(true);
   });
 
-  it("uses the 10 and 15 percent defaults when no contract is stored", () => {
+  it("uses a 10 percent management fee when no contract is stored", () => {
     const missing = buildWeekStatements(inputFrom(fixture, { contracts: [] }));
     expect(missing.blockers.some((row) => row.rule === "missing_fee_contract")).toBe(false);
+    expect(missing.blockers.some((row) => row.rule === "missing_tolson_payable")).toBe(false);
     expect(missing.closeAllowed).toBe(true);
     const legacy = missing.units.find((unit) => unit.unitNumber === "02");
     const managed = missing.units.find((unit) => unit.unitNumber === "03");
@@ -235,11 +236,21 @@ describe("close blockers", () => {
     expect(legacy?.grossCents).toBe(320_000);
     expect(legacy?.tolsonPayableCents).toBe(32_000);
     expect(legacy?.managementFeeCents).toBe(0);
+    expect(legacy?.netCents).toBe(320_000 - 32_000 - (legacy?.driverPayCents ?? 0) - (legacy?.dispatchFeeCents ?? 0) - (legacy?.factoringFeeCents ?? 0) - (legacy?.fuelCents ?? 0) - (legacy?.tollsCents ?? 0) - (legacy?.fixedOwnerCents ?? 0));
+    expect(legacy?.lines.find((line) => line.lineCode === "TOLSON_PAYABLE")).toMatchObject({
+      amountCents: 32_000,
+      rateBp: 1000,
+    });
+    expect(legacy?.lines.find((line) => line.lineCode === "LEGACY_RETAINED")).toMatchObject({
+      amountCents: 0,
+      rateBp: null,
+    });
     expect(managed?.contractId).toBe("default:22222222-2222-4222-8222-222222222203");
     expect(managed?.grossCents).toBe(580_000);
-    expect(managed?.managementFeeCents).toBe(87_000);
-    expect(managed?.tolsonPayableCents).toBe(58_000);
-    expect(managed?.legacyRetainedCents).toBe(29_000);
+    expect(managed?.managementFeeCents).toBe(58_000);
+    expect(managed?.tolsonPayableCents).toBe(0);
+    expect(managed?.legacyRetainedCents).toBe(0);
+    expect(managed?.lines.find((line) => line.lineCode === "MANAGEMENT_FEE")?.rateBp).toBe(1000);
 
     const unknown = buildWeekStatements(
       inputFrom(fixture, {

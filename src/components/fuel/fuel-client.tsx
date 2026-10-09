@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { FileImportPanel } from "@/components/fuel-tolls/file-import-panel";
 import type { OpenQueueItem } from "@/lib/fuel-tolls/file/messages";
+import { ReportWeekLabel } from "@/components/reports/report-week";
 import { weekBoundsForDate } from "@/lib/fee-engine";
+import { lastFinishedWeekStart } from "@/lib/reports/delivery";
 import { fuelWeekTotals } from "@/lib/fuel-tolls/totals";
 import { formatGallonsMilli } from "@/lib/fuel-tolls/quantity";
 import { centsToDollarString } from "@/lib/money/cents";
@@ -37,8 +39,7 @@ export function FuelClient({
   queue: OpenQueueItem[];
   queueReady: boolean;
 }) {
-  const todayWeek = weekBoundsForDate(new Date().toISOString().slice(0, 10));
-  const [weekStart, setWeekStart] = useState(todayWeek.start);
+  const [weekStart, setWeekStart] = useState(() => lastFinishedWeekStart());
   const [truck, setTruck] = useState("");
 
   const weekEnd = useMemo(() => weekBoundsForDate(weekStart).end, [weekStart]);
@@ -91,6 +92,7 @@ export function FuelClient({
         </button>
         <label className="text-sm">
           <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
+          <ReportWeekLabel weekStart={weekStart} />
           <input
             type="date"
             value={weekStart}

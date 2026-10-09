@@ -6,6 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
 import { listFixedExpensesForTruck } from "@/lib/fixed-expenses/queries";
+import { loadFeeSettings } from "@/lib/fees/load";
+import { resolveWeekStart } from "@/lib/statements/queries";
 import {
   getTruck,
   latestChangeForTruck,
@@ -24,7 +26,8 @@ function DetailSkeleton() {
   );
 }
 
-async function TruckDetailContent({ id }: { id: string }) {
+async function TruckDetailContent({ id, week }: { id: string; week?: string }) {
+  const weekStart = resolveWeekStart(week);
   const loaded = await getTruck(id);
   if (!loaded) notFound();
   const { truck, googleSheetReady, tolsonReady } = loaded;
@@ -60,6 +63,14 @@ async function TruckDetailContent({ id }: { id: string }) {
     .map((row) => (row.plate_state ? `${row.plate} ${row.plate_state}` : row.plate))
     .join("\n");
   const identityTags = (tags.data ?? []).map((row) => row.tag_number).join("\n");
+  const [queueRes, fees] = await Promise.all([
+    supabase
+      .from("sheet_write_queue")
+      .select("id, kind, tab_title, column_header, week_start, a1, new_value, status, error")
+      .eq("truck_id", id)
+      .order("created_at", { ascending: false }),
+    loadFeeSettings(),
+  ]);
 
   return (
     <TruckDetailClient
@@ -74,20 +85,27 @@ async function TruckDetailContent({ id }: { id: string }) {
       identityCards={identityCards}
       identityPlates={identityPlates}
       identityTags={identityTags}
+      weekStart={weekStart}
+      queue={queueRes.data ?? []}
+      fee={fees.rows.find((row) => row.truckId === id) ?? null}
+      feeReady={fees.ready}
     />
   );
 }
 
 export default async function TruckDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ week?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
   return (
     <SignedInShell title="Truck">
       <Suspense fallback={<DetailSkeleton />}>
-        <TruckDetailContent id={id} />
+        <TruckDetailContent id={id} week={query.week} />
       </Suspense>
     </SignedInShell>
   );

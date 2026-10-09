@@ -58,26 +58,6 @@ function validateTruckClassRules(
       );
     }
 
-    const tolson = byKind.get("TOLSON_PAYABLE");
-    const legacy = byKind.get("LEGACY_RETAINED");
-    if (!tolson || !legacy) {
-      throw new Error(
-        "third_party contracts must include TOLSON_PAYABLE and LEGACY_RETAINED",
-      );
-    }
-    if (
-      tolson.basePctBp !== management.basePctBp ||
-      legacy.basePctBp !== management.basePctBp
-    ) {
-      throw new Error(
-        "TOLSON_PAYABLE and LEGACY_RETAINED must use the same base_pct_bp as MANAGEMENT_FEE",
-      );
-    }
-    if (tolson.rateBp + legacy.rateBp !== management.rateBp) {
-      throw new Error(
-        `TOLSON_PAYABLE (${tolson.rateBp}) + LEGACY_RETAINED (${legacy.rateBp}) must equal MANAGEMENT_FEE (${management.rateBp})`,
-      );
-    }
     return;
   }
 

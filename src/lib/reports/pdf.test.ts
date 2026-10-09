@@ -154,6 +154,9 @@ describe("weekly statement PDF", () => {
     expect(text).toContain("Yard Fee");
     expect(text).toContain("Not stored");
     expect(text).toContain(`TRET.AI v${readAppVersion()}`);
+    expect(text).toContain("The owner keeps");
+    expect(text).toContain("earned");
+    expect(text).toContain("Where the money went");
     expect(text.replace(/\s+/g, " ")).toContain("not deducted again");
     expect(text).not.toContain("$228.00");
   });

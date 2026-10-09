@@ -5,6 +5,7 @@ import { Fragment, useState, useTransition } from "react";
 import { resolveSheetFieldAction } from "@/app/sheet-compare/actions";
 import { CopyableError } from "@/components/copyable-error";
 import { useToast } from "@/components/ui/toast";
+import { ReportWeekLabel } from "@/components/reports/report-week";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { loadMatchKey } from "@/lib/loads/load-id";
 import { countedLoadedHundredths } from "@/lib/loads/manifest-miles";
@@ -391,6 +392,7 @@ export function SheetCompareClient({
         </button>
         <label className="text-sm">
           <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
+          <ReportWeekLabel weekStart={weekStart} />
           <input
             type="date"
             value={weekStart}

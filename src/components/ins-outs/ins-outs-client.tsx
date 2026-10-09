@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { CopyableError } from "@/components/copyable-error";
 import { LegacyEarningsPanel } from "@/components/ins-outs/legacy-earnings";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
+import { ReportWeekLabel } from "@/components/reports/report-week";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import type { LegacyEarnings } from "@/lib/legacy/fees";
 import { centsToDollarString } from "@/lib/money/cents";
@@ -121,6 +122,7 @@ export function InsOutsClient({
           Next week
         </button>
         <p className="text-sm text-[var(--color-fg-muted)]">
+          <ReportWeekLabel weekStart={weekStart} />
           Showing {weekStart} through {weekEnd}
         </p>
       </div>

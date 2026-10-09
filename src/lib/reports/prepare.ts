@@ -1,6 +1,7 @@
 import { assertInteger, assertNonNegativeInteger } from "@/lib/fee-engine/money";
 import { bpToPercentString } from "@/lib/fees/percent";
 import { truckClassLabel } from "@/lib/fees/kinds";
+import { reportDeliveryLabel } from "@/lib/reports/delivery";
 import { expectedNetCents, ownerDeductionCents } from "@/lib/statements/engine";
 import type { FleetStatement, StatementLine, UnitStatement } from "@/lib/statements/types";
 import {
@@ -13,6 +14,7 @@ import {
 } from "./format";
 import type {
   PreparedLoad,
+  PreparedChart,
   PreparedPair,
   PreparedReport,
   PreparedUnit,
@@ -61,6 +63,8 @@ export function prepareWeeklyReport(source: WeeklyReportSource): PreparedReport 
     units,
     fleetRows: fleetRows(source.fleet),
     fleetNote: FLEET_NOTE,
+    deliveryLabel: reportDeliveryLabel(source.weekStart),
+    fleetChart: buildFleetChart(source),
   };
 }
 
@@ -213,11 +217,11 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
         label: "Total miles",
         value: formatMilesHundredths(unit.loadedMilesHundredths + unit.deadheadMilesHundredths),
       },
-      { label: "Revenue per load", value: perLoad == null ? "—" : formatStatementDollars(perLoad) },
-      { label: "Rate per loaded mile", value: ratePerMile == null ? "—" : formatStatementDollars(ratePerMile) },
+      { label: "Revenue per load", value: perLoad == null ? NOT_STORED : formatStatementDollars(perLoad) },
+      { label: "Rate per loaded mile", value: ratePerMile == null ? NOT_STORED : formatStatementDollars(ratePerMile) },
       {
         label: "Fuel cost per loaded mile",
-        value: fuelPerMile == null ? "—" : formatStatementDollars(fuelPerMile),
+        value: fuelPerMile == null ? NOT_STORED : formatStatementDollars(fuelPerMile),
       },
       { label: "MPG (diesel, loaded miles)", value: mpg ?? NOT_STORED },
     ],
@@ -232,6 +236,7 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
     fixedManagement: managementLines.map(presentEarning),
     compliance: NOT_STORED,
     operationsNote: NOT_STORED,
+    chart: buildUnitChart(unit, loads, mpg, ratePerMile),
   };
 }
 
@@ -299,11 +304,11 @@ function assertNoStrayFuelOrTolls(source: WeeklyReportSource): void {
 
 function presentLoad(load: ReportLoadRow): PreparedLoad {
   return {
-    loadNumber: load.loadNumber?.trim() ? load.loadNumber.trim() : "—",
+    loadNumber: load.loadNumber?.trim() ? load.loadNumber.trim() : NOT_STORED,
     deliveryDate: load.deliveryDate,
-    broker: load.brokerName?.trim() ? load.brokerName.trim() : "—",
-    origin: load.origin?.trim() ? load.origin.trim() : "—",
-    destination: load.destination?.trim() ? load.destination.trim() : "—",
+    broker: load.brokerName?.trim() ? load.brokerName.trim() : NOT_STORED,
+    origin: load.origin?.trim() ? load.origin.trim() : NOT_STORED,
+    destination: load.destination?.trim() ? load.destination.trim() : NOT_STORED,
     loaded: formatMilesHundredths(load.loadedMilesHundredths),
     deadhead: formatMilesHundredths(load.deadheadMilesHundredths),
     rate: formatStatementDollars(load.rateCents),
@@ -351,7 +356,15 @@ function requireFee(unit: UnitStatement, code: string, amount: number): void {
 
 function sumCharged(unit: UnitStatement, chargedTo: "owner" | "management"): number {
   return sumLineAmounts(
-    unit.lines.filter((line) => line.chargedTo === chargedTo && line.rateBp == null && line.lineCode !== "FUEL" && line.lineCode !== "TOLLS"),
+    unit.lines.filter(
+      (line) =>
+        line.chargedTo === chargedTo &&
+        line.rateBp == null &&
+        line.lineCode !== "FUEL" &&
+        line.lineCode !== "TOLLS" &&
+        line.lineCode !== "TOLSON_PAYABLE" &&
+        line.lineCode !== "LEGACY_RETAINED",
+    ),
     `unit ${unit.unitNumber} fixed`,
   );
 }
@@ -363,6 +376,80 @@ function sumLineAmounts(lines: StatementLine[], label: string): number {
     total += line.amountCents;
   }
   return total;
+}
+
+function moneySlices(pairs: Array<[string, number]>): Array<{ label: string; cents: number }> {
+  return pairs.filter((pair) => pair[1] > 0).map(([label, cents]) => ({ label, cents }));
+}
+
+function summaryFor(who: string, earned: number, keeps: number): string {
+  const spent = earned - keeps;
+  return `This week ${who} earned ${formatStatementDollars(earned)}. It spent ${formatStatementDollars(spent)}. The owner keeps ${formatStatementDollars(keeps)}.`;
+}
+
+function buildUnitChart(
+  unit: UnitStatement,
+  loads: ReportLoadRow[],
+  mpg: string | null,
+  rpmCents: number | null,
+): PreparedChart {
+  const earned = unit.grossCents;
+  const keeps = unit.netCents;
+  return {
+    summary: summaryFor(`Truck ${unit.unitNumber}`, earned, keeps),
+    earnedCents: earned,
+    spentCents: earned - keeps,
+    keepsCents: keeps,
+    expenses: moneySlices(
+      unit.lines
+        .filter((line) => line.amountCents > 0)
+        .map((line) => [line.label, line.amountCents]),
+    ),
+    loads: loads.map((load, index) => ({
+      label: load.loadNumber?.trim() || `Load ${index + 1}`,
+      cents: load.rateCents,
+    })),
+    loadedHundredths: unit.loadedMilesHundredths,
+    deadheadHundredths: unit.deadheadMilesHundredths,
+    mpg,
+    rpmCents,
+  };
+}
+
+function buildFleetChart(source: WeeklyReportSource): PreparedChart {
+  const fleet = source.fleet;
+  let loaded = 0;
+  let deadhead = 0;
+  let diesel = 0;
+  for (const unit of source.units) {
+    loaded += unit.loadedMilesHundredths;
+    deadhead += unit.deadheadMilesHundredths;
+  }
+  for (const row of source.fuel) {
+    if (row.product === "diesel") diesel += row.gallonsMilli;
+  }
+  return {
+    summary: summaryFor("the fleet", fleet.grossCents, fleet.netCents),
+    earnedCents: fleet.grossCents,
+    spentCents: fleet.grossCents - fleet.netCents,
+    keepsCents: fleet.netCents,
+    expenses: moneySlices([
+      ["Driver pay", fleet.driverPayCents],
+      ["Management fee", fleet.managementFeeCents],
+      ["Tolson payable", fleet.tolsonPayableCents],
+      ["Legacy retained", fleet.legacyRetainedCents],
+      ["Dispatch fee", fleet.dispatchFeeCents],
+      ["Factoring fee", fleet.factoringFeeCents],
+      ["Fuel", fleet.fuelCents],
+      ["Tolls", fleet.tollsCents],
+      ["Fixed expenses", fleet.fixedOwnerCents],
+    ]),
+    loads: source.units.map((unit) => ({ label: `Truck ${unit.unitNumber}`, cents: unit.grossCents })),
+    loadedHundredths: loaded,
+    deadheadHundredths: deadhead,
+    mpg: formatDieselMpg(loaded, diesel),
+    rpmCents: centsPerLoadedMile(fleet.grossCents, loaded),
+  };
 }
 
 function sumGallons(rows: ReportFuelRow[], product: ReportFuelRow["product"]): number {

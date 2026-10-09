@@ -22,6 +22,7 @@ import type { SnapshotRow } from "@/lib/overview/snapshot";
 import { CopyableError } from "@/components/copyable-error";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
+import { PrepareReportButtons, ReportWeekLabel } from "@/components/reports/report-week";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
 import { TruckCardGrid } from "@/components/dashboard/truck-cards";
@@ -203,9 +204,13 @@ export function OverviewClient({
         <Button variant="vividAlt" onClick={() => openWeek(shiftWeek(data.weekStart, 1))}>
           Next week
         </Button>
-        <p className="text-sm text-[var(--color-fg-muted)]">
-          Showing {data.weekStart} through {data.weekEnd}
-        </p>
+        <div className="space-y-1">
+          <ReportWeekLabel weekStart={data.weekStart} />
+          <p className="text-sm text-[var(--color-fg-muted)]">
+            Showing {data.weekStart} through {data.weekEnd}
+          </p>
+        </div>
+        <PrepareReportButtons weekStart={data.weekStart} showAll />
       </div>
 
       <div className="flex flex-wrap gap-3">

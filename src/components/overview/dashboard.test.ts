@@ -19,6 +19,10 @@ vi.mock("next/dynamic", () => ({
   default: () => () => null,
 }));
 
+vi.mock("@/components/ui/toast", () => ({
+  useToast: () => ({ toast: () => undefined }),
+}));
+
 describe("dashboard display", () => {
   it("shows loaded miles as whole miles", () => {
     expect(formatMilesWhole(487700)).toBe("4,877");

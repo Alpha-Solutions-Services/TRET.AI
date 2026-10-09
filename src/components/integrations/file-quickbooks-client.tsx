@@ -10,7 +10,8 @@ import {
 } from "@/app/integrations/file-actions";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { ReportWeekLabel } from "@/components/reports/report-week";
+import { lastFinishedWeekStart } from "@/lib/reports/delivery";
 import { LEGACY_COMPANY_CATEGORIES } from "@/lib/legacy/expenses";
 import { centsToDollarString } from "@/lib/money/cents";
 import type { FilePreviewRow } from "@/lib/quickbooks/file-import";
@@ -29,7 +30,7 @@ export function FileQuickbooksClient({ home, isAdmin }: { home: FileQuickbooksHo
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [accounts, setAccounts] = useState<FileAccountNames>(home.accounts);
-  const [week, setWeek] = useState(() => weekBoundsForDate(new Date().toISOString().slice(0, 10)).start);
+  const [week, setWeek] = useState(() => lastFinishedWeekStart());
   const [csvText, setCsvText] = useState("");
   const [rows, setRows] = useState<FilePreviewRow[] | null>(null);
   const [choices, setChoices] = useState<Record<string, { include: boolean; category: string; remember: boolean }>>({});
@@ -155,6 +156,7 @@ export function FileQuickbooksClient({ home, isAdmin }: { home: FileQuickbooksHo
         <label className="block max-w-xs text-sm">
           <span className="mb-1 block text-[var(--color-fg-muted)]">Week</span>
           <input type="date" value={week} onChange={(event) => setWeek(event.target.value)} className={fieldClass} />
+          <ReportWeekLabel weekStart={week} />
         </label>
         <Button type="button" disabled={pending} onClick={downloadJournal}>
           Download journal CSV

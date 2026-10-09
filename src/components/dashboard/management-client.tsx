@@ -5,6 +5,7 @@ import { AreaChart, BarChart, ChartCard, DonutChart } from "@/components/charts/
 import { ManagementCards } from "@/components/dashboard/management-summary";
 import { LegacyEarningsPanel } from "@/components/ins-outs/legacy-earnings";
 import { OperatingExpensesClient } from "@/components/operating-expenses/operating-expenses-client";
+import { ReportWeekLabel } from "@/components/reports/report-week";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { expensesByCategory, expensesByMonth } from "@/lib/legacy/expenses";
 import type { LegacyEarnings } from "@/lib/legacy/fees";
@@ -69,9 +70,12 @@ export function ManagementClient({
         >
           Previous week
         </button>
-        <p className="text-sm text-[var(--color-fg-muted)]">
-          Week {data.weekStart} through {data.weekEnd}. Expense month {month}.
-        </p>
+        <div>
+          <ReportWeekLabel weekStart={data.weekStart} />
+          <p className="text-sm text-[var(--color-fg-muted)]">
+            Week {data.weekStart} through {data.weekEnd}. Expense month {month}.
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => openWeek(shiftWeek(data.weekStart, 1))}

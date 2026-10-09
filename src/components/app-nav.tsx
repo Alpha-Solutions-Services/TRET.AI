@@ -10,6 +10,7 @@ const NAV = [
   { href: "/ins-outs", label: "Ins and Outs" },
   { href: "/sheet-compare", label: "Sheet vs Vektor" },
   { href: "/trucks", label: "Trucks" },
+  { href: "/fee-settings", label: "Fee settings" },
   { href: "/operating-expenses", label: "Legacy expenses" },
   { href: "/loads", label: "Loads" },
   { href: "/fuel", label: "Fuel" },

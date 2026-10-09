@@ -10,6 +10,7 @@ import { Waveform } from "@/components/motion/waveform";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { weekBoundsForDate } from "@/lib/fee-engine";
+import { lastFinishedWeekStart } from "@/lib/reports/delivery";
 import { formatUtcStamp } from "@/lib/format-stamp";
 
 const DataFlow = dynamic(() => import("@/components/motion/data-flow").then((mod) => mod.DataFlow), {
@@ -21,8 +22,8 @@ const Pipeline = dynamic(() => import("@/components/motion/pipeline").then((mod)
 });
 
 function defaultRange(): { from: string; to: string } {
-  const week = weekBoundsForDate(new Date().toISOString().slice(0, 10));
-  return { from: week.start, to: week.end };
+  const start = lastFinishedWeekStart();
+  return { from: start, to: weekBoundsForDate(start).end };
 }
 
 type RunRow = {

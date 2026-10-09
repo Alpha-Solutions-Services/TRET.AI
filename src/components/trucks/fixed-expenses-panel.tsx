@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
 import { SidePanel } from "@/components/ui/side-panel";
 import { useToast } from "@/components/ui/toast";
-import { mondayDateError, weekBoundsForDate } from "@/lib/fee-engine";
+import { mondayDateError } from "@/lib/fee-engine";
+import { lastFinishedWeekStart } from "@/lib/reports/delivery";
 import {
   CHARGED_TO_VALUES,
   FIXED_EXPENSE_KINDS,
@@ -34,7 +35,7 @@ type Props = {
 };
 
 function todayMonday(): string {
-  return weekBoundsForDate(new Date().toISOString().slice(0, 10)).start;
+  return lastFinishedWeekStart();
 }
 
 export function FixedExpensesPanel({ truckId, bundle, canDeleteLatest }: Props) {
