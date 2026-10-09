@@ -1,5 +1,6 @@
 import { parseCsv } from "@/lib/fuel-tolls/csv";
 import { canonicalLoadId } from "@/lib/loads/load-id";
+import { loadsInWeek } from "@/lib/loads/week-membership";
 import { cleanCell, columnIndex, isEmptyCell, normalizeHeader, sheetDay } from "@/lib/sheets/cell";
 import { parseLoadLedger } from "@/lib/sheets/ledger";
 import { unitKey } from "@/lib/sheets/mismatch";
@@ -56,25 +57,26 @@ export function applyColumnMapping(grid: string[][], mapping: Record<string, str
   return grid.map((row) => row.map((cell) => rename.get(cell.trim().toLowerCase()) ?? cell));
 }
 
-export function importStatus(raw: string | null): { delivered: boolean; label: string } {
+export function importStatus(raw: string | null): { delivered: boolean; importable: boolean; label: string } {
   const text = (raw ?? "").trim();
-  if (!text) return { delivered: true, label: "Delivered" };
+  if (!text) return { delivered: true, importable: true, label: "Delivered" };
   if (/^status_delivered$/i.test(text) || /^delivered$/i.test(text)) {
-    return { delivered: true, label: "Delivered" };
+    return { delivered: true, importable: true, label: "Delivered" };
   }
-  if (/en route/i.test(text)) return { delivered: false, label: "En Route" };
+  if (/en route/i.test(text)) return { delivered: false, importable: true, label: "En Route" };
+  if (/dispatched/i.test(text)) return { delivered: false, importable: true, label: "Dispatched" };
+  if (/in transit/i.test(text)) return { delivered: false, importable: true, label: "In Transit" };
   if (/^booked$/i.test(text) || /^status_booked$/i.test(text)) {
-    return { delivered: false, label: "Booked" };
+    return { delivered: false, importable: false, label: "Booked" };
   }
-  if (/in transit/i.test(text)) return { delivered: false, label: "In Transit" };
   if (/^status_deleted$/i.test(text) || /^deleted$/i.test(text)) {
-    return { delivered: false, label: "Deleted" };
+    return { delivered: false, importable: false, label: "Deleted" };
   }
-  return { delivered: false, label: text };
+  return { delivered: false, importable: false, label: text };
 }
 
 export function statusSkipReason(label: string): string {
-  return `Skipped: status is ${label}. Only Delivered loads import.`;
+  return `Skipped: status is ${label}. Booked and deleted loads stay out.`;
 }
 
 function sameStamp(a: string | null, b: string | null): boolean {
@@ -186,21 +188,18 @@ export function parseVektorLoadsCsv(
 
     let action: "import" | "skip" = "import";
     let reason: string | null = null;
-    if (!status.delivered) {
+    if (!status.importable) {
       action = "skip";
       reason = statusSkipReason(status.label);
-    } else if (!row.deliveryDay) {
+    } else if (!row.deliveryDay && !row.pickupDay) {
       action = "skip";
-      reason = "Skipped: delivery date is empty.";
+      reason = "Skipped: pickup and delivery dates are empty.";
     } else if (row.rateCents == null) {
       action = "skip";
       reason = "Skipped: rate is empty.";
     } else if (!unitRaw) {
       action = "skip";
       reason = "Skipped: truck is empty.";
-    } else if (range && (row.deliveryDay < range.from || row.deliveryDay > range.to)) {
-      action = "skip";
-      reason = "Skipped: delivery date is outside the selected dates.";
     }
 
     rows.push({
@@ -213,6 +212,33 @@ export function parseVektorLoadsCsv(
       reason,
       importRow: action === "import" ? importRow : null,
     });
+  }
+
+  if (range) {
+    const chosen = new Set(
+      loadsInWeek(
+        rows.flatMap((row) =>
+          row.action === "import"
+            ? [
+                {
+                  loadId: row.loadId,
+                  pickupDay: row.importRow?.pickupDay ?? null,
+                  deliveryDay: row.deliveryDay,
+                  tripRef: row.importRow?.sourceManifestRef ?? null,
+                },
+              ]
+            : [],
+        ),
+        range.from,
+        range.to,
+      ).map((row) => row.loadId),
+    );
+    for (const row of rows) {
+      if (row.action !== "import" || chosen.has(row.loadId)) continue;
+      row.action = "skip";
+      row.reason = "Skipped: this load is outside the selected week.";
+      row.importRow = null;
+    }
   }
   return { headerFound: true, rows };
 }

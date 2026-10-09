@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.0.30 — 2026-10-09
+
+- A chosen loads CSV is the only source for that import. The Vektor list filter is JSON-encoded twice so a gateway that unwraps strings still sends a string, and a failed list says to choose a loads CSV. A chosen fuel or toll file is used on its own. A missing Vektor fuel or toll tool is a note, and the import continues.
+- The default range is the Monday to Sunday week. Delivered, in transit, dispatched, and en route loads import. Booked and deleted stay out. A load picked up before the week stays in when it delivers in the week or shares a trip with a load that is in the week. Loads uses that same week rule.
+- Fuel Total Cost is found by the header name. A known unit is enough when a tag or card is new. A toll stays on the load whose pickup through delivery contains the exit time. Overlapping loads on one trip use the primary load. Gemini reviews a file in one call. A busy model leaves the rule result and shows AI busy, try again on the queue.
+- Dashboard outs include the Misc column and extra receipt rows in the week, such as a tarp, 7-Eleven, or Love's receipt. Each truck row shows loaded miles, deadhead, rate per mile, and diesel MPG.
+- Statements use the truck's Tolson percent, or a 10 percent Tolson and 15 percent management default, when no fee contract covers the week. A truck that still has no fee setup links to that truck. Close week and Download PDF stay bright. Dashboard cards and the expense mix use a categorical palette, with the legend sorted by amount and money shown with thousands separators. Red, yellow, and green stay for status.
+- Sheet vs Vektor matches TBH--1192 to TBH1192 and shows Status differs when the sheet and Vektor disagree. It says Not in Vektor only when the load is actually missing. Dates on Imports and truck Edit use a fixed UTC stamp. The site icon is the green T mark.
+
 ## v0.0.0.29 — 2026-10-08
 
 - Fuel and Tolls can upload a fuel card CSV or an E-ZPass XLSX. The file type comes from the headers. The preview shows truck, week, linked load or trip, target sheet and cells, and New, Duplicate, or Flagged. Approve and write to sheets sends only the input cells through the Google service account, in one batch. Flagged rows wait in a review queue. The owner can pick a truck or load there and approve.

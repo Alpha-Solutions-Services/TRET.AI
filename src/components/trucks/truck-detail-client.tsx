@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { SidePanel } from "@/components/ui/side-panel";
 import { useConfirm } from "@/components/ui/confirm";
 import { useToast } from "@/components/ui/toast";
+import { formatUtcStamp } from "@/lib/format-stamp";
 import {
   calculateFeeLines,
   findContractForDate,
@@ -325,7 +326,7 @@ export function TruckDetailClient({
           ) : null}
           {lastChanged ? (
             <p className="mt-2 text-xs text-[var(--color-fg-muted)]">
-              Last changed {new Date(lastChanged.created_at).toLocaleString()} by{" "}
+              Last changed {formatUtcStamp(lastChanged.created_at)} by{" "}
               {lastChanged.actor_email} ({lastChanged.action})
             </p>
           ) : (
@@ -407,9 +408,7 @@ export function TruckDetailClient({
                 className="material border border-[var(--color-border)] px-5 py-4"
               >
                 <p className="font-medium">
-                  {c.effective_from}
-                  {" → "}
-                  {c.effective_to ?? "open"}
+                  {c.effective_from} through {c.effective_to ?? "open"}
                 </p>
                 {c.note ? (
                   <p className="text-sm text-[var(--color-fg-muted)]">{c.note}</p>

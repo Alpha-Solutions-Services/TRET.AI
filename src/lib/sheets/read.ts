@@ -131,6 +131,7 @@ type TabGrids = {
   loadLedger: SheetGrid | null;
   mgmtExpenses: SheetGrid | null;
   weeklyExpenses: SheetGrid | null;
+  fuelLog?: SheetGrid | null;
   note: string | null;
 };
 
@@ -164,7 +165,8 @@ async function readWithToken(
   const ledgerTitle = pickLoadLedgerTitle(titles, unitNumber);
   const expenseTitle = pickMgmtExpensesTitle(titles);
   const weeklyTitle = pickTitled(titles, /weekly expenses/i, unitNumber);
-  const wanted = [ledgerTitle, expenseTitle, weeklyTitle].filter((title): title is string => Boolean(title));
+  const fuelTitle = pickTitled(titles, /fuel log/i, unitNumber);
+  const wanted = [ledgerTitle, expenseTitle, weeklyTitle, fuelTitle].filter((title): title is string => Boolean(title));
   if (wanted.length === 0) {
     return {
       loadLedger: null,
@@ -207,6 +209,7 @@ async function readWithToken(
     loadLedger: ledgerTitle ? (grids.get(ledgerTitle) ?? null) : null,
     mgmtExpenses: expenseTitle ? (grids.get(expenseTitle) ?? null) : null,
     weeklyExpenses: weeklyTitle ? (grids.get(weeklyTitle) ?? null) : null,
+    fuelLog: fuelTitle ? (grids.get(fuelTitle) ?? null) : null,
     note: notes.length ? notes.join(" ") : null,
   };
 }
@@ -361,6 +364,7 @@ export async function loadTruckWeekInsOuts(
           loadLedger: tabs.loadLedger,
           mgmtExpenses: tabs.mgmtExpenses,
           weeklyExpenses: tabs.weeklyExpenses,
+          fuelLog: tabs.fuelLog ?? null,
           note: tabs.note,
         });
       } catch (err) {

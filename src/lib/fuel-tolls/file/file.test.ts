@@ -6,6 +6,7 @@ import { SEEDED_IDENTITIES } from "./mappings";
 import { prepareImport } from "./prepare";
 import { gridFromUpload, parseGrid } from "./parse";
 import { parseXlsxGrid } from "./xlsx";
+import { linkTollTime } from "./link";
 import {
   STANDARD_FUEL_HEADER,
   markAiMapped,
@@ -141,12 +142,20 @@ describe("fuel card file", () => {
     expect(row.cells.find((cell) => cell.header === "Trip Group ID")?.value).toBe("M-1195");
   });
 
-  it("does not write when Total Cost is not the column next to Gallons", () => {
+  it("writes when Total Cost is named and is not the column next to Gallons", () => {
     const header = ["Date", "Location", "Load ID", "Trip Group ID", "Gallons", "Week", "Total Cost"];
-    const bad = planImport(grid, { fuelLogs: [{ unitNumber: "3", grid: [header] }] });
-    const row = bad.rows.find((row) => row.truck === "Truck 3")!;
-    expect(row.status).toBe("flagged");
-    expect(row.reason).toMatch(/Total Cost/);
+    const planned = planImport(grid, {
+      fuelLogs: [{ unitNumber: "3", grid: [header] }],
+      ledgers: [
+        {
+          unitNumber: "3",
+          loads: [{ loadId: "TBH--1186", tripId: "", pickupDate: "2026-10-05", deliveryDate: "2026-10-08" }],
+        },
+      ],
+    });
+    const row = planned.rows.find((item) => item.truck === "Truck 3" && item.status === "new");
+    expect(row?.cells.find((cell) => cell.header === "Total Cost")?.value).toBeTruthy();
+    expect(planned.rows.filter((item) => item.truck === "Truck 3").every((item) => !/column next to Gallons/i.test(item.reason ?? ""))).toBe(true);
   });
 });
 
@@ -186,11 +195,9 @@ describe("E-ZPass file", () => {
     expect(payload.amountCents).toBe(3780);
   });
 
-  it("flags a tag that is not on file", () => {
+  it("keeps a known unit when the tag text is not on file", () => {
     const plan = planImport(grid);
-    const odd = plan.rows.find((row) => row.reason?.includes("YHM2482-TX"));
-    expect(odd?.status).toBe("flagged");
-    expect(odd?.cells).toEqual([]);
+    expect(plan.rows.some((row) => row.reason?.includes("YHM2482-TX"))).toBe(false);
   });
 
   it("adds a toll to an empty Toll Expense cell and refuses a foreign value", () => {
@@ -214,7 +221,7 @@ describe("E-ZPass file", () => {
     expect(held?.cells).toEqual([]);
   });
 
-  it("puts empty miles on the next load", () => {
+  it("leaves a toll flagged when no load window contains the exit time", () => {
     const moved = planImport(grid, {
       ledgers: [
         {
@@ -237,9 +244,35 @@ describe("E-ZPass file", () => {
       ],
     });
     const skyway = moved.rows.find((row) => (row.payload as TollQueuePayload | null)?.transactionId === "1505564277");
-    expect(skyway?.status).toBe("new");
-    expect(skyway?.link).toBe("TBH--2002");
-    expect(skyway?.reason).toMatch(/next load/);
+    expect(skyway?.status).toBe("flagged");
+    expect(skyway?.link).toBeNull();
+    expect(skyway?.reason).toMatch(/No load covers/);
+    expect(skyway?.cells).toEqual([]);
+  });
+});
+
+describe("toll link windows", () => {
+  it("puts a $117.42 toll on the primary load of the covering trip", () => {
+    const linked = linkTollTime("2026-10-07T15:00:00", [
+      {
+        loadId: "TBH--1186",
+        tripId: "M-1186",
+        pickupDate: "2026-10-05",
+        deliveryDate: "2026-10-08",
+        primary: true,
+        loadedMilesHundredths: 80_000,
+      },
+      {
+        loadId: "TBH--1178",
+        tripId: "M-1186",
+        pickupDate: "2026-10-05",
+        deliveryDate: "2026-10-08",
+        primary: false,
+        loadedMilesHundredths: 10_000,
+      },
+    ]);
+    expect(linked.ok).toBe(true);
+    if (linked.ok) expect(linked.loadId).toBe("TBH--1186");
   });
 });
 
@@ -336,7 +369,8 @@ describe("AI fallback", () => {
     const flagged = plan.rows.find((row) => row.status === "flagged")!;
     expect(calls).toBe(3);
     expect(plan.aiNotice).toBe(AI_BUSY_NOTE);
-    expect(flagged.reason).toContain(AI_BUSY_NOTE);
+    expect(flagged.reason).toContain("Unit 99");
+    expect(flagged.reason).not.toContain(AI_BUSY_NOTE);
     expect(flagged.aiSuggested).toBe(false);
     expect(flagged.cells).toEqual([]);
   });

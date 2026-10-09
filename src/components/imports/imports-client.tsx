@@ -9,6 +9,8 @@ import { loadsPreviewCounts } from "@/components/motion/counts";
 import { Waveform } from "@/components/motion/waveform";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { weekBoundsForDate } from "@/lib/fee-engine";
+import { formatUtcStamp } from "@/lib/format-stamp";
 
 const DataFlow = dynamic(() => import("@/components/motion/data-flow").then((mod) => mod.DataFlow), {
   loading: () => <div className="h-80" aria-hidden="true" />,
@@ -19,11 +21,8 @@ const Pipeline = dynamic(() => import("@/components/motion/pipeline").then((mod)
 });
 
 function defaultRange(): { from: string; to: string } {
-  const to = new Date();
-  const from = new Date();
-  from.setUTCDate(from.getUTCDate() - 13);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  return { from: iso(from), to: iso(to) };
+  const week = weekBoundsForDate(new Date().toISOString().slice(0, 10));
+  return { from: week.start, to: week.end };
 }
 
 type RunRow = {
@@ -55,9 +54,9 @@ export function ImportsClient({
   const initial = defaultRange();
   const [from, setFrom] = useState(initial.from);
   const [to, setTo] = useState(initial.to);
-  const [fuelCsv, setFuelCsv] = useState<string | null>(null);
-  const [tollCsv, setTollCsv] = useState<string | null>(null);
-  const [loadsCsv, setLoadsCsv] = useState<string | null>(null);
+  const [fuelFile, setFuelFile] = useState<File | null>(null);
+  const [tollFile, setTollFile] = useState<File | null>(null);
+  const [loadsFile, setLoadsFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<
     Array<{
       loadId: string;
@@ -71,18 +70,14 @@ export function ImportsClient({
   >(null);
   const counts = useMemo(() => loadsPreviewCounts(preview), [preview]);
 
-  function readFile(file: File | undefined, setText: (value: string | null) => void) {
-    if (!file) {
-      setText(null);
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => setText(typeof reader.result === "string" ? reader.result : null);
-    reader.readAsText(file);
+  async function fileText(file: File | null): Promise<string | null> {
+    if (!file) return null;
+    return file.text();
   }
 
   function onPreview() {
     startTransition(async () => {
+      const loadsCsv = await fileText(loadsFile);
       const result = await previewLoadsCsvAction({ csvText: loadsCsv ?? "", from, to });
       if (!result.ok) {
         toast(result.error, "error");
@@ -95,6 +90,7 @@ export function ImportsClient({
 
   function onImport() {
     startTransition(async () => {
+      const loadsCsv = await fileText(loadsFile);
       const result = await runVektorImportAction({ from, to, csvText: loadsCsv });
       if (!result.ok) {
         toast(result.error, "error");
@@ -107,6 +103,8 @@ export function ImportsClient({
 
   function onImportFuelTolls() {
     startTransition(async () => {
+      const fuelCsv = await fileText(fuelFile);
+      const tollCsv = await fileText(tollFile);
       const result = await runFuelAndTollsImportAction({
         from,
         to,
@@ -167,7 +165,7 @@ export function ImportsClient({
           <input
             type="file"
             accept=".csv,text/csv"
-            onChange={(e) => readFile(e.target.files?.[0], setLoadsCsv)}
+            onChange={(e) => setLoadsFile(e.target.files?.[0] ?? null)}
             className="block text-sm"
           />
         </label>
@@ -179,7 +177,7 @@ export function ImportsClient({
           <input
             type="file"
             accept=".csv,text/csv"
-            onChange={(e) => readFile(e.target.files?.[0], setFuelCsv)}
+            onChange={(e) => setFuelFile(e.target.files?.[0] ?? null)}
             className="block text-sm"
           />
         </label>
@@ -188,16 +186,16 @@ export function ImportsClient({
           <input
             type="file"
             accept=".csv,text/csv"
-            onChange={(e) => readFile(e.target.files?.[0], setTollCsv)}
+            onChange={(e) => setTollFile(e.target.files?.[0] ?? null)}
             className="block text-sm"
           />
         </label>
       </div>
       <p className="max-w-3xl text-sm text-[var(--color-fg-muted)]">
-        A Vektor orders export is accepted: Order ID, Gross, Truck Reference ID, and a delivery date. Booked,
-        En Route, and In Transit rows stay in the preview and are not imported. A Load Ledger export still
-        works. Google Sheet import ignores this file and reads each truck ledger. Fuel and tolls still use
-        Vektor MCP or their own CSV mapping. Save the Vektor column mapping in Settings once.
+        A Vektor orders export is accepted: Order ID, Gross, Truck Reference ID, and a delivery date. Delivered,
+        in transit, dispatched, and en route rows in the Monday to Sunday week are imported. Booked and deleted
+        rows stay in the preview. A chosen loads file is the only source for that import. A chosen fuel or toll
+        file is used on its own. Save the Vektor column mapping in Settings once.
       </p>
       {preview ? (
         <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
@@ -252,12 +250,12 @@ export function ImportsClient({
               {runs.map((run) => (
                 <tr key={run.id} className="border-b border-[var(--color-border)] last:border-0">
                   <td className="px-4 py-3">
-                    {new Date(run.started_at).toLocaleString()}
+                    {formatUtcStamp(run.started_at)}
                   </td>
                   <td className="px-4 py-3">{run.kind ?? "loads"}</td>
                   <td className="px-4 py-3">{run.source ?? "None"}</td>
                   <td className="px-4 py-3">
-                    {run.range_from} → {run.range_to}
+                    {run.range_from} through {run.range_to}
                   </td>
                   <td className="px-4 py-3">{run.status}</td>
                   <td className="px-4 py-3">{run.rows_fetched}</td>

@@ -3,8 +3,10 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { categoryColor } from "@/lib/charts/palette";
+import { KpiCard } from "@/components/motion/kpi-card";
 import { weekBoundsForDate } from "@/lib/fee-engine";
-import { centsToDollarString } from "@/lib/money/cents";
+import { formatMilesHundredths, formatStatementDollars } from "@/lib/reports/format";
 import { ManagementSummaryTable } from "@/components/dashboard/management-summary";
 import type { ManagementCardSummary } from "@/lib/legacy/summary";
 import type { OverviewPageData } from "@/lib/overview/queries";
@@ -13,27 +15,24 @@ import { CopyableError } from "@/components/copyable-error";
 import { FleetCharts } from "@/components/dashboard/fleet-charts";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
-import { StatusDot, type StatusTone } from "@/components/ui/status-dot";
+import { StatusDot } from "@/components/ui/status-dot";
 
 const SignalHeader = dynamic(() => import("@/components/motion/signal").then((mod) => mod.SignalHeader), {
   loading: () => <div className="h-[72px]" aria-hidden="true" />,
 });
 
-function StatusCard({ label, value, tone }: { label: string; value: string; tone?: StatusTone }) {
-  return (
-    <div className="material border border-[var(--color-border)] px-6 py-5">
-      <p className="flex items-center gap-2 text-xs tracking-wide text-[var(--color-fg-muted)]">
-        {tone ? <StatusDot tone={tone} glow /> : null}
-        {label}
-      </p>
-      <p className="num mt-2 text-sm font-medium">{value}</p>
-    </div>
-  );
+function money(cents: number): string {
+  return formatStatementDollars(cents);
 }
 
-function money(cents: number): string {
-  if (cents < 0) return `-$${centsToDollarString(-cents)}`;
-  return `$${centsToDollarString(cents)}`;
+function miles(hundredths: number | undefined): string {
+  if (hundredths == null) return "";
+  return formatMilesHundredths(hundredths);
+}
+
+function rpm(cents: number | null | undefined): string {
+  if (cents == null) return "";
+  return formatStatementDollars(cents);
 }
 
 function shiftWeek(weekStart: string, delta: number): string {
@@ -50,7 +49,12 @@ export function OverviewClient({
   cards: ManagementCardSummary;
 }) {
   const router = useRouter();
-  const connectedTrucks = data.insOuts.filter((row) => row.readable).length;
+  const readable = data.insOuts.filter((row) => row.readable);
+  const connectedTrucks = readable.length;
+  const fleetIns = readable.reduce((sum, row) => sum + row.insCents, 0);
+  const fleetOuts = readable.reduce((sum, row) => sum + row.outsCents, 0);
+  const fleetLoads = readable.reduce((sum, row) => sum + row.loadCount, 0);
+  const fleetMiles = readable.reduce((sum, row) => sum + (row.loadedMilesHundredths ?? 0), 0);
 
   function openWeek(next: string) {
     router.push(`/?week=${next}`);
@@ -63,26 +67,27 @@ export function OverviewClient({
         <h1 className="text-[1.75rem]">Dashboard</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
           Fleet sheets, loads, issues, and status for one Monday to Sunday week. Fees are driver, management or
-          Tolson, dispatch, and factoring. Fixed is the amount charged to the owner. Amounts are cents. Legacy
-          earnings and monthly company expenses are on Management.
+          Tolson, dispatch, and factoring. Fixed is the amount charged to the owner. Legacy earnings and monthly
+          company expenses are on Management.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatusCard label="Version" value={data.versionLabel} />
-        <StatusCard
-          label="Sheets"
-          value={data.sheetHealth}
-          tone={data.sheetHealth === "Sheet account is set." ? "ok" : "danger"}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <KpiCard label="Ins" value={money(fleetIns)} detail="Load rates this week" color={categoryColor(0)} />
+        <KpiCard label="Outs" value={money(fleetOuts)} detail="Weekly expenses, including misc" color={categoryColor(1)} />
+        <KpiCard label="Net" value={money(fleetIns - fleetOuts)} detail="Ins minus outs" color={categoryColor(2)} />
+        <KpiCard label="Loads" value={String(fleetLoads)} detail={data.versionLabel} color={categoryColor(3)} />
+        <KpiCard
+          label="Loaded miles"
+          value={readable.length === 0 ? "0.00" : formatMilesHundredths(fleetMiles)}
+          detail="Primary miles on each trip"
+          color={categoryColor(4)}
         />
-        <StatusCard
+        <KpiCard
           label="Open issues"
           value={data.openIssueCount == null ? "Unavailable" : String(data.openIssueCount)}
-          tone={data.openIssueCount == null || data.openIssueCount > 0 ? "danger" : "ok"}
-        />
-        <StatusCard
-          label="Loads"
-          value={String(data.insOuts.reduce((sum, row) => sum + (row.readable ? row.loadCount : 0), 0))}
+          detail={data.sheetHealth}
+          color={data.openIssueCount != null && data.openIssueCount > 0 ? "var(--color-danger)" : categoryColor(5)}
         />
       </div>
 
@@ -197,8 +202,10 @@ function InsOutsTable({
       insCents: sum.insCents + row.insCents,
       outsCents: sum.outsCents + row.outsCents,
       loadCount: sum.loadCount + row.loadCount,
+      loaded: sum.loaded + (row.loadedMilesHundredths ?? 0),
+      deadhead: sum.deadhead + (row.deadheadMilesHundredths ?? 0),
     }),
-    { insCents: 0, outsCents: 0, loadCount: 0 },
+    { insCents: 0, outsCents: 0, loadCount: 0, loaded: 0, deadhead: 0 },
   );
 
   return (
@@ -210,6 +217,10 @@ function InsOutsTable({
             <tr>
               <th className="px-3 py-3 font-medium">Unit</th>
               <th className="px-3 py-3 font-medium">Loads</th>
+              <th className="px-3 py-3 font-medium">Loaded miles</th>
+              <th className="px-3 py-3 font-medium">Deadhead</th>
+              <th className="px-3 py-3 font-medium">RPM</th>
+              <th className="px-3 py-3 font-medium">MPG</th>
               <th className="px-3 py-3 font-medium">Ins</th>
               <th className="px-3 py-3 font-medium">Outs</th>
               <th className="px-3 py-3 font-medium">Net</th>
@@ -219,13 +230,13 @@ function InsOutsTable({
           <tbody>
             {error ? (
               <tr>
-                <td className="px-3 py-3" colSpan={6} role="alert">
+                <td className="px-3 py-3" colSpan={10} role="alert">
                   <CopyableError headline="Ins and Outs could not be loaded." detail={error} />
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td className="px-3 py-3 text-[var(--color-fg-muted)]" colSpan={6}>
+                <td className="px-3 py-3 text-[var(--color-fg-muted)]" colSpan={10}>
                   No active trucks.
                 </td>
               </tr>
@@ -243,6 +254,10 @@ function InsOutsTable({
                       <CopyableError headline={row.note ?? "Sheet was not read."} detail={row.noteDetail} />
                     )}
                   </td>
+                  <td className="px-3 py-2">{row.readable ? miles(row.loadedMilesHundredths) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? miles(row.deadheadMilesHundredths) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? rpm(row.rpmCents) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? (row.mpg ?? "") : ""}</td>
                   <td className="px-3 py-2">{row.readable ? money(row.insCents) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? money(row.outsCents) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? money(row.netCents) : ""}</td>
@@ -254,6 +269,10 @@ function InsOutsTable({
               <tr className="bg-[var(--color-muted)] font-medium">
                 <td className="px-3 py-2">Fleet</td>
                 <td className="px-3 py-2">{fleet.loadCount}</td>
+                <td className="px-3 py-2">{formatMilesHundredths(fleet.loaded)}</td>
+                <td className="px-3 py-2">{formatMilesHundredths(fleet.deadhead)}</td>
+                <td className="px-3 py-2" />
+                <td className="px-3 py-2" />
                 <td className="px-3 py-2">{money(fleet.insCents)}</td>
                 <td className="px-3 py-2">{money(fleet.outsCents)}</td>
                 <td className="px-3 py-2">{money(fleet.insCents - fleet.outsCents)}</td>

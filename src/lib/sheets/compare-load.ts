@@ -16,7 +16,7 @@ import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
 
 const LOAD_COLUMNS =
-  "load_id, rate_cents, truck_unit_number, delivery_date, pickup_date, loaded_distance_mi, deadhead_miles, driver_name, delivery_date_kind, pickup_date_kind, source_manifest_ref";
+  "load_id, rate_cents, truck_unit_number, delivery_date, pickup_date, loaded_distance_mi, deadhead_miles, driver_name, delivery_date_kind, pickup_date_kind, source_manifest_ref, vektor_status";
 const LOAD_COLUMNS_KIND =
   "load_id, rate_cents, truck_unit_number, delivery_date, pickup_date, loaded_distance_mi, deadhead_miles, driver_name, delivery_date_kind, pickup_date_kind";
 const LOAD_COLUMNS_BASE =
@@ -59,6 +59,7 @@ type LoadRow = {
   delivery_date_kind?: string | null;
   pickup_date_kind?: string | null;
   source_manifest_ref?: string | null;
+  vektor_status?: string | null;
 };
 
 function dateKind(value: unknown): DateKind {
@@ -110,6 +111,7 @@ export async function loadSheetCompare(input: {
         pickupDateKind: null,
         manifestRef: load.tripGroup || load.manifestId,
         sheetPrimary: load.sheetPrimary,
+        status: load.status ?? null,
       });
     }
   }
@@ -178,6 +180,7 @@ export async function loadSheetCompare(input: {
       deliveryDateKind: dateKind(row.delivery_date_kind),
       pickupDateKind: dateKind(row.pickup_date_kind),
       manifestRef: row.source_manifest_ref?.trim() || null,
+      status: row.vektor_status ?? null,
     });
   }
 
@@ -224,7 +227,7 @@ async function selectLoads(
 ): Promise<{ rows: LoadRow[]; error: string | null }> {
   const first = await full();
   if (!first.error) return { rows: (first.data as LoadRow[] | null) ?? [], error: null };
-  if (!/delivery_date_kind|pickup_date_kind|source_manifest_ref|schema cache/i.test(first.error.message)) {
+  if (!/vektor_status|delivery_date_kind|pickup_date_kind|source_manifest_ref|schema cache/i.test(first.error.message)) {
     return { rows: [], error: first.error.message };
   }
   const second = await kind();

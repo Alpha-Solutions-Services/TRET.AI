@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { closeWeekAction } from "@/app/statements/actions";
 import { Button } from "@/components/ui/button";
@@ -8,14 +9,13 @@ import { useConfirm } from "@/components/ui/confirm";
 import { useToast } from "@/components/ui/toast";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { bpToPercentString } from "@/lib/fees/percent";
-import { centsToDollarString } from "@/lib/money/cents";
+import { formatStatementDollars } from "@/lib/reports/format";
 import type { StatementsPageData } from "@/lib/statements/queries";
 import type { UnitStatement } from "@/lib/statements/types";
 import { truckClassLabel } from "@/lib/fees/kinds";
 
 function money(cents: number): string {
-  if (cents < 0) return `-$${centsToDollarString(-cents)}`;
-  return `$${centsToDollarString(cents)}`;
+  return formatStatementDollars(cents);
 }
 
 function shiftWeek(weekStart: string, delta: number): string {
@@ -91,19 +91,15 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Statements</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
-          Monday–Sunday statements by delivery date. Amounts are cents. Legacy-owned trucks show Tolson payable.
-          Managed trucks show one management fee. The Tolson and Legacy split is stored and is not subtracted again.
+          Monday to Sunday statements by delivery date. Legacy-owned trucks show Tolson payable. Managed trucks
+          show one management fee. The Tolson and Legacy split is stored and is not subtracted again.
         </p>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <button
-          type="button"
-          onClick={() => openWeek(shiftWeek(data.weekStart, -1))}
-          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
-        >
+        <Button type="button" variant="secondary" onClick={() => openWeek(shiftWeek(data.weekStart, -1))}>
           Previous week
-        </button>
+        </Button>
         <label className="text-sm">
           <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
           <input
@@ -120,15 +116,11 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
             className="h-10 rounded-md border border-[var(--color-border)] px-3"
           />
         </label>
-        <button
-          type="button"
-          onClick={() => openWeek(shiftWeek(data.weekStart, 1))}
-          className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
-        >
+        <Button type="button" variant="secondary" onClick={() => openWeek(shiftWeek(data.weekStart, 1))}>
           Next week
-        </button>
+        </Button>
         <p className="text-sm text-[var(--color-fg-muted)]">
-          Showing {data.weekStart} → {data.weekEnd}
+          Showing {data.weekStart} through {data.weekEnd}
         </p>
         <Button
           type="button"
@@ -176,7 +168,17 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
           </h2>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-red-800">
             {data.blockers.map((blocker) => (
-              <li key={`${blocker.rule}:${blocker.ref ?? ""}:${blocker.message}`}>{blocker.message}</li>
+              <li key={`${blocker.rule}:${blocker.ref ?? ""}:${blocker.message}`}>
+                {blocker.message}
+                {blocker.rule === "missing_fee_contract" && blocker.ref?.includes("-") ? (
+                  <>
+                    {" "}
+                    <Link href={`/trucks/${blocker.ref}`} className="font-medium underline">
+                      Open truck
+                    </Link>
+                  </>
+                ) : null}
+              </li>
             ))}
           </ul>
         </div>

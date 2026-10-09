@@ -36,7 +36,13 @@ export function classifyManifestEligibility(
     };
   }
 
-  if (manifest.status === "STATUS_DELIVERED") {
+  if (
+    manifest.status === "STATUS_DELIVERED" ||
+    manifest.status === "STATUS_IN_TRANSIT" ||
+    manifest.status === "STATUS_DISPATCHED" ||
+    manifest.status === "STATUS_EN_ROUTE" ||
+    manifest.status === "STATUS_EN_ROUTE_TO_PICKUP"
+  ) {
     return { importable: true, reason: null, statusBucket: "delivered" };
   }
 

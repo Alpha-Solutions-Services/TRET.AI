@@ -36,16 +36,13 @@ export function locateFuelLogColumns(header: string[]): { ok: true; columns: Fue
   const loadId = columnIndex(header, ["load id"]);
   const trip = columnIndex(header, ["trip group id", "trip group"]);
   const gallons = columnIndex(header, ["gallons"]);
-  if (date < 0 || location < 0 || loadId < 0 || trip < 0 || gallons < 0) {
-    return { ok: false, error: "Fuel Log is missing Date, Location, Load ID, Trip Group ID, or Gallons." };
+  const totalCost = columnIndex(header, ["total cost", "amt", "amount"]);
+  if (date < 0 || location < 0 || loadId < 0 || trip < 0 || gallons < 0 || totalCost < 0) {
+    return { ok: false, error: "Fuel Log is missing Date, Location, Load ID, Trip Group ID, Gallons, or Total Cost." };
   }
-  const totalCost = gallons + 1;
   const costHeader = normalizeHeader(header[totalCost] ?? "");
-  if (!costHeader || !/^(total cost|amt|amount)$/.test(costHeader)) {
-    return { ok: false, error: "Total Cost column was not next to Gallons." };
-  }
   if (FORMULA_HEADERS.includes(costHeader)) {
-    return { ok: false, error: "Total Cost column was not next to Gallons." };
+    return { ok: false, error: "Fuel Log Total Cost header is a formula column." };
   }
   return { ok: true, columns: { date, location, loadId, trip, gallons, totalCost } };
 }

@@ -6,6 +6,8 @@ export type StatementTruck = {
   id: string;
   unitNumber: string;
   truckClass: TruckClass;
+  /** Basis points when Edit truck stores percent of gross. Null uses the 10 percent default. */
+  tolsonRateBp?: number | null;
 };
 
 export type StatementContract = {

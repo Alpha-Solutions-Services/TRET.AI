@@ -73,8 +73,10 @@ describe("manifest filter probes", () => {
       },
     ]);
     const arrayProbe = probes.find((probe) => probe.label === "schema array firstStopAppointmentStartDate");
-    expect(JSON.stringify(buildManifestListArgs(arrayProbe?.filters, 1))).toContain('\\"field\\"');
-    expect(JSON.stringify(buildManifestListArgs(arrayProbe?.filters, 1))).not.toContain('"filters":[');
+    const wire = JSON.stringify(buildManifestListArgs(arrayProbe?.filters, 1));
+    expect(wire.startsWith('{"filters":"')).toBe(true);
+    expect(wire).toContain("firstStopAppointmentStartDate");
+    expect(wire).not.toContain('"filters":[');
   });
 
   it("uses gte/lte only when the schema date field has those keys and not from/to", () => {

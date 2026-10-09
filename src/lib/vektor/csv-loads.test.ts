@@ -7,27 +7,34 @@ import { decidePromotion } from "./pipeline";
 const FIXTURE = readFileSync("fixtures/vektor/vektor-loads-2026-10-05.csv", "utf8");
 
 describe("Vektor orders CSV", () => {
-  it("imports only Delivered rows and previews the other statuses", () => {
+  it("imports delivered, in transit, and en route rows for the full week", () => {
     expect(FIXTURE).not.toMatch(/John Douglas Reed|Jose Rodriguez|Brison Lavelle Hunter|Ahmad Hashmi/);
-    const parsed = parseVektorLoadsCsv(FIXTURE, null, { from: "2026-10-01", to: "2026-10-11" });
+    const parsed = parseVektorLoadsCsv(FIXTURE, null, { from: "2026-10-05", to: "2026-10-11" });
     expect(parsed.headerFound).toBe(true);
     expect(parsed.rows.length).toBeGreaterThan(7);
     const imported = parsed.rows.filter((row) => row.action === "import");
     expect(imported.map((row) => row.loadId).sort()).toEqual([
+      "TBH--1181",
       "TBH--1183",
       "TBH--1184",
       "TBH--1185",
       "TBH--1186",
+      "TBH--1187",
+      "TBH--1188",
       "TBH--1189",
       "TBH--1190",
+      "TBH--1191",
       "TBH--1192",
+      "TBH--1193",
+      "TBH--1195",
+      "TBH--1197",
     ]);
     expect(parsed.rows.find((row) => row.loadId === "TBH--1186")?.unitNumber).toBe("3");
-    for (const label of ["Booked", "En Route", "In Transit"]) {
-      const skipped = parsed.rows.filter((row) => row.statusLabel === label);
-      expect(skipped.length).toBeGreaterThan(0);
-      expect(skipped.every((row) => row.action === "skip" && row.reason?.includes(label))).toBe(true);
-    }
+    expect(parsed.rows.find((row) => row.loadId === "TBH--1191")?.statusLabel).toBe("In Transit");
+    expect(parsed.rows.find((row) => row.loadId === "TBH--1181")?.action).toBe("import");
+    const booked = parsed.rows.filter((row) => row.statusLabel === "Booked");
+    expect(booked.length).toBeGreaterThan(0);
+    expect(booked.every((row) => row.action === "skip" && row.reason?.includes("Booked"))).toBe(true);
     const shared = imported.find((row) => row.loadId === "TBH--1183");
     expect(shared?.importRow?.deliveryDateKind).toBe("manifest");
     expect(shared?.importRow?.pickupDateKind).toBe("manifest");
@@ -42,9 +49,9 @@ describe("Vektor orders CSV", () => {
       to: "2026-10-11",
       csvText: FIXTURE,
     });
-    expect(fetched.manifests).toHaveLength(7);
+    expect(fetched.manifests).toHaveLength(14);
     const ids = new Set(fetched.manifests.map((row) => row.manifestId));
-    expect(ids.size).toBe(7);
+    expect(ids.size).toBe(14);
     const row = fetched.manifests.find((manifest) => manifest.friendlyId === "TBH--1186");
     expect(row?.sourceManifestRef).toBe("1186");
     const decision = decidePromotion(row!, {

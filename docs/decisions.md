@@ -2,6 +2,11 @@
 
 | Date | Decision | Reason |
 |------|----------|--------|
+| 2026-10-09 | When no stored fee contract covers the statement week, use the truck Tolson percent, or 10 percent Tolson on a Legacy truck and 15 percent management on a managed truck (10 Tolson and 5 Legacy). A truck with no class still blocks close and links to Edit. | Trucks 3, 5, 6, 7, and 8 had fee settings and no covering contract, so the week would not close. |
+| 2026-10-09 | A load is in the Monday to Sunday week when pickup or delivery falls in the week, or it shares a trip with one that does. In transit, dispatched, and en route import. Booked and deleted stay out. | Week 41 dropped in-transit loads and trip companions when the range ended on the current day and only Delivered rows imported. |
+| 2026-10-09 | Vektor list filters are JSON-encoded twice. | Live list calls failed with unexpected token { at column 12 after a gateway parsed the filter string back into an object. |
+| 2026-10-09 | Weekly outs include the Misc column and extra receipt rows dated in the week. | Dashboard net left out tarp, 7-Eleven, and Love's receipts. |
+| 2026-10-09 | Sheet vs Vektor flags Status differs and says Not in Vektor only when the normalized load id is missing. | Truck 6 loads that were in transit in Vektor and delivered on the sheet were marked missing. |
 | 2026-10-05 | Build v0.0.0.1 as foundation: Next.js App Router, Supabase Auth, `allowed_users` allowlist, Overview, Health, docs, CI | Needed before fee engine or Vektor import |
 | 2026-10-05 | App version lives only in the plain-text `VERSION` file; `package.json` version stays `0.0.0` | npm cannot store 4-part versions like `0.0.0.1` |
 | 2026-10-05 | Only `alphaassistant.alpha@gmail.com` (role `owner`) is seeded in `allowed_users` | Initial access control for bootstrap |

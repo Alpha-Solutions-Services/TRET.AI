@@ -7,7 +7,7 @@ import { contextForUnits, tollTargetsFromLedgerGrid } from "@/lib/fuel-tolls/fil
 import { canonicalStoredLoadId, canonicalTripId } from "@/lib/fuel-tolls/file/link";
 import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
 import { runSharedImport } from "@/lib/import-pipeline/run";
-import { gridFromUpload } from "@/lib/fuel-tolls/file/parse";
+import { gridFromUpload, parseGrid } from "@/lib/fuel-tolls/file/parse";
 import { cellA1, fuelLogTab, ledgerTab, locateFuelLogColumns } from "@/lib/fuel-tolls/file/sheet-columns";
 import type { FuelQueuePayload, ImportPreviewRow, TollQueuePayload } from "@/lib/fuel-tolls/file/types";
 import { batchWriteRanges, spreadsheetIdFromUrl } from "@/lib/fuel-tolls/file/write-sheets";
@@ -27,6 +27,18 @@ async function gate() {
   const access = await checkAccess();
   if (access.status !== "allowed") return { ok: false as const, error: "You must be signed in." };
   return { ok: true as const, supabase: await createClient() };
+}
+
+function unitsInGrid(grid: string[][]): string[] {
+  const parsed = parseGrid(grid);
+  const units = new Set<string>();
+  if (parsed.kind === "fuel" || parsed.kind === "toll") {
+    for (const row of parsed.rows) {
+      const unit = unitNumberFromRaw(row.unit);
+      if (unit) units.add(unit);
+    }
+  }
+  return [...units];
 }
 
 function decodeUpload(input: Upload): { ok: true; grid: string[][] } | { ok: false; error: string } {
@@ -55,7 +67,7 @@ export async function previewFuelTollFileAction(input: Upload): Promise<
   if (!auth.ok) return auth;
   const decoded = decodeUpload(input);
   if (!decoded.ok) return decoded;
-  const { context, identities } = await contextForUnits(auth.supabase, []);
+  const { context, identities } = await contextForUnits(auth.supabase, unitsInGrid(decoded.grid));
   const shared = await runSharedImport({ fileGrid: decoded.grid, context, identities });
   const plan = shared.file;
   if (!plan) return { ok: false, error: "This file is not a fuel card CSV or an E-ZPass workbook." };
@@ -70,7 +82,7 @@ export async function approveFuelTollFileAction(input: Upload): Promise<
   if (!auth.ok) return auth;
   const decoded = decodeUpload(input);
   if (!decoded.ok) return decoded;
-  const { context, identities } = await contextForUnits(auth.supabase, []);
+  const { context, identities } = await contextForUnits(auth.supabase, unitsInGrid(decoded.grid));
   const shared = await runSharedImport({ fileGrid: decoded.grid, context, identities });
   const plan = shared.file;
   if (!plan || plan.kind === "unknown") {

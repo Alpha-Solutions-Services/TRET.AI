@@ -42,12 +42,14 @@ describe("core_Manifests_Get arguments", () => {
     });
     expectAcceptedListArgs(args);
     expect(args).toEqual({
-      filters: JSON.stringify({
-        first_stop_appointment_start_date: {
-          from: "2026-09-07",
-          to: "2026-10-04",
-        },
-      }),
+      filters: JSON.stringify(
+        JSON.stringify({
+          first_stop_appointment_start_date: {
+            from: "2026-09-07",
+            to: "2026-10-04",
+          },
+        }),
+      ),
       page: 2,
       perPage: 100,
     });
@@ -60,9 +62,9 @@ describe("core_Manifests_Get arguments", () => {
     ];
     const args = buildManifestListArgs(logical, 1);
     expectAcceptedListArgs(args);
-    expect(args.filters).toBe(JSON.stringify(logical));
+    expect(args.filters).toBe(JSON.stringify(JSON.stringify(logical)));
     expect(encodeFiltersArgument("")).toBe("");
-    expect(encodeFiltersArgument({})).toBe("{}");
+    expect(encodeFiltersArgument({})).toBe(JSON.stringify("{}"));
   });
 
   it("starts at page 1 when the caller does not pass a page", () => {
@@ -84,12 +86,14 @@ describe("fuel and toll list arguments", () => {
     });
     expectAcceptedListArgs(args);
     expect(args).toEqual({
-      filters: JSON.stringify({
-        transaction_date: {
-          from: "2026-09-21",
-          to: "2026-09-27",
-        },
-      }),
+      filters: JSON.stringify(
+        JSON.stringify({
+          transaction_date: {
+            from: "2026-09-21",
+            to: "2026-09-27",
+          },
+        }),
+      ),
       page: 3,
       perPage: 100,
     });

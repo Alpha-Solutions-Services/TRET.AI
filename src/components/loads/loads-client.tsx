@@ -3,6 +3,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { canonicalLoadId } from "@/lib/loads/load-id";
+import { loadsInWeek } from "@/lib/loads/week-membership";
 import { countedLoadedHundredths, layoutManifestGroups } from "@/lib/loads/manifest-miles";
 import { centsToDollarString } from "@/lib/money/cents";
 import { centsPerLoadedMile, formatMilesHundredths } from "@/lib/reports/format";
@@ -63,11 +64,17 @@ export function LoadsClient({
   );
 
   const filtered = useMemo(() => {
-    const rows = loads.filter((row) => {
-      if (row.week_start !== weekStart) return false;
-      if (truck && row.truck_unit_number !== truck) return false;
-      return true;
-    });
+    const members = loads
+      .filter((row) => !truck || row.truck_unit_number === truck)
+      .map((row) => ({
+        row,
+        loadId: row.id,
+        pickupDay: row.pickup_date,
+        deliveryDay: row.delivery_date,
+        tripRef: row.source_manifest_ref ?? null,
+      }));
+    const chosen = new Set(loadsInWeek(members, weekStart, weekEnd).map((item) => item.loadId));
+    const rows = loads.filter((row) => chosen.has(row.id));
     return layoutManifestGroups(
       rows.map((row) => ({
         ...row,
@@ -75,7 +82,7 @@ export function LoadsClient({
         rankHundredths: hundredths(row.loaded_distance_mi),
       })),
     );
-  }, [loads, weekStart, truck]);
+  }, [loads, weekStart, weekEnd, truck]);
 
   const totals = useMemo(() => {
     return filtered.reduce(
@@ -100,7 +107,7 @@ export function LoadsClient({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Loads</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Read-only. Week is Monday to Sunday from delivery date. Loads that share a Vektor manifest stay together. Loaded miles count once for that manifest.
+          Read-only. Week is Monday to Sunday. A load is in the week when pickup or delivery falls in it, or when it shares a trip with one that does. Loads that share a Vektor manifest stay together. Loaded miles count once for that manifest.
         </p>
       </div>
 

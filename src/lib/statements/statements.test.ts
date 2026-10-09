@@ -225,10 +225,35 @@ describe("close blockers", () => {
     expect(result.closeAllowed).toBe(true);
   });
 
-  it("blocks a missing contract and a delivery week that does not match the stored week", () => {
+  it("uses the 10 and 15 percent defaults when no contract is stored", () => {
     const missing = buildWeekStatements(inputFrom(fixture, { contracts: [] }));
-    expect(missing.blockers.some((row) => row.rule === "missing_fee_contract")).toBe(true);
-    expect(missing.units).toHaveLength(0);
+    expect(missing.blockers.some((row) => row.rule === "missing_fee_contract")).toBe(false);
+    expect(missing.closeAllowed).toBe(true);
+    const legacy = missing.units.find((unit) => unit.unitNumber === "02");
+    const managed = missing.units.find((unit) => unit.unitNumber === "03");
+    expect(legacy?.contractId).toBe("default:11111111-1111-4111-8111-111111111102");
+    expect(legacy?.grossCents).toBe(320_000);
+    expect(legacy?.tolsonPayableCents).toBe(32_000);
+    expect(legacy?.managementFeeCents).toBe(0);
+    expect(managed?.contractId).toBe("default:22222222-2222-4222-8222-222222222203");
+    expect(managed?.grossCents).toBe(580_000);
+    expect(managed?.managementFeeCents).toBe(87_000);
+    expect(managed?.tolsonPayableCents).toBe(58_000);
+    expect(managed?.legacyRetainedCents).toBe(29_000);
+
+    const unknown = buildWeekStatements(
+      inputFrom(fixture, {
+        contracts: [],
+        trucks: fixture.trucks.map((truck) =>
+          truck.unitNumber === "02" ? { ...truck, truckClass: "other" as typeof truck.truckClass } : truck,
+        ),
+      }),
+    );
+    expect(unknown.blockers.some((row) => row.rule === "missing_fee_contract" && row.ref?.includes("-"))).toBe(true);
+  });
+
+  it("blocks a delivery week that does not match the stored week", () => {
+    const fixture = readFixture();
 
     const mismatch = buildWeekStatements(
       inputFrom(fixture, {

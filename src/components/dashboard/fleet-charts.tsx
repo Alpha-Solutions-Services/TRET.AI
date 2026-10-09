@@ -1,11 +1,12 @@
 "use client";
 
 import { AreaChart, BarChart, ChartCard, DonutChart, type ChartSeries } from "@/components/charts/charts";
+import { categoryColor } from "@/lib/charts/palette";
 import { fleetInsOutsTotals, fleetWeekTrend, type TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 
 const SHEET_SERIES: ChartSeries[] = [
-  { key: "ins", label: "Ins", color: "var(--color-chart-1)" },
-  { key: "outs", label: "Outs", color: "var(--color-chart-2)" },
+  { key: "ins", label: "Ins", color: categoryColor(0) },
+  { key: "outs", label: "Outs", color: categoryColor(1) },
 ];
 
 export function FleetCharts({ rows }: { rows: TruckWeekInsOuts[] }) {

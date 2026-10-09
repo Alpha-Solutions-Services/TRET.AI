@@ -99,6 +99,7 @@ function checkLabel(row: AlignedLoad): string {
   if (row.highlights.includes("loaded_miles")) labels.push("Miles differ");
   if (row.highlights.includes("deadhead")) labels.push("Deadhead differs");
   if (row.highlights.includes("driver")) labels.push("Driver differs");
+  if (row.highlights.includes("status")) labels.push("Status differs");
   return labels.join(", ") || "Differs";
 }
 

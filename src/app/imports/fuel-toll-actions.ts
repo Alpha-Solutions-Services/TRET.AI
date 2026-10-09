@@ -2,9 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { checkAccess } from "@/lib/auth/access";
+import { weekBoundsForDate } from "@/lib/fee-engine";
 import { milesToHundredths } from "@/lib/fuel-tolls/quantity";
 import { fuelTollSettingsFromRows } from "@/lib/fuel-tolls/settings";
 import { mapFuelCsv, mapTollCsv } from "@/lib/fuel-tolls/csv";
+import { SEEDED_IDENTITIES } from "@/lib/fuel-tolls/file/mappings";
+import { gridFromUpload } from "@/lib/fuel-tolls/file/parse";
+import { planImport } from "@/lib/fuel-tolls/file/plan";
+import type { FuelQueuePayload, TollQueuePayload } from "@/lib/fuel-tolls/file/types";
 import { fetchFuelAndTollsLive } from "@/lib/fuel-tolls/live";
 import { runFuelPipeline, runTollPipeline } from "@/lib/fuel-tolls/pipeline";
 import type { DuplicateKey, FuelDraft, LoadSpan, TollDraft, WeekMiles } from "@/lib/fuel-tolls/types";
@@ -35,12 +40,10 @@ export type FuelTollImportResult =
   | { ok: false; error: string }
   | { ok: true; blocked: boolean; message: string };
 
-function defaultRange(lookbackDays: number): { from: string; to: string } {
-  const to = new Date();
-  const from = new Date();
-  from.setUTCDate(from.getUTCDate() - (lookbackDays - 1));
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  return { from: iso(from), to: iso(to) };
+function defaultRange(): { from: string; to: string } {
+  const today = new Date().toISOString().slice(0, 10);
+  const week = weekBoundsForDate(today);
+  return { from: week.start, to: week.end };
 }
 
 function asJson(value: unknown): Json {
@@ -50,6 +53,53 @@ function asJson(value: unknown): Json {
 function safeMessage(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
   return message.replace(/Bearer\s+\S+/gi, "Bearer [redacted]");
+}
+
+function draftsFromChosenFiles(fuelText: string, tollText: string): { fuel: FuelDraft[]; tolls: TollDraft[] } {
+  const fuel: FuelDraft[] = [];
+  const tolls: TollDraft[] = [];
+  const texts = [fuelText, tollText].filter((text) => text.trim());
+  for (const text of texts) {
+    const plan = planImport(gridFromUpload({ csvText: text }), {}, SEEDED_IDENTITIES);
+    for (const row of plan.rows) {
+      if (row.payload?.kind === "fuel") {
+        const payload = row.payload as FuelQueuePayload;
+        fuel.push({
+          vektorTransactionId: `file-fuel:${payload.dedupeKey}`,
+          unitNumber: payload.unitNumber,
+          transactedAt: payload.isoDate ? `${payload.isoDate} 00:00:00` : null,
+          transactedDate: payload.isoDate || null,
+          weekStart: payload.weekStart,
+          weekEnd: payload.weekEnd,
+          product: payload.product,
+          card: payload.card || null,
+          gallonsMilli: payload.gallonsMilli,
+          amountCents: payload.amountCents,
+          retailAmountCents: null,
+          invalidReason: row.status === "new" ? null : row.reason,
+          source: { file: true },
+        });
+      }
+      if (row.payload?.kind === "toll") {
+        const payload = row.payload as TollQueuePayload;
+        tolls.push({
+          vektorTransactionId: `file-toll:${payload.transactionId}`,
+          vektorTruckId: null,
+          unitNumber: payload.unitNumber,
+          transactedAt: payload.occurredAt ? payload.occurredAt.replace("T", " ") : null,
+          transactedDate: payload.isoDate || null,
+          weekStart: payload.weekStart,
+          weekEnd: payload.weekEnd,
+          amountCents: payload.amountCents,
+          card: null,
+          location: payload.location || null,
+          invalidReason: row.status === "new" ? null : row.reason,
+          source: { file: true },
+        });
+      }
+    }
+  }
+  return { fuel, tolls };
 }
 
 function parseMapping(raw: string | null | undefined): Record<string, string> | null {
@@ -75,25 +125,21 @@ export async function runFuelAndTollsImportAction(input?: {
   }
 
   const supabase = await createClient();
-  const { data: lookbackRow } = await supabase
-    .from("import_settings")
-    .select("value_int")
-    .eq("key", "default_import_lookback_days")
-    .maybeSingle();
-  const lookback = lookbackRow?.value_int ?? 14;
   const range = {
-    from: input?.from || defaultRange(lookback).from,
-    to: input?.to || defaultRange(lookback).to,
+    from: input?.from || defaultRange().from,
+    to: input?.to || defaultRange().to,
   };
+  const fuelFile = input?.fuelCsvText?.trim() ?? "";
+  const tollFile = input?.tollCsvText?.trim() ?? "";
 
   const registry = await loadImportRegistry(supabase);
-  if (!registry.selected) {
+  if (!fuelFile && !tollFile && !registry.selected) {
     return {
       ok: false,
       error: "No import source selected. Open Settings and choose Vektor MCP or CSV.",
     };
   }
-  if (registry.selected === "api" || registry.selected === "sheet") {
+  if (!fuelFile && !tollFile && (registry.selected === "api" || registry.selected === "sheet")) {
     return {
       ok: false,
       error:
@@ -118,7 +164,12 @@ export async function runFuelAndTollsImportAction(input?: {
   let notes: string[] = [];
 
   try {
-    if (registry.selected === "mcp") {
+    if (fuelFile || tollFile) {
+      const drafted = draftsFromChosenFiles(fuelFile, tollFile);
+      fuelRows = drafted.fuel;
+      tollRows = drafted.tolls;
+      notes = ["The chosen file was used. Vektor was not called."];
+    } else if (registry.selected === "mcp") {
       if (!registry.adapter) {
         return await failAuth(supabase, range);
       }
@@ -145,7 +196,15 @@ export async function runFuelAndTollsImportAction(input?: {
   } catch (err) {
     const needsSignIn = err instanceof NeedsSignInError || /sign-in|unauthorized/i.test(safeMessage(err));
     if (needsSignIn) return failAuth(supabase, range);
-    return { ok: false, error: safeMessage(err) };
+    const message = safeMessage(err);
+    if (/did not expose required read tool|did not list /i.test(message)) {
+      return {
+        ok: true,
+        blocked: false,
+        message: "Vektor did not list fuel or tolls. Choose a fuel or toll file. Nothing was written.",
+      };
+    }
+    return { ok: false, error: message };
   }
 
   const context = await loadMatchContext(supabase, range);
@@ -156,7 +215,7 @@ export async function runFuelAndTollsImportAction(input?: {
 
   const fuelOutcome = await persistFuel(supabase, {
     range,
-    source: registry.selected,
+    source: fuelFile || tollFile ? "csv" : (registry.selected ?? "csv"),
     rows: fuelRows,
     settings: fuelSettings,
     context: context.context,
@@ -166,7 +225,7 @@ export async function runFuelAndTollsImportAction(input?: {
 
   const tollOutcome = await persistTolls(supabase, {
     range,
-    source: registry.selected,
+    source: fuelFile || tollFile ? "csv" : (registry.selected ?? "csv"),
     rows: tollRows,
     settings: tollSettings,
     context: context.context,

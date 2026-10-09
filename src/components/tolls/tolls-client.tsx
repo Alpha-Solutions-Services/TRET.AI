@@ -71,7 +71,7 @@ export function TollsClient({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Tolls</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Promoted tolls for the Monday–Sunday week. Matched from the Vektor truck id to the unit number.
+          Promoted tolls for the Monday to Sunday week. Matched from the Vektor truck id to the unit number.
         </p>
       </div>
 
@@ -115,7 +115,7 @@ export function TollsClient({
           </select>
         </label>
         <p className="text-sm text-[var(--color-fg-muted)]">
-          Showing {weekStart} → {weekEnd}
+          Showing {weekStart} through {weekEnd}
         </p>
       </div>
 
