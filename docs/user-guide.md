@@ -148,8 +148,8 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 ## Dashboard
 
 1. Open **Dashboard**.
-2. The top row shows the version, the sheet account check, open issues, and how many loads the readable sheets have this week.
-3. Charts show Ins and Outs by truck, the last eight weeks from those same sheets, and the sheet expense mix. Outs and the mix come from each truck's Weekly Expenses row.
+2. The cards are Ins, Outs, Net, Loads, Loaded miles, Deadhead, RPM, MPG, and Open issues. Loaded miles are whole miles. The hub shows whether Vektor, Sheets, Fuel, Tolls, and Gemini are reaching TRET. A green, yellow, or red dot is a status. Other colors are categories.
+3. Charts show Ins and Outs by truck across the full width, the last eight weeks from those same sheets, and the sheet expense mix. Outs and the mix come from each truck's Weekly Expenses row. Each truck is also a card with loads, miles, RPM, MPG, and net.
 4. The tables below are the week snapshot, the management profit and loss, and the sheet Ins and Outs. The week snapshot uses those same sheet totals. Gross is Ins. Fees, fuel, tolls, and fixed split the Outs. Net is Ins minus Outs. The profit and loss income is the management fee on this week's sheet loads. Expenses are the portal costs for that week's month. Tolson payable is its own line. Net subtracts portal expenses and Tolson payable.
 
 ## Management

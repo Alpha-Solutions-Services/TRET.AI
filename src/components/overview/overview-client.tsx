@@ -6,19 +6,32 @@ import { useRouter } from "next/navigation";
 import { categoryColor } from "@/lib/charts/palette";
 import { KpiCard } from "@/components/motion/kpi-card";
 import { weekBoundsForDate } from "@/lib/fee-engine";
-import { formatMilesHundredths, formatStatementDollars } from "@/lib/reports/format";
+import {
+  centsPerLoadedMile,
+  formatDieselMpg,
+  formatGroupedInt,
+  formatMilesHundredths,
+  formatMilesWhole,
+  formatStatementDollars,
+} from "@/lib/reports/format";
 import { ManagementSummaryTable } from "@/components/dashboard/management-summary";
 import type { ManagementCardSummary } from "@/lib/legacy/summary";
+import type { HubFeed } from "@/lib/overview/hub-feeds";
 import type { OverviewPageData } from "@/lib/overview/queries";
 import type { SnapshotRow } from "@/lib/overview/snapshot";
 import { CopyableError } from "@/components/copyable-error";
-import { FleetCharts } from "@/components/dashboard/fleet-charts";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
+import { Button } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
+import { TruckCardGrid } from "@/components/dashboard/truck-cards";
 
-const SignalHeader = dynamic(() => import("@/components/motion/signal").then((mod) => mod.SignalHeader), {
-  loading: () => <div className="h-[72px]" aria-hidden="true" />,
+const HubFlow = dynamic(() => import("@/components/motion/hub-flow").then((mod) => mod.HubFlow), {
+  loading: () => <div className="h-[340px]" aria-hidden="true" />,
+});
+
+const FleetCharts = dynamic(() => import("@/components/dashboard/fleet-charts").then((mod) => mod.FleetCharts), {
+  loading: () => <div className="h-[420px]" aria-hidden="true" />,
 });
 
 function money(cents: number): string {
@@ -35,6 +48,18 @@ function rpm(cents: number | null | undefined): string {
   return formatStatementDollars(cents);
 }
 
+function mpgTarget(mpg: string | null): number | null {
+  if (!mpg || !/^\d+\.\d{2}$/.test(mpg)) return null;
+  const [whole, frac] = mpg.split(".");
+  return Number(whole) * 100 + Number(frac);
+}
+
+function formatMpgCount(value: number): string {
+  const whole = Math.floor(Math.abs(value) / 100);
+  const frac = Math.abs(value) % 100;
+  return `${whole}.${String(frac).padStart(2, "0")}`;
+}
+
 function shiftWeek(weekStart: string, delta: number): string {
   const date = new Date(`${weekStart}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + delta * 7);
@@ -44,17 +69,23 @@ function shiftWeek(weekStart: string, delta: number): string {
 export function OverviewClient({
   data,
   cards,
+  hub,
 }: {
   data: OverviewPageData;
   cards: ManagementCardSummary;
+  hub: HubFeed[];
 }) {
   const router = useRouter();
   const readable = data.insOuts.filter((row) => row.readable);
-  const connectedTrucks = readable.length;
   const fleetIns = readable.reduce((sum, row) => sum + row.insCents, 0);
   const fleetOuts = readable.reduce((sum, row) => sum + row.outsCents, 0);
   const fleetLoads = readable.reduce((sum, row) => sum + row.loadCount, 0);
   const fleetMiles = readable.reduce((sum, row) => sum + (row.loadedMilesHundredths ?? 0), 0);
+  const fleetDeadhead = readable.reduce((sum, row) => sum + (row.deadheadMilesHundredths ?? 0), 0);
+  const fleetGallons = readable.reduce((sum, row) => sum + (row.dieselGallonsMilli ?? 0), 0);
+  const fleetRpm = centsPerLoadedMile(fleetIns, fleetMiles);
+  const fleetMpg = formatDieselMpg(fleetMiles, fleetGallons);
+  const issueStatus = data.openIssueCount == null ? "warn" : data.openIssueCount > 0 ? "danger" : "ok";
 
   function openWeek(next: string) {
     router.push(`/?week=${next}`);
@@ -62,7 +93,6 @@ export function OverviewClient({
 
   return (
     <div className="space-y-10">
-      <SignalHeader count={connectedTrucks} />
       <div>
         <h1 className="text-[1.75rem]">Dashboard</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
@@ -73,32 +103,87 @@ export function OverviewClient({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <KpiCard label="Ins" value={money(fleetIns)} detail="Load rates this week" color={categoryColor(0)} />
-        <KpiCard label="Outs" value={money(fleetOuts)} detail="Weekly expenses, including misc" color={categoryColor(1)} />
-        <KpiCard label="Net" value={money(fleetIns - fleetOuts)} detail="Ins minus outs" color={categoryColor(2)} />
-        <KpiCard label="Loads" value={String(fleetLoads)} detail={data.versionLabel} color={categoryColor(3)} />
+        <KpiCard
+          label="Ins"
+          value={money(fleetIns)}
+          detail="Load rates this week"
+          color={categoryColor(0)}
+          target={fleetIns}
+          format={formatStatementDollars}
+        />
+        <KpiCard
+          label="Outs"
+          value={money(fleetOuts)}
+          detail="Weekly expenses, including misc"
+          color={categoryColor(1)}
+          target={fleetOuts}
+          format={formatStatementDollars}
+        />
+        <KpiCard
+          label="Net"
+          value={money(fleetIns - fleetOuts)}
+          detail="Ins minus outs"
+          color={categoryColor(2)}
+          target={fleetIns - fleetOuts}
+          format={formatStatementDollars}
+        />
+        <KpiCard
+          label="Loads"
+          value={formatGroupedInt(fleetLoads)}
+          detail={data.versionLabel}
+          color={categoryColor(3)}
+          target={fleetLoads}
+          format={formatGroupedInt}
+        />
         <KpiCard
           label="Loaded miles"
-          value={readable.length === 0 ? "0.00" : formatMilesHundredths(fleetMiles)}
+          value={formatMilesWhole(fleetMiles)}
           detail="Primary miles on each trip"
           color={categoryColor(4)}
+          target={Math.floor(fleetMiles / 100)}
+          format={formatGroupedInt}
+        />
+        <KpiCard
+          label="Deadhead"
+          value={formatMilesHundredths(fleetDeadhead)}
+          detail="Empty miles on each trip"
+          color={categoryColor(5)}
+          target={fleetDeadhead}
+          format={formatMilesHundredths}
+        />
+        <KpiCard
+          label="RPM"
+          value={fleetRpm == null ? "None" : money(fleetRpm)}
+          detail="Ins per loaded mile"
+          color={categoryColor(6)}
+          target={fleetRpm}
+          format={fleetRpm == null ? undefined : formatStatementDollars}
+        />
+        <KpiCard
+          label="MPG"
+          value={fleetMpg ?? "None"}
+          detail="Diesel miles per gallon"
+          color={categoryColor(7)}
+          target={mpgTarget(fleetMpg)}
+          format={fleetMpg == null ? undefined : formatMpgCount}
         />
         <KpiCard
           label="Open issues"
-          value={data.openIssueCount == null ? "Unavailable" : String(data.openIssueCount)}
+          value={data.openIssueCount == null ? "Unavailable" : formatGroupedInt(data.openIssueCount)}
           detail={data.sheetHealth}
-          color={data.openIssueCount != null && data.openIssueCount > 0 ? "var(--color-danger)" : categoryColor(5)}
+          color={categoryColor(8)}
+          target={data.openIssueCount}
+          format={data.openIssueCount == null ? undefined : formatGroupedInt}
+          status={issueStatus}
         />
       </div>
 
+      <HubFlow feeds={hub} />
+
       <div className="flex flex-wrap items-end gap-3">
-        <button
-          type="button"
-          onClick={() => openWeek(shiftWeek(data.weekStart, -1))}
-          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
-        >
+        <Button variant="vivid" onClick={() => openWeek(shiftWeek(data.weekStart, -1))}>
           Previous week
-        </button>
+        </Button>
         <label className="text-sm">
           <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
           <input
@@ -115,13 +200,9 @@ export function OverviewClient({
             className="h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3"
           />
         </label>
-        <button
-          type="button"
-          onClick={() => openWeek(shiftWeek(data.weekStart, 1))}
-          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
-        >
+        <Button variant="vividAlt" onClick={() => openWeek(shiftWeek(data.weekStart, 1))}>
           Next week
-        </button>
+        </Button>
         <p className="text-sm text-[var(--color-fg-muted)]">
           Showing {data.weekStart} through {data.weekEnd}
         </p>
@@ -153,6 +234,7 @@ export function OverviewClient({
 
       <SheetsEnvBanner missing={data.sheetEnvMissing} />
       <FleetCharts rows={data.insOuts} />
+      <TruckCardGrid rows={data.insOuts} />
 
       {data.mismatchCount != null ? (
         <Link
@@ -254,7 +336,7 @@ function InsOutsTable({
                       <CopyableError headline={row.note ?? "Sheet was not read."} detail={row.noteDetail} />
                     )}
                   </td>
-                  <td className="px-3 py-2">{row.readable ? miles(row.loadedMilesHundredths) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? formatMilesWhole(row.loadedMilesHundredths ?? 0) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? miles(row.deadheadMilesHundredths) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? rpm(row.rpmCents) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? (row.mpg ?? "") : ""}</td>
@@ -269,7 +351,7 @@ function InsOutsTable({
               <tr className="bg-[var(--color-muted)] font-medium">
                 <td className="px-3 py-2">Fleet</td>
                 <td className="px-3 py-2">{fleet.loadCount}</td>
-                <td className="px-3 py-2">{formatMilesHundredths(fleet.loaded)}</td>
+                <td className="px-3 py-2">{formatMilesWhole(fleet.loaded)}</td>
                 <td className="px-3 py-2">{formatMilesHundredths(fleet.deadhead)}</td>
                 <td className="px-3 py-2" />
                 <td className="px-3 py-2" />
@@ -286,7 +368,7 @@ function InsOutsTable({
         Ins are load rates from each truck Google Sheet. Outs are that truck&apos;s Weekly Expenses row for the
         week (driver pay, management fee, fuel, and the other weekly lines). If that tab is missing, Outs use
         the Mgmt Expenses rows instead. Monthly Legacy company expenses stay on Management and are not added
-        into these outs.{" "}
+        into these outs. Loaded miles are whole miles.{" "}
         <Link
           href={`/ins-outs?week=${weekStart}`}
           className="font-medium text-[var(--color-accent)] no-underline hover:underline"
@@ -339,4 +421,3 @@ function SnapshotLine({ row, fleet }: { row: SnapshotRow; fleet: boolean }) {
     </tr>
   );
 }
-

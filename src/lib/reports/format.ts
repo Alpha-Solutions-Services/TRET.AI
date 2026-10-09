@@ -24,6 +24,24 @@ export function formatMilesHundredths(hundredths: number): string {
   return `${withCommas}.${String(frac).padStart(2, "0")}`;
 }
 
+/** Whole miles for the dashboard. 487700 hundredths is "4,877". The stored hundredths do not change. */
+export function formatMilesWhole(hundredths: number): string {
+  if (!Number.isInteger(hundredths) || hundredths < 0 || hundredths > Number.MAX_SAFE_INTEGER) {
+    throw new Error("Miles must be an integer number of hundredths");
+  }
+  return formatGroupedInt(Math.floor(hundredths / 100));
+}
+
+/** Integer with thousands separators. Used while a count-up eases toward a whole number. */
+export function formatGroupedInt(value: number): string {
+  if (!Number.isInteger(value) || Math.abs(value) > Number.MAX_SAFE_INTEGER) {
+    throw new Error("Count must be an integer");
+  }
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  return `${sign}${String(abs).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+}
+
 /** Gallons stored as integer thousandths. */
 export function formatGallonsMilli(milli: number): string {
   if (!Number.isInteger(milli) || milli < 0 || milli > Number.MAX_SAFE_INTEGER) {

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.0.0.31 — 2026-10-09
+
+- The Dashboard is rebuilt with React Vibe pieces (MIT, framer-motion). KPI cards count up and use a glow border: Ins, Outs, Net, Loads, Loaded miles, Deadhead, RPM, MPG, and Open issues. The Ins and Outs bars are full width. The eight week trend draws on. The expense donut keeps the category colors, percents, and thousands separators. Each truck is a card with unit, loads, miles, RPM, MPG, net, and a status dot. Hub flow shows Vektor, Sheets, Fuel, Tolls, and Gemini into TRET.
+- Week buttons use bright blue and purple fills. Red, yellow, and green stay on status dots. Loaded miles on the Dashboard are whole miles (4,877). The stored hundredths and the Ins and Outs rules are unchanged. Fleet MPG uses the same diesel function on the summed miles and the summed gallons. Fuel and Tolls say In TRET only when those tables have rows.
+- Motion waits until after the first paint, and it stops when the browser asks for less motion. The hub and the charts load as their own chunks. Every theme stays, and Vibe Black stays the default.
+
 ## v0.0.0.30 — 2026-10-09
 
 - A chosen loads CSV is the only source for that import. The Vektor list filter is JSON-encoded twice so a gateway that unwraps strings still sends a string, and a failed list says to choose a loads CSV. A chosen fuel or toll file is used on its own. A missing Vektor fuel or toll tool is a note, and the import continues.

@@ -1,33 +1,42 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { CountUp } from "@/components/motion/count-up";
+import { StatusDot, type StatusTone } from "@/components/ui/status-dot";
 
-/** React Vibe style metric card. Real numbers only. Motion stops when the user asks for less motion. */
+/** React Vibe metric card. Glow uses the category color. Count-up uses the real integer. */
 export function KpiCard({
   label,
   value,
   detail,
   color,
+  target = null,
+  format,
+  status = null,
 }: {
   label: string;
   value: string;
   detail?: string;
   color: string;
+  target?: number | null;
+  format?: (value: number) => string;
+  status?: StatusTone | null;
 }) {
-  const reduced = useReducedMotion();
   return (
-    <motion.div
-      className="material border border-[var(--color-border)] px-6 py-5"
-      style={{ boxShadow: `inset 4px 0 0 ${color}` }}
-      initial={reduced ? false : { opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={reduced ? { duration: 0 } : { duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+    <div
+      className="material rounded-2xl border px-6 py-5"
+      style={{
+        borderColor: `color-mix(in srgb, ${color} 70%, var(--color-border))`,
+        boxShadow: `0 0 22px color-mix(in srgb, ${color} 42%, transparent), inset 0 0 0 1px color-mix(in srgb, ${color} 28%, transparent)`,
+      }}
     >
-      <p className="text-xs tracking-wide text-[var(--color-fg-muted)]">{label}</p>
-      <p className="num mt-2 text-2xl font-semibold tracking-tight" style={{ color }}>
-        {value}
+      <p className="flex items-center gap-2 text-xs tracking-wide text-[var(--color-fg-muted)]">
+        {status ? <StatusDot tone={status} glow /> : null}
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-semibold tracking-tight" style={{ color }}>
+        {format ? <CountUp text={value} target={target} format={format} /> : <span className="num">{value}</span>}
       </p>
       {detail ? <p className="mt-1 text-xs text-[var(--color-fg-muted)]">{detail}</p> : null}
-    </motion.div>
+    </div>
   );
 }

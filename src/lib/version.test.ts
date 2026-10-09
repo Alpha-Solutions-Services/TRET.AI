@@ -22,7 +22,7 @@ describe("version", () => {
     const previous = process.env.TRET_AI_VERSION;
     delete process.env.TRET_AI_VERSION;
     try {
-      expect(readAppVersion()).toBe("0.0.0.30");
+      expect(readAppVersion()).toBe("0.0.0.31");
     } finally {
       if (previous === undefined) delete process.env.TRET_AI_VERSION;
       else process.env.TRET_AI_VERSION = previous;
@@ -31,7 +31,7 @@ describe("version", () => {
 
   it("formats the signed-in footer label", () => {
     expect(formatFooterLabel("0.0.0.4")).toBe("TRET.AI v0.0.0.4");
-    expect(formatFooterLabel()).toBe("TRET.AI v0.0.0.30");
+    expect(formatFooterLabel()).toBe("TRET.AI v0.0.0.31");
     expect(APP_VERSION).toBe(readFileSync("VERSION", "utf8").trim());
   });
 

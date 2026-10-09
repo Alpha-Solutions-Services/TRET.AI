@@ -3,14 +3,15 @@ import { OverviewClient } from "@/components/overview/overview-client";
 import { OverviewSkeleton } from "@/components/overview-skeleton";
 import { SignedInShell } from "@/components/signed-in-shell";
 import { loadManagementCardSummary } from "@/lib/legacy/queries";
+import { loadHubStatus } from "@/lib/overview/hub-status";
 import { loadOverview } from "@/lib/overview/queries";
 
 export const dynamic = "force-dynamic";
 
 async function OverviewContent({ week }: { week: string | undefined }) {
-  const data = await loadOverview(week);
+  const [data, hub] = await Promise.all([loadOverview(week), loadHubStatus()]);
   const cards = await loadManagementCardSummary(data.weekStart, data.insOuts, data.operatingExpenses);
-  return <OverviewClient key={data.weekStart} data={data} cards={cards} />;
+  return <OverviewClient key={data.weekStart} data={data} cards={cards} hub={hub} />;
 }
 
 export default async function HomePage({

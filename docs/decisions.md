@@ -2,6 +2,7 @@
 
 | Date | Decision | Reason |
 |------|----------|--------|
+| 2026-10-09 | Dashboard visuals are React Vibe (MIT) on the existing week numbers. Loaded miles on the Dashboard display as whole miles by flooring hundredths. Fleet MPG calls the same diesel function on the summed loaded miles and the summed diesel gallons already counted per truck. Fuel and Tolls on the hub say In TRET only when those tables have rows, and Not set when the read fails or the table is empty. | The v0.0.0.30 dashboard was still a small header and thin bars. The CEO asked for the full React Vibe dashboard without changing the money rules. |
 | 2026-10-09 | When no stored fee contract covers the statement week, use the truck Tolson percent, or 10 percent Tolson on a Legacy truck and 15 percent management on a managed truck (10 Tolson and 5 Legacy). A truck with no class still blocks close and links to Edit. | Trucks 3, 5, 6, 7, and 8 had fee settings and no covering contract, so the week would not close. |
 | 2026-10-09 | A load is in the Monday to Sunday week when pickup or delivery falls in the week, or it shares a trip with one that does. In transit, dispatched, and en route import. Booked and deleted stay out. | Week 41 dropped in-transit loads and trip companions when the range ended on the current day and only Delivered rows imported. |
 | 2026-10-09 | Vektor list filters are JSON-encoded twice. | Live list calls failed with unexpected token { at column 12 after a gateway parsed the filter string back into an object. |
