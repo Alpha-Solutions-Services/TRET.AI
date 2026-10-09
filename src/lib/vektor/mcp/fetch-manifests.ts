@@ -161,12 +161,7 @@ export async function fetchManifestsFromTools(opts: {
   }
 
   if (first.manifests.length === 0 && !sawSuccessfulCall) {
-    throw new Error(
-      [
-        "Vektor rejected the manifest list. Filters are a JSON string. A nested object fails proto decode with unexpected token { at column 12.",
-        ...notes,
-      ].join(" "),
-    );
+    throw new Error("Vektor could not list manifests. Choose a loads CSV on Imports.");
   }
 
   const take = (batch: VektorManifest[]): number => {

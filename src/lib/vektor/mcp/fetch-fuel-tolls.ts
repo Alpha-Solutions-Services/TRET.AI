@@ -92,31 +92,36 @@ export async function fetchFuelAndTollsFromTools(opts: {
   tolls: TollDraft[];
   report: FuelTollFetchReport;
 }> {
+  const notes: string[] = [];
+  let names: string[] | null = null;
   if (opts.listToolNames) {
-    const names = await opts.listToolNames();
-    for (const required of [MCP_FUEL_LIST_TOOL, MCP_TOLLS_LIST_TOOL, "fleet_Trucks_GetByIDs"]) {
+    names = await opts.listToolNames();
+    for (const required of [MCP_FUEL_LIST_TOOL, MCP_TOLLS_LIST_TOOL]) {
       if (!names.includes(required)) {
-        throw new Error(
-          `Vektor did not expose required read tool ${required}. On the consent screen, enable read tools and try again.`,
-        );
+        notes.push(`Vektor did not list ${required}. That source was skipped.`);
       }
     }
   }
+  const has = (tool: string) => !names || names.includes(tool);
 
-  const fuelRaw = await listPages(opts.callTool, MCP_FUEL_LIST_TOOL, opts.from, opts.to, [
+  const fuelRaw = has(MCP_FUEL_LIST_TOOL)
+    ? await listPages(opts.callTool, MCP_FUEL_LIST_TOOL, opts.from, opts.to, [
     "transactions",
     "fuel_transactions",
     "items",
     "data",
     "results",
-  ]);
-  const tollRaw = await listPages(opts.callTool, MCP_TOLLS_LIST_TOOL, opts.from, opts.to, [
+  ])
+    : [];
+  const tollRaw = has(MCP_TOLLS_LIST_TOOL)
+    ? await listPages(opts.callTool, MCP_TOLLS_LIST_TOOL, opts.from, opts.to, [
     "tolls",
     "transactions",
     "items",
     "data",
     "results",
-  ]);
+  ])
+    : [];
 
   const truckIds = new Set<string>();
   for (const row of tollRaw) {
@@ -134,7 +139,11 @@ export async function fetchFuelAndTollsFromTools(opts: {
 
   const lookup = new Map<string, string>();
   const ids = [...truckIds];
-  for (let i = 0; i < ids.length; i += 100) {
+  const canTrucks = !names || names.includes("fleet_Trucks_GetByIDs");
+  if (!canTrucks && ids.length > 0) {
+    notes.push("Vektor did not list fleet_Trucks_GetByIDs. That source was skipped.");
+  }
+  for (let i = 0; canTrucks && i < ids.length; i += 100) {
     const chunk = ids.slice(i, i + 100);
     const payload = await callAllowlisted(
       opts.callTool,
@@ -165,7 +174,7 @@ export async function fetchFuelAndTollsFromTools(opts: {
     report: {
       fuelAggregate: aggregate.value,
       tollStats: stats.value,
-      notes: [aggregate.note, stats.note].filter((note): note is string => Boolean(note)),
+      notes: [...notes, aggregate.note, stats.note].filter((note): note is string => Boolean(note)),
     },
   };
 }

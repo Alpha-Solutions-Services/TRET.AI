@@ -52,9 +52,25 @@ export type TollLink =
   | { ok: true; loadId: string; how: "inside" | "next" }
   | { ok: false; reason: string };
 
+function primaryLoad(loads: readonly LoadWindow[]): LoadWindow {
+  const flagged = loads.find((load) => load.primary === true);
+  if (flagged) return flagged;
+  const tripId = loads[0]?.tripId ?? "";
+  const tripNumber = /^M-(\d+)$/.exec(tripId)?.[1];
+  if (tripNumber) {
+    const named = loads.find((load) => load.loadId.replace(/\D/g, "") === tripNumber);
+    if (named) return named;
+  }
+  return [...loads].sort((a, b) => {
+    const miles = (b.loadedMilesHundredths ?? 0) - (a.loadedMilesHundredths ?? 0);
+    if (miles !== 0) return miles;
+    return a.pickupDate.localeCompare(b.pickupDate) || a.loadId.localeCompare(b.loadId);
+  })[0]!;
+}
+
 /**
- * A toll inside pickup through delivery stays on that load.
- * After a delivery, empty miles go to the next load.
+ * A toll stays on the load whose pickup through delivery contains the exit time.
+ * Several loads on one trip use that trip's primary load.
  */
 export function linkTollTime(occurredAt: string, loads: readonly LoadWindow[]): TollLink {
   const inside = loads.filter((load) => {
@@ -62,20 +78,14 @@ export function linkTollTime(occurredAt: string, loads: readonly LoadWindow[]): 
     const end = `${load.deliveryDate}T23:59:59`;
     return occurredAt >= start && occurredAt <= end;
   });
+  if (inside.length === 0) return { ok: false, reason: "No load covers this toll time." };
   if (inside.length === 1) return { ok: true, loadId: inside[0]!.loadId, how: "inside" };
-  if (inside.length > 1) {
-    return {
-      ok: false,
-      reason: `More than one load covers this toll (${inside.map((load) => load.loadId).join(", ")}).`,
-    };
+  const trips = new Set(inside.map((load) => load.tripId).filter(Boolean));
+  if (trips.size === 1 && inside.every((load) => load.tripId)) {
+    return { ok: true, loadId: primaryLoad(inside).loadId, how: "inside" };
   }
-  const afterDelivery = loads.some((load) => `${load.deliveryDate}T23:59:59` < occurredAt);
-  if (!afterDelivery) {
-    return { ok: false, reason: "No load covers this toll time." };
-  }
-  const next = [...loads]
-    .filter((load) => `${load.pickupDate}T00:00:00` > occurredAt)
-    .sort((a, b) => a.pickupDate.localeCompare(b.pickupDate) || a.loadId.localeCompare(b.loadId))[0];
-  if (!next) return { ok: false, reason: "No load covers this toll, and there is no next load for the empty miles." };
-  return { ok: true, loadId: next.loadId, how: "next" };
+  return {
+    ok: false,
+    reason: `More than one load covers this toll (${inside.map((load) => load.loadId).join(", ")}).`,
+  };
 }

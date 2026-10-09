@@ -88,7 +88,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
     settingsRes,
     closeRes,
   ] = await Promise.all([
-    supabase.from("trucks").select("id, unit_number, truck_class"),
+    supabase.from("trucks").select("id, unit_number, truck_class, tolson_payable_type, tolson_payable_value"),
     supabase.from("fee_contracts").select("id, truck_id, effective_from, effective_to"),
     supabase.from("fee_rules").select("contract_id, kind, rate_bp, base_pct_bp"),
     Promise.all([
@@ -179,6 +179,10 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
       id: truck.id,
       unitNumber: truck.unit_number,
       truckClass: truck.truck_class,
+      tolsonRateBp:
+        truck.tolson_payable_type === "percent_of_gross" && truck.tolson_payable_value != null
+          ? truck.tolson_payable_value
+          : null,
     })),
     contracts,
     loads: (loadsRes.error ? [] : (loadsRes.data ?? [])).map((load) => ({

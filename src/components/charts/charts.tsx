@@ -1,6 +1,7 @@
 "use client";
 
-import { centsToDollarString } from "@/lib/money/cents";
+import { categoryColor, percentOf } from "@/lib/charts/palette";
+import { formatStatementDollars } from "@/lib/reports/format";
 
 export type ChartSeries = {
   key: string;
@@ -14,7 +15,7 @@ export type ChartRow = {
 };
 
 function money(cents: number): string {
-  return `$${centsToDollarString(cents)}`;
+  return formatStatementDollars(cents);
 }
 
 export function ChartCard({
@@ -158,16 +159,11 @@ export function DonutChart({
   slices: Array<{ label: string; cents: number }>;
   empty: string;
 }) {
-  const parts = slices.filter((slice) => slice.cents > 0);
+  const parts = slices
+    .filter((slice) => slice.cents > 0)
+    .sort((a, b) => b.cents - a.cents || a.label.localeCompare(b.label));
   const total = parts.reduce((sum, slice) => sum + slice.cents, 0);
   if (total === 0) return <p className="text-sm text-[var(--color-fg-muted)]">{empty}</p>;
-  const colors = [
-    "var(--color-chart-1)",
-    "var(--color-chart-2)",
-    "var(--color-chart-3)",
-    "var(--color-chart-4)",
-    "var(--color-accent)",
-  ];
   let angle = -Math.PI / 2;
   const cx = 90;
   const cy = 90;
@@ -178,7 +174,7 @@ export function DonutChart({
     <figure className="flex flex-wrap items-center gap-4">
       <svg viewBox="0 0 180 180" role="img" aria-label="Expense mix" className="h-40 w-40">
         {parts.length === 1 ? (
-          <path d={fullRing(cx, cy, radius, inner)} fill={colors[0]} fillRule="evenodd">
+          <path d={fullRing(cx, cy, radius, inner)} fill={categoryColor(0)} fillRule="evenodd">
             <title>{`${parts[0]?.label ?? ""} ${money(parts[0]?.cents ?? 0)}`}</title>
           </path>
         ) : (
@@ -187,7 +183,7 @@ export function DonutChart({
             const path = donutSlice(cx, cy, radius, inner, angle, angle + sweep);
             angle += sweep;
             return (
-              <path key={slice.label} d={path} fill={colors[index % colors.length]}>
+              <path key={slice.label} d={path} fill={categoryColor(index)}>
                 <title>{`${slice.label} ${money(slice.cents)}`}</title>
               </path>
             );
@@ -199,10 +195,10 @@ export function DonutChart({
           <li key={slice.label} className="flex items-center gap-2">
             <span
               className="inline-block h-2.5 w-2.5 rounded-full"
-              style={{ background: colors[index % colors.length] }}
+              style={{ background: categoryColor(index) }}
             />
             <span>
-              {slice.label} {money(slice.cents)}
+              {slice.label} {money(slice.cents)} {percentOf(slice.cents, total)}
             </span>
           </li>
         ))}

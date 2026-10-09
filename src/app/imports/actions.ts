@@ -9,7 +9,10 @@ import {
 } from "@/lib/vektor/adapters";
 import { timestampToDate } from "@/lib/vektor/dates";
 import { chooseExistingLoad, sameSourcePreviousCount } from "@/lib/vektor/dedupe";
+import { CsvExportAdapter } from "@/lib/vektor/adapters/csv-adapter";
 import { loadImportRegistry } from "@/lib/vektor/import-registry";
+import { weekBoundsForDate } from "@/lib/fee-engine";
+import type { ImportSourceAdapter, ImportSourceId } from "@/lib/vektor/adapters";
 import { parseVektorLoadsCsv } from "@/lib/vektor/csv-loads";
 import { canonicalLoadId, loadIdLookupForms } from "@/lib/loads/load-id";
 import { unitKey } from "@/lib/sheets/mismatch";
@@ -31,12 +34,28 @@ export type ImportActionResult =
     }
   | { ok: false; error: string };
 
-function defaultRange(lookbackDays: number): { from: string; to: string } {
-  const to = new Date();
-  const from = new Date();
-  from.setUTCDate(from.getUTCDate() - (lookbackDays - 1));
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  return { from: iso(from), to: iso(to) };
+function defaultRange(): { from: string; to: string } {
+  const today = new Date().toISOString().slice(0, 10);
+  const week = weekBoundsForDate(today);
+  return { from: week.start, to: week.end };
+}
+
+async function readCsvMapping(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<Record<string, string> | null> {
+  const { data } = await supabase
+    .from("import_settings")
+    .select("value_text")
+    .eq("key", "csv_column_mapping")
+    .maybeSingle();
+  if (!data?.value_text) return null;
+  try {
+    const parsed = JSON.parse(data.value_text) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed as Record<string, string>;
+  } catch {
+    return null;
+  }
 }
 
 async function loadAdapterRegistry(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -54,19 +73,23 @@ export async function runVektorImportAction(input?: {
   }
 
   const supabase = await createClient();
-  const { data: lookbackRow } = await supabase
-    .from("import_settings")
-    .select("value_int")
-    .eq("key", "default_import_lookback_days")
-    .maybeSingle();
-  const lookback = lookbackRow?.value_int ?? 14;
   const range = {
-    from: input?.from || defaultRange(lookback).from,
-    to: input?.to || defaultRange(lookback).to,
+    from: input?.from || defaultRange().from,
+    to: input?.to || defaultRange().to,
   };
+  const csvText = input?.csvText?.trim() ?? "";
 
-  const { adapter, selected } = await loadAdapterRegistry(supabase);
-  if (selected === "mcp" && !adapter) {
+  let adapter: ImportSourceAdapter | null = null;
+  let selected: ImportSourceId | null = null;
+  if (csvText) {
+    selected = "csv";
+    adapter = new CsvExportAdapter({ columnMapping: await readCsvMapping(supabase), csvText });
+  } else {
+    const registry = await loadAdapterRegistry(supabase);
+    adapter = registry.adapter;
+    selected = registry.selected;
+  }
+  if (!csvText && selected === "mcp" && !adapter) {
     let { data: failedRun, error: failedErr } = await supabase
       .from("import_runs")
       .insert({

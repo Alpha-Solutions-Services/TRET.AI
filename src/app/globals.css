@@ -431,6 +431,10 @@ main thead th {
   text-transform: uppercase;
 }
 
+.btn-glow {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
 .pressable {
   transition:
     transform var(--motion-duration) var(--ease-spring),

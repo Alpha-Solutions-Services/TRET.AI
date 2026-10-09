@@ -1,4 +1,4 @@
-import { geminiConfigured, suggestAssignment, suggestColumnMap } from "@/lib/llm-gateway/gemini";
+import { geminiConfigured, suggestAssignmentBatch, suggestColumnMap } from "@/lib/llm-gateway/gemini";
 import { SEEDED_IDENTITIES, truckLabel, type TruckIdentity } from "./mappings";
 import { AI_BUSY_NOTE } from "./messages";
 import { markAiMapped, planImport } from "./plan";
@@ -35,16 +35,7 @@ export async function prepareImport(
     rows = suggested.rows;
     aiBusy = suggested.busy;
   }
-  if (aiBusy) rows = rows.map(withBusyNote);
   return { ...planned, rows, aiNotice: aiBusy ? AI_BUSY_NOTE : null };
-}
-
-function withBusyNote(row: ImportPreviewRow): ImportPreviewRow {
-  if (row.status !== "flagged" && !row.queue) return row;
-  if (row.reason?.includes(AI_BUSY_NOTE)) return row;
-  const reason = row.reason ? `${row.reason} ${AI_BUSY_NOTE}.` : AI_BUSY_NOTE;
-  const payload = row.payload ? { ...row.payload, reason } : row.payload;
-  return { ...row, reason, payload };
 }
 
 async function addSuggestions(
@@ -56,15 +47,19 @@ async function addSuggestions(
   sleep?: Sleep,
 ): Promise<{ rows: ImportPreviewRow[]; busy: boolean }> {
   const next = rows.slice();
-  let calls = 0;
-  for (let index = 0; index < next.length && calls < 8; index++) {
+  const batch: { index: number; choices: string[] }[] = [];
+  for (let index = 0; index < next.length; index += 1) {
     const row = next[index]!;
     if (row.status !== "flagged" || row.aiSuggested) continue;
     const choices = choicesFor(row, context, identities);
     if (choices.length === 0) continue;
-    calls += 1;
-    const suggested = await suggestAssignment(
-      {
+    batch.push({ index, choices });
+  }
+  if (batch.length === 0) return { rows: next, busy: false };
+  const suggested = await suggestAssignmentBatch(
+    batch.map(({ index, choices }) => {
+      const row = next[index]!;
+      return {
         kind: row.kind,
         unit: row.unitNumber ?? "",
         card: row.payload?.kind === "fuel" ? row.payload.card : "",
@@ -73,24 +68,26 @@ async function addSuggestions(
         date: row.payload?.kind === "fuel" ? row.payload.isoDate : row.payload?.kind === "toll" ? row.payload.isoDate : "",
         location: row.payload?.kind === "fuel" ? row.payload.location : row.payload?.kind === "toll" ? row.payload.location : "",
         choices,
-      },
-      env,
-      fetchImpl,
-      sleep,
-    );
-    if (suggested.busy) return { rows: next, busy: true };
-    if (!suggested.choice) continue;
+      };
+    }),
+    env,
+    fetchImpl,
+    sleep,
+  );
+  if (suggested.busy) return { rows: next, busy: true };
+  suggested.choices.forEach((choice, batchIndex) => {
+    const slot = batch[batchIndex];
+    if (!slot || !choice) return;
+    const row = next[slot.index]!;
     const label =
-      row.kind === "fuel" && identities.some((item) => item.unitNumber === suggested.choice)
-        ? truckLabel(suggested.choice)
-        : suggested.choice;
-    next[index] = {
+      row.kind === "fuel" && identities.some((item) => item.unitNumber === choice) ? truckLabel(choice) : choice;
+    next[slot.index] = {
       ...row,
       aiSuggested: true,
       aiSuggestion: label,
       reason: row.reason ? `${row.reason} AI suggested ${label}.` : `AI suggested ${label}.`,
     };
-  }
+  });
   return { rows: next, busy: false };
 }
 

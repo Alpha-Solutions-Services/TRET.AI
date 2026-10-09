@@ -37,7 +37,25 @@ export function encodeFiltersArgument(filters: unknown): string {
   if (typeof filters !== "object") {
     throw new Error("Vektor list filters must be a JSON value encoded as a string.");
   }
-  return JSON.stringify(filters);
+  // Extra JSON string. A gateway that parses string values would turn
+  // {"filters":"{...}"} back into an object, and protojson then fails at
+  // column 12 on `{`. After one parse this value is still a string.
+  return JSON.stringify(JSON.stringify(filters));
+}
+
+/** Undo the wire encoding, including one extra string wrap. */
+export function decodeFiltersArgument(value: unknown): unknown {
+  let current = value;
+  for (let pass = 0; pass < 2; pass += 1) {
+    if (typeof current !== "string") return current;
+    if (current === "") return "";
+    try {
+      current = JSON.parse(current) as unknown;
+    } catch {
+      return current;
+    }
+  }
+  return current;
 }
 
 /** Column 12 (1-based) of the compact arguments JSON. A string value puts `"` there. */

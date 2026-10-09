@@ -206,4 +206,54 @@ describe("sheet and Vektor alignment", () => {
       ["TBH--1195", "partial", "1195"],
     ]);
   });
+
+  it("shows a status mismatch when the normalized load id matches", () => {
+    const rows = alignSheetAndVektor({
+      weekStart: "2026-10-05",
+      sheet: [
+        {
+          unitNumber: "6",
+          loadId: "TBH1191",
+          deliveryDay: "2026-10-07",
+          rateCents: 150_000,
+          loadedMilesHundredths: 10_000,
+          deadheadMilesHundredths: 0,
+          status: "Delivered",
+        },
+        {
+          unitNumber: "6",
+          loadId: "TBH--1181",
+          deliveryDay: "2026-10-07",
+          rateCents: 120_000,
+          loadedMilesHundredths: 8_000,
+          deadheadMilesHundredths: 0,
+          status: "Delivered",
+        },
+      ],
+      vektor: [
+        {
+          unitNumber: "06",
+          loadId: "TBH--1191",
+          deliveryDay: "2026-10-07",
+          rateCents: 150_000,
+          loadedMilesHundredths: 10_000,
+          deadheadMilesHundredths: 0,
+          status: "In Transit",
+        },
+        {
+          unitNumber: "6",
+          loadId: "TBH1181",
+          deliveryDay: "2026-10-07",
+          rateCents: 120_000,
+          loadedMilesHundredths: 8_000,
+          deadheadMilesHundredths: 0,
+          status: "In Transit",
+        },
+      ],
+    });
+    expect(rows).toHaveLength(2);
+    expect(rows.every((row) => row.highlights.includes("status"))).toBe(true);
+    expect(rows.every((row) => row.highlights.includes("missing_vektor"))).toBe(false);
+    expect(rows[0]?.notes.join(" ")).toContain("Status differs");
+  });
 });

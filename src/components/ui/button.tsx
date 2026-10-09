@@ -9,14 +9,14 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClass: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--color-accent)] text-[var(--color-on-accent)] hover:bg-[var(--color-accent-hover)] disabled:bg-[var(--color-accent)]/50",
+    "btn-glow bg-[var(--color-accent)] text-[var(--color-on-accent)] hover:bg-[var(--color-accent-hover)] disabled:bg-[var(--color-accent)] disabled:text-[var(--color-on-accent)] disabled:opacity-100",
   secondary:
-    "border border-[var(--color-border)] bg-[var(--color-field)] text-[var(--color-fg)] hover:bg-[var(--color-muted)]",
-  ghost: "bg-transparent text-[var(--color-fg)] hover:bg-[var(--color-muted)]",
+    "border border-[var(--color-fg)] bg-transparent text-[var(--color-fg)] hover:bg-[var(--color-muted)] disabled:border-[var(--color-fg)] disabled:text-[var(--color-fg)] disabled:opacity-100",
+  ghost: "bg-transparent text-[var(--color-fg)] hover:bg-[var(--color-muted)] disabled:opacity-60",
   warn:
-    "bg-[var(--color-warn-bg)] text-[var(--color-warn-fg)] hover:brightness-95 disabled:opacity-80",
+    "bg-[var(--color-warn-bg)] text-[var(--color-warn-fg)] hover:brightness-95 disabled:opacity-100",
   danger:
-    "bg-[var(--color-danger-fill)] text-[var(--color-on-danger)] hover:brightness-95 disabled:opacity-60",
+    "bg-[var(--color-danger-fill)] text-[var(--color-on-danger)] hover:brightness-95 disabled:opacity-100",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -26,7 +26,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         className={cn(
-          "pressable inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100",
+          "pressable inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] px-4 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:cursor-not-allowed motion-reduce:transition-none motion-reduce:active:scale-100",
           variantClass[variant],
           className,
         )}

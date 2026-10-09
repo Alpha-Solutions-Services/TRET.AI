@@ -292,9 +292,7 @@ export function FixedExpensesPanel({ truckId, bundle, canDeleteLatest }: Props) 
                 <ul className="mt-2 space-y-1 text-sm text-[var(--color-fg-muted)]">
                   {group.rows.map((row) => (
                     <li key={row.id}>
-                      {row.effective_from}
-                      {" → "}
-                      {row.effective_to ?? "open"}
+                      {row.effective_from} through {row.effective_to ?? "open"}
                       {" · $"}
                       {centsToDollarString(row.weekly_amount_cents)}
                       {" · "}
@@ -313,7 +311,7 @@ export function FixedExpensesPanel({ truckId, bundle, canDeleteLatest }: Props) 
         <h2 className="text-lg font-semibold">Week overrides</h2>
         {!bundle.ready ? null : bundle.overrides.length === 0 ? (
           <p className="text-sm text-[var(--color-fg-muted)]">
-            No week overrides. An override replaces the version for that Monday–Sunday week only.
+            No week overrides. An override replaces the version for that Monday to Sunday week only.
           </p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">

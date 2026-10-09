@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { decodeFiltersArgument } from "./args";
 import { fetchManifestsFromTools } from "./fetch-manifests";
 import { manifestsFromPayload, summarizePayloadShape, unwrapToolPayload } from "./parse";
 import type { VektorManifest } from "../types";
@@ -55,8 +56,7 @@ describe("manifest payload parsing", () => {
 
 function logicalFilters(value: unknown): unknown {
   expect(typeof value).toBe("string");
-  if (value === "") return "";
-  return JSON.parse(value as string);
+  return decodeFiltersArgument(value);
 }
 
 describe("empty Vektor list probe", () => {
@@ -139,7 +139,7 @@ describe("empty Vektor list probe", () => {
           content: [{ type: "text", text: "unknown filter field" }],
         }),
       }),
-    ).rejects.toThrow(/unknown filter field/);
+    ).rejects.toThrow(/Choose a loads CSV on Imports/);
   });
 
   it("records the payload shape when Vektor returns no rows", async () => {

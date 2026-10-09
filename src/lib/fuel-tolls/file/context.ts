@@ -1,5 +1,6 @@
 import { canonicalStoredLoadId, canonicalTripId } from "@/lib/fuel-tolls/file/link";
 import {
+  mergeIdentities,
   SEEDED_IDENTITIES,
   unitNumberFromRaw,
   type TruckIdentity,
@@ -42,7 +43,7 @@ export async function loadIdentities(supabase: Db): Promise<TruckIdentity[]> {
     byTruck.get(tag.truck_id)?.tags.push(tag.tag_number);
   }
   const rows = [...byTruck.values()];
-  return rows.length > 0 ? rows : SEEDED_IDENTITIES;
+  return rows.length > 0 ? mergeIdentities(rows) : SEEDED_IDENTITIES;
 }
 
 export function loadsFromLedgerGrid(grid: string[][]): LoadWindow[] {

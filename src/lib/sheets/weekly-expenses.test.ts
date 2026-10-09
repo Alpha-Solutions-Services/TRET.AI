@@ -86,4 +86,32 @@ describe("weekly expense parsing", () => {
     expect(built.categories.find((row) => row.category === "Fuel")?.cents).toBe(45_659);
     expect(built.categories.find((row) => row.category === "Vektor Fee")).toBeUndefined();
   });
+
+  it("adds tarp and 7-Eleven receipts, and a Love's receipt, on top of the weekly row", () => {
+    const truck3 = outsFromWeeklyExpenses(
+      [
+        ["Week Start Date", "Driver Compensation", "Misc"],
+        ["10/05/2026", "$1,000.00", "$0.00"],
+        ["10/06/2026", "tarp", "$200.00"],
+        ["10/07/2026", "7-Eleven", "$124.96"],
+      ],
+      WEEK.weekStart,
+      WEEK.weekEnd,
+    );
+    expect(truck3.categories.find((row) => row.category === "tarp")?.cents).toBe(20_000);
+    expect(truck3.categories.find((row) => row.category === "7-Eleven")?.cents).toBe(12_496);
+    expect(truck3.outsCents).toBe(100_000 + 32_496);
+
+    const truck7 = outsFromWeeklyExpenses(
+      [
+        ["Week Start Date", "Driver Compensation"],
+        ["10/05/2026", "$500.00"],
+        ["10/08/2026", "Love's", "$105.98"],
+      ],
+      WEEK.weekStart,
+      WEEK.weekEnd,
+    );
+    expect(truck7.categories.find((row) => row.category === "Love's")?.cents).toBe(10_598);
+    expect(truck7.outsCents).toBe(50_000 + 10_598);
+  });
 });

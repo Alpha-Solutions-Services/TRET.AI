@@ -57,8 +57,8 @@ export function TruckIdentityForm({
         });
       }}
     >
-      <h2 className="text-sm font-semibold">Fuel card, plate, and tag</h2>
-      <p className="text-xs text-[var(--color-fg-muted)]">One value per line. A plate can include a state, such as UD12588 VA.</p>
+      <h2 className="text-sm font-semibold">Add card, plate, or tag</h2>
+      <p className="text-xs text-[var(--color-fg-muted)]">One value per line. A plate can include a state, such as UD12588 VA. These match fuel cards and toll tags to this truck.</p>
       <label className="block text-sm">
         <span className="mb-1 block text-[var(--color-fg-muted)]">Card numbers</span>
         <textarea

@@ -131,16 +131,16 @@ function planFuel(
     const byUnit = findByUnit(identities, raw.unit);
     const byCard = findByCard(identities, raw.card);
     let unitNumber: string | null = null;
-    if (!raw.unit.trim()) reasons.push("Unit is blank.");
-    else if (!byUnit) reasons.push(`Unit ${raw.unit.trim()} is not a known truck.`);
-    if (!raw.card.trim()) reasons.push("Card number is blank, so it cannot be checked against the truck.");
-    else if (!byCard) reasons.push(`Card ${raw.card.trim()} is not on file.`);
+    if (raw.unit.trim() && !byUnit) reasons.push(`Unit ${raw.unit.trim()} is not a known truck.`);
+    else if (!raw.unit.trim() && !byCard) reasons.push("Unit is blank.");
     if (byUnit && byCard && byUnit.unitNumber !== byCard.unitNumber) {
       reasons.push(
         `Card ${raw.card.trim()} belongs to ${truckLabel(byCard.unitNumber)}, but the row says unit ${raw.unit.trim()}. Fuel bought for another truck is not entered.`,
       );
-    } else if (byUnit && byCard) {
+    } else if (byUnit) {
       unitNumber = byUnit.unitNumber;
+    } else if (!raw.unit.trim() && byCard) {
+      unitNumber = byCard.unitNumber;
     }
 
     const location = locationOf(raw.city, raw.state);
@@ -692,20 +692,30 @@ function resolveTollTruck(
   if (known.length === 0) {
     return { reason: `${unknown.map((signal) => `${signal.source} ${signal.raw} is not on file`).join(". ")}.` };
   }
+  const byUnit = known.find((signal) => signal.source === "Unit")?.truck ?? null;
   const units = new Set(known.map((signal) => signal.truck!.unitNumber));
-  if (units.size > 1) {
+  if (!byUnit && units.size > 1) {
+    return {
+      reason: `Plate and tag do not agree (${known
+        .map((signal) => `${signal.source} ${signal.raw} is ${truckLabel(signal.truck!.unitNumber)}`)
+        .join("; ")}).`,
+    };
+  }
+  if (byUnit && [...units].some((unit) => unit !== byUnit.unitNumber)) {
     return {
       reason: `Unit, plate, and tag do not agree (${known
         .map((signal) => `${signal.source} ${signal.raw} is ${truckLabel(signal.truck!.unitNumber)}`)
         .join("; ")}).`,
     };
   }
-  if (unknown.length > 0) {
-    return { reason: `${unknown.map((signal) => `${signal.source} ${signal.raw} is not on file`).join(". ")}.` };
-  }
-  const truck = known[0]!.truck!;
+  const truck = byUnit ?? known[0]!.truck!;
   const plate = truck.plates.find((item) => plateKey(item.plate) === plateKey(raw.plate));
-  if (plate?.state && raw.plateState.trim() && plate.state.toUpperCase() !== raw.plateState.trim().toUpperCase()) {
+  if (
+    !byUnit &&
+    plate?.state &&
+    raw.plateState.trim() &&
+    plate.state.toUpperCase() !== raw.plateState.trim().toUpperCase()
+  ) {
     return {
       reason: `Plate ${raw.plate.trim()} is ${plate.state} on file, but the file says ${raw.plateState.trim()}.`,
     };

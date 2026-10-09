@@ -77,7 +77,7 @@ export function FuelClient({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Fuel</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Promoted fuel for the Monday–Sunday week. Amount is the discounted price. Retail is shown beside it.
+          Promoted fuel for the Monday to Sunday week. Amount is the discounted price. Retail is shown beside it.
         </p>
       </div>
 
@@ -121,7 +121,7 @@ export function FuelClient({
           </select>
         </label>
         <p className="text-sm text-[var(--color-fg-muted)]">
-          Showing {weekStart} → {weekEnd}
+          Showing {weekStart} through {weekEnd}
         </p>
       </div>
 

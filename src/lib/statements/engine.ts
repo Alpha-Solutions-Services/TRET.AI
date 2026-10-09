@@ -350,7 +350,18 @@ function buildUnit(
   let feeLines: FeeLineResult[] = [];
   let contractId: string | null = null;
   if (loads.length > 0 || grossCents > 0) {
-    const truckContracts = input.contracts.filter((contract) => contract.truckId === truck.id);
+    const stored = input.contracts.filter((contract) => contract.truckId === truck.id);
+    const covering = stored.filter((contract) => contractCovers(contract, input.weekStart));
+    const fallback = covering.length === 0 ? defaultContract(truck) : null;
+    const truckContracts = covering.length > 0 ? stored : fallback ? [fallback] : [];
+    if (truckContracts.length === 0) {
+      blockers.push({
+        rule: "missing_fee_contract",
+        message: `Truck ${truck.unitNumber} has no fee setup. Open the truck and set Tolson payable or the management fee.`,
+        ref: truck.id,
+      });
+      return null;
+    }
     try {
       const contract = findContractForDate(toContractRecords(truckContracts), input.weekStart);
       const full = truckContracts.find((row) => row.id === contract.id);
@@ -464,6 +475,42 @@ function expenseLine(code: string, label: string, amountCents: number, sortOrder
 
 function feeAmount(lines: FeeLineResult[], kind: FeeRuleKind): number {
   return lines.find((line) => line.kind === kind)?.amountCents ?? 0;
+}
+
+function contractCovers(contract: StatementContract, date: string): boolean {
+  if (contract.effectiveFrom > date) return false;
+  if (contract.effectiveTo !== null && contract.effectiveTo < date) return false;
+  return true;
+}
+
+/** 10 percent Tolson on a Legacy truck. 15 percent management on a managed truck, split 10 and 5. */
+function defaultContract(truck: StatementTruck): StatementContract | null {
+  const tolson = truck.tolsonRateBp != null && truck.tolsonRateBp >= 0 ? truck.tolsonRateBp : 1000;
+  if (truck.truckClass === "legacy_owned") {
+    return {
+      id: `default:${truck.id}`,
+      truckId: truck.id,
+      effectiveFrom: "2000-01-01",
+      effectiveTo: null,
+      rules: [{ kind: "TOLSON_PAYABLE", rateBp: tolson, basePctBp: 10000 }],
+    };
+  }
+  if (truck.truckClass === "third_party") {
+    const management = Math.max(1500, tolson);
+    const legacy = management - tolson;
+    return {
+      id: `default:${truck.id}`,
+      truckId: truck.id,
+      effectiveFrom: "2000-01-01",
+      effectiveTo: null,
+      rules: [
+        { kind: "MANAGEMENT_FEE", rateBp: management, basePctBp: 10000 },
+        { kind: "TOLSON_PAYABLE", rateBp: tolson, basePctBp: 10000 },
+        { kind: "LEGACY_RETAINED", rateBp: legacy, basePctBp: 10000 },
+      ],
+    };
+  }
+  return null;
 }
 
 function toContractRecords(contracts: StatementContract[]) {

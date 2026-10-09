@@ -11,6 +11,9 @@ export type LoadWindow = {
   tripId: string;
   pickupDate: string;
   deliveryDate: string;
+  /** Sheet Primary, when the ledger said so. */
+  primary?: boolean | null;
+  loadedMilesHundredths?: number | null;
 };
 
 export type TollTarget = {

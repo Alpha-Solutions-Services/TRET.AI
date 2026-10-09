@@ -1,5 +1,9 @@
 import { weekBoundsForDate, type TruckClass } from "@/lib/fee-engine";
-import { inWeek, sheetAmountToCents, sheetDay } from "@/lib/sheets/cell";
+import { loadsInWeek } from "@/lib/loads/week-membership";
+import { countedLoadedHundredths, layoutManifestGroups } from "@/lib/loads/manifest-miles";
+import { centsPerLoadedMile, formatDieselMpg } from "@/lib/reports/format";
+import { inWeek, sheetAmountToCents, sheetDay, columnIndex as sheetColumnIndex, findHeaderRow } from "@/lib/sheets/cell";
+import { gallonsStringToMilli } from "@/lib/fuel-tolls/quantity";
 import { parseLoadLedger } from "@/lib/sheets/ledger";
 import { isWeeklyExpenseLabel, outsFromWeeklyExpenses, WEEKLY_EXPENSE_LABELS } from "@/lib/sheets/weekly-expenses";
 
@@ -39,6 +43,7 @@ export type LedgerLoadRef = {
   manifestId: string | null;
   tripGroup: string | null;
   sheetPrimary: boolean | null;
+  status?: string | null;
 };
 
 export type TruckWeekInsOuts = {
@@ -51,6 +56,10 @@ export type TruckWeekInsOuts = {
   outsCents: number;
   netCents: number;
   loadCount: number;
+  loadedMilesHundredths?: number;
+  deadheadMilesHundredths?: number;
+  rpmCents?: number | null;
+  mpg?: string | null;
   categories: ExpenseCategoryTotal[];
   /** True when Outs came from the Weekly Expenses tab. */
   outsFromWeekly: boolean;
@@ -161,11 +170,23 @@ export function insFromLoadLedger(
 } {
   const parsed = parseLoadLedger(grid);
   if (!parsed.headerFound) return { insCents: 0, loadCount: 0, headerFound: false, loads: [] };
+  const chosen = new Set(
+    loadsInWeek(
+      parsed.rows.map((row) => ({
+        loadId: row.loadId,
+        pickupDay: row.pickupDay,
+        deliveryDay: row.deliveryDay || null,
+        tripRef: row.tripGroup || row.manifestId,
+      })),
+      weekStart,
+      weekEnd,
+    ).map((row) => row.loadId),
+  );
   let insCents = 0;
   let loadCount = 0;
   const loads: LedgerLoadRef[] = [];
   for (const row of parsed.rows) {
-    if (!inWeek(row.deliveryDay, weekStart, weekEnd)) continue;
+    if (!chosen.has(row.loadId)) continue;
     loads.push({
       loadId: row.loadId,
       rateCents: row.rateCents,
@@ -177,6 +198,7 @@ export function insFromLoadLedger(
       manifestId: row.manifestId,
       tripGroup: row.tripGroup,
       sheetPrimary: row.sheetPrimary,
+      ...(row.status ? { status: row.status } : {}),
     });
     if (row.rateCents == null) continue;
     insCents += row.rateCents;
@@ -334,6 +356,7 @@ export function buildTruckWeekInsOuts(input: {
   loadLedger: SheetGrid | null;
   mgmtExpenses: SheetGrid | null;
   weeklyExpenses?: SheetGrid | null;
+  fuelLog?: SheetGrid | null;
   note: string | null;
   noteDetail?: string | null;
 }): TruckWeekInsOuts {
@@ -395,6 +418,7 @@ export function buildTruckWeekInsOuts(input: {
     outsCents: outs?.outsCents ?? 0,
     netCents: (ins?.insCents ?? 0) - (outs?.outsCents ?? 0),
     loadCount: ins?.loadCount ?? 0,
+    ...milesForLoads(ins?.loads ?? [], dieselGallonsFromFuelLog(input.fuelLog ?? null, input.weekStart, input.weekEnd)),
     categories: outs?.categories ?? [],
     outsFromWeekly: useWeekly,
     ledgerLoads: ins?.loads ?? [],
@@ -408,4 +432,57 @@ export function buildTruckWeekInsOuts(input: {
     noteDetail,
     readable: true,
   };
+}
+
+function milesForLoads(loads: LedgerLoadRef[], dieselGallonsMilli: number): {
+  loadedMilesHundredths: number;
+  deadheadMilesHundredths: number;
+  rpmCents: number | null;
+  mpg: string | null;
+} {
+  const laid = layoutManifestGroups(
+    loads.map((load) => ({
+      ...load,
+      manifestRef: load.tripGroup || load.manifestId,
+      rankHundredths: load.loadedMilesHundredths ?? 0,
+      sheetPrimary: load.sheetPrimary,
+    })),
+  );
+  let loaded = 0;
+  let deadhead = 0;
+  for (const load of laid) {
+    loaded += countedLoadedHundredths(load.manifestRole, load.loadedMilesHundredths ?? 0);
+    deadhead += load.deadheadMilesHundredths ?? 0;
+  }
+  const gross = loads.reduce((sum, load) => sum + (load.rateCents ?? 0), 0);
+  return {
+    loadedMilesHundredths: loaded,
+    deadheadMilesHundredths: deadhead,
+    rpmCents: centsPerLoadedMile(gross, loaded),
+    mpg: formatDieselMpg(loaded, dieselGallonsMilli),
+  };
+}
+
+function dieselGallonsFromFuelLog(grid: SheetGrid | null, weekStart: string, weekEnd: string): number {
+  if (!grid) return 0;
+  const headerIndex = findHeaderRow(grid, [["date"], ["gallons"]]);
+  if (headerIndex < 0) return 0;
+  const header = grid[headerIndex] ?? [];
+  const dateCol = sheetColumnIndex(header, ["date"]);
+  const gallonsCol = sheetColumnIndex(header, ["gallons"]);
+  const itemCol = sheetColumnIndex(header, ["item", "product", "fuel type"]);
+  let total = 0;
+  for (const row of grid.slice(headerIndex + 1)) {
+    const day = sheetDay(row[dateCol] ?? "");
+    if (!inWeek(day, weekStart, weekEnd)) continue;
+    const item = (row[itemCol] ?? "").trim().toUpperCase();
+    if (item === "DEF" || item === "DEFD") continue;
+    try {
+      const gallons = gallonsStringToMilli((row[gallonsCol] ?? "").trim());
+      if (gallons > 0) total += gallons;
+    } catch {
+      continue;
+    }
+  }
+  return total;
 }

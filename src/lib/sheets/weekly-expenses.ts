@@ -36,6 +36,7 @@ export const WEEKLY_EXPENSE_LINES = [
   { label: "Toll pass", names: ["toll pass"] },
   { label: "Toll fees", names: ["toll fees", "toll charges"] },
   { label: "Permit fees", names: ["permit fees", "permits"] },
+  { label: "Misc", names: ["misc", "miscellaneous", "receipts", "receipt"] },
 ] as const;
 
 export const WEEKLY_EXPENSE_LABELS = WEEKLY_EXPENSE_LINES.map((line) => line.label);
@@ -116,5 +117,35 @@ export function outsFromWeeklyExpenses(
     categories.push({ category: line.label, cents });
     outsCents += cents;
   }
+  const receipts = receiptRows(grid, weekStart, weekEnd, found.row);
+  for (const line of receipts) {
+    categories.push(line);
+    outsCents += line.cents;
+  }
   return { outsCents, categories, headerFound: true, rowFound: true };
+}
+
+/** Extra Misc or receipt rows under the weekly summary. The summary row itself is not counted twice. */
+function receiptRows(
+  grid: SheetGrid,
+  weekStart: string,
+  weekEnd: string,
+  summary: string[],
+): ExpenseCategoryTotal[] {
+  const totals = new Map<string, number>();
+  for (let index = 0; index < grid.length; index += 1) {
+    const row = grid[index] ?? [];
+    if (row === summary) continue;
+    const header = row.map((cell) => cell.trim().toLowerCase());
+    if (header.includes("date") && (header.includes("amount") || header.includes("cost"))) continue;
+    const day = row.map((cell) => sheetDay(cell)).find((value) => value && inWeek(value, weekStart, weekEnd));
+    if (!day) continue;
+    const labelCell = row.find((cell) => /tarp|receipt|7-eleven|7 eleven|love'?s|misc/i.test(cell));
+    if (!labelCell) continue;
+    const cents = row.map((cell) => sheetAmountToCents(cell)).find((value) => value != null && value > 0);
+    if (cents == null) continue;
+    const label = labelCell.replace(/\s+/g, " ").trim();
+    totals.set(label, (totals.get(label) ?? 0) + cents);
+  }
+  return [...totals.entries()].map(([category, cents]) => ({ category, cents }));
 }

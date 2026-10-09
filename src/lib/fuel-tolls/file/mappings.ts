@@ -59,3 +59,38 @@ export function findByTag(identities: readonly TruckIdentity[], tagRaw: string):
 export function truckLabel(unitNumber: string): string {
   return `Truck ${unitNumber}`;
 }
+
+/** Database rows win when they have a value. Seed cards, plates, and tags fill the gaps. */
+export function mergeIdentities(stored: readonly TruckIdentity[]): TruckIdentity[] {
+  const byUnit = new Map<string, TruckIdentity>();
+  for (const seed of SEEDED_IDENTITIES) {
+    byUnit.set(seed.unitNumber, {
+      unitNumber: seed.unitNumber,
+      cards: [...seed.cards],
+      plates: seed.plates.map((plate) => ({ ...plate })),
+      tags: [...seed.tags],
+    });
+  }
+  for (const row of stored) {
+    const current = byUnit.get(row.unitNumber) ?? {
+      unitNumber: row.unitNumber,
+      cards: [],
+      plates: [],
+      tags: [],
+    };
+    const cards = [...current.cards];
+    for (const card of row.cards) {
+      if (!cards.some((item) => cardKey(item) === cardKey(card))) cards.push(card);
+    }
+    const plates = [...current.plates];
+    for (const plate of row.plates) {
+      if (!plates.some((item) => plateKey(item.plate) === plateKey(plate.plate))) plates.push(plate);
+    }
+    const tags = [...current.tags];
+    for (const tag of row.tags) {
+      if (!tags.some((item) => plateKey(item) === plateKey(tag))) tags.push(tag);
+    }
+    byUnit.set(row.unitNumber, { unitNumber: row.unitNumber, cards, plates, tags });
+  }
+  return [...byUnit.values()].sort((a, b) => a.unitNumber.localeCompare(b.unitNumber, undefined, { numeric: true }));
+}

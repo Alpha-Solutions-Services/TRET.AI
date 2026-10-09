@@ -240,3 +240,51 @@ export async function suggestAssignment(
   const trimmed = choice.trim();
   return { choice: hint.choices.includes(trimmed) ? trimmed : null, busy: false };
 }
+
+/** One call for every flagged row in a file. Rules still decide when this is busy. */
+export async function suggestAssignmentBatch(
+  hints: AssignmentHint[],
+  env: Record<string, string | undefined>,
+  fetchImpl: typeof fetch = fetch,
+  sleep?: Sleep,
+): Promise<{ choices: Array<string | null>; busy: boolean }> {
+  const usable = hints.map((hint) => (hint.choices.length > 0 ? hint : null));
+  if (!geminiConfigured(env) || usable.every((hint) => hint == null)) {
+    return { choices: hints.map(() => null), busy: false };
+  }
+  const prompt = [
+    "Pick one choice for each row. Return JSON only.",
+    "Use a choice only if it is in that row's list. Use an empty string when none fit.",
+    `Rows: ${JSON.stringify(
+      usable.map((hint, index) =>
+        hint
+          ? {
+              index,
+              kind: hint.kind,
+              unit: hint.unit,
+              card: hint.card,
+              plate: hint.plate,
+              tag: hint.tag,
+              date: hint.date,
+              location: hint.location,
+              choices: hint.choices,
+            }
+          : { index, skip: true },
+      ),
+    )}`,
+    'Return {"choices":["choice for row 0","choice for row 1"]}.',
+  ].join("\n");
+  const parsed = await geminiJson(prompt, env, fetchImpl, sleep);
+  if (!parsed.ok) return { choices: hints.map(() => null), busy: parsed.busy };
+  const list = (parsed.value as { choices?: unknown } | null)?.choices;
+  if (!Array.isArray(list)) return { choices: hints.map(() => null), busy: false };
+  return {
+    choices: hints.map((hint, index) => {
+      const choice = list[index];
+      if (typeof choice !== "string") return null;
+      const trimmed = choice.trim();
+      return hint.choices.includes(trimmed) ? trimmed : null;
+    }),
+    busy: false,
+  };
+}

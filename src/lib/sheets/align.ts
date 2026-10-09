@@ -19,6 +19,7 @@ export type LoadFacts = {
   manifestRef?: string | null;
   /** Sheet Primary column. Null when the sheet did not say. */
   sheetPrimary?: boolean | null;
+  status?: string | null;
 };
 
 export type AlignHighlight =
@@ -29,7 +30,8 @@ export type AlignHighlight =
   | "pickup"
   | "loaded_miles"
   | "deadhead"
-  | "driver";
+  | "driver"
+  | "status";
 
 export type FieldAcceptance = {
   unitNumber: string;
@@ -157,7 +159,7 @@ function buildAligned(
   const notes: string[] = [];
   const stored = byPair.get(key) ?? [];
   for (const row of stored) {
-    if (row.rule === "sheet_load_missing") {
+    if (row.rule === "sheet_load_missing" && !vektor) {
       highlights.push("missing_vektor");
       notes.push(`Load ${row.loadId} is on the sheet and not in Vektor for this week.`);
     }
@@ -218,6 +220,12 @@ function buildAligned(
         `Driver differs. The sheet says ${sheet.driverName || "blank"} and Vektor says ${vektor.driverName || "blank"}.`,
       );
     }
+    const sheetStatus = statusKey(sheet.status);
+    const vektorStatus = statusKey(vektor.status);
+    if (sheetStatus && vektorStatus && sheetStatus !== vektorStatus) {
+      highlights.push("status");
+      notes.push(`Status differs. The sheet says ${sheet.status} and Vektor says ${vektor.status}.`);
+    }
   }
   const kept = highlights.filter((field) => !accepted(acceptances, sheet, vektor, field));
   const manifestRef = chosenManifest(sheet, vektor);
@@ -277,7 +285,12 @@ export function highlightToField(field: AlignHighlight): string {
   if (field === "deadhead") return "deadhead";
   if (field === "driver") return "driver";
   if (field === "rate") return "rate";
+  if (field === "status") return "status";
   return "presence";
+}
+
+function statusKey(value: string | null | undefined): string {
+  return (value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 function acceptanceValue(field: AlignHighlight, vektor: LoadFacts): string {
@@ -287,6 +300,7 @@ function acceptanceValue(field: AlignHighlight, vektor: LoadFacts): string {
   if (field === "loaded_miles") return String(vektor.loadedMilesHundredths ?? "");
   if (field === "deadhead") return String(vektor.deadheadMilesHundredths ?? "");
   if (field === "driver") return vektor.driverName ?? "";
+  if (field === "status") return vektor.status ?? "";
   return "missing";
 }
 

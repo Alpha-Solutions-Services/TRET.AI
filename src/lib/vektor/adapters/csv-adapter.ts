@@ -1,4 +1,3 @@
-import { inWeek } from "@/lib/sheets/cell";
 import { loadRowsToManifests, type LoadImportRow } from "./load-rows";
 import { parseVektorLoadsCsv } from "../csv-loads";
 import type {
@@ -53,7 +52,6 @@ export class CsvExportAdapter implements ImportSourceAdapter {
     const rows: LoadImportRow[] = [];
     for (const row of parsed.rows) {
       if (!row.importRow) continue;
-      if (!inWeek(row.importRow.deliveryDay, input.from, input.to)) continue;
       rows.push(row.importRow);
     }
     const built = loadRowsToManifests(rows);
