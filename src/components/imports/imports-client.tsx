@@ -134,7 +134,7 @@ export function ImportsClient({
       </div>
       <DataFlow counts={counts} />
       <Pipeline pending={pending} />
-      <div className="h-16">{pending ? <Waveform label="Import working" /> : null}</div>
+      {pending ? <Waveform label="Import working" /> : null}
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] p-4">
         <label className="text-sm">

@@ -263,7 +263,7 @@ describe("close blockers", () => {
     expect(unknown.blockers.some((row) => row.rule === "missing_fee_contract" && row.ref?.includes("-"))).toBe(true);
   });
 
-  it("blocks a delivery week that does not match the stored week", () => {
+  it("counts a load in its delivery week when the stored week differs", () => {
     const fixture = readFixture();
 
     const mismatch = buildWeekStatements(
@@ -273,12 +273,50 @@ describe("close blockers", () => {
         ),
       }),
     );
-    expect(mismatch.blockers.some((row) => row.rule === "delivery_week_mismatch")).toBe(true);
-    expect(mismatch.closeAllowed).toBe(false);
+    expect(mismatch.blockers.some((row) => row.rule === "delivery_week_mismatch")).toBe(false);
     const managed = mismatch.units.find((unit) => unit.unitNumber === "03");
-    expect(managed?.grossCents).toBe(0);
-    expect(managed?.loadCount).toBe(0);
+    expect(managed?.loadCount).toBe(1);
+    expect(managed?.grossCents).toBe(580_000);
     expect(managed?.fuelCents).toBe(25_000);
+  });
+
+  it("keeps a toll credit and lists an active truck that has no loads", () => {
+    const fixture = readFixture();
+    const result = buildWeekStatements(
+      inputFrom(fixture, {
+        tolls: [...fixture.tolls, { unitNumber: "03", weekStart: WEEK, amountCents: -100 }],
+        trucks: [
+          ...fixture.trucks,
+          {
+            id: "44444444-4444-4444-8444-444444444444",
+            unitNumber: "04",
+            truckClass: "third_party",
+            active: true,
+          },
+          {
+            id: "99999999-9999-4999-8999-999999999999",
+            unitNumber: "09",
+            truckClass: "third_party",
+          },
+        ],
+      }),
+    );
+    const managed = result.units.find((unit) => unit.unitNumber === "03");
+    expect(managed?.tollsCents).toBe(400);
+    expect(managed?.netCents).toBe(305_730);
+    expect(managed?.netCents).toBe(expectedNetCents(managed!));
+    const idle = result.units.find((unit) => unit.unitNumber === "04");
+    expect(idle).toMatchObject({ grossCents: 0, loadCount: 0, netCents: 0 });
+    expect(result.units.some((unit) => unit.unitNumber === "09")).toBe(false);
+  });
+
+  it("puts misc receipts into owner expenses", () => {
+    const fixture = readFixture();
+    const withMisc = buildWeekStatements(inputFrom(fixture, { misc: [{ unitNumber: "03", amountCents: 4_200 }] }));
+    const managed = withMisc.units.find((unit) => unit.unitNumber === "03");
+    expect(managed?.lines.find((line) => line.lineCode === "MISC")?.amountCents).toBe(4_200);
+    expect(managed?.fixedOwnerCents).toBe(1_500 + 4_200);
+    expect(managed?.netCents).toBe(expectedNetCents(managed!));
   });
 
   it("rejects a float gross", () => {

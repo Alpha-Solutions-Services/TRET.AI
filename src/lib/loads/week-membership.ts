@@ -4,7 +4,7 @@ export type WeekMember = {
   loadId: string;
   pickupDay: string | null;
   deliveryDay: string | null;
-  /** Trip or manifest id. Loads on a trip stay with that trip. */
+  /** Trip or manifest id. Kept for callers. It does not pull a load into the week. */
   tripRef?: string | null;
 };
 
@@ -18,26 +18,16 @@ export function tripKeyOf(ref: string | null | undefined): string | null {
 }
 
 /**
- * Sheet week: Monday through Sunday.
- * A load is in the week when its pickup or delivery falls in the week.
- * A load picked up earlier stays in the week when it delivers in the week,
- * or when another load on the same trip is in the week.
+ * A load counts only in the Monday–Sunday week of its Vektor delivery date.
+ * A load picked up before the week is included when it delivers in the week.
+ * In-transit loads (no delivery date) are not counted. They stay Pending.
+ * Sharing a trip does not pull another load into the week.
  */
 export function loadsInWeek<T extends WeekMember>(loads: readonly T[], from: string, to: string): T[] {
-  const direct = new Set<string>();
-  for (const load of loads) {
-    if (dayInSpan(load.deliveryDay, from, to) || dayInSpan(load.pickupDay, from, to)) {
-      direct.add(load.loadId);
-    }
-  }
-  const trips = new Set<string>();
-  for (const load of loads) {
-    const trip = tripKeyOf(load.tripRef);
-    if (trip && direct.has(load.loadId)) trips.add(trip);
-  }
-  return loads.filter((load) => {
-    if (direct.has(load.loadId)) return true;
-    const trip = tripKeyOf(load.tripRef);
-    return Boolean(trip && trips.has(trip));
-  });
+  return loads.filter((load) => dayInSpan(load.deliveryDay, from, to));
+}
+
+/** In transit through the end of the week. Shown as Pending and not counted. */
+export function pendingLoads<T extends WeekMember>(loads: readonly T[], to: string): T[] {
+  return loads.filter((load) => !load.deliveryDay && Boolean(load.pickupDay) && load.pickupDay! <= to);
 }

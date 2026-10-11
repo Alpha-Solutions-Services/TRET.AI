@@ -11,11 +11,11 @@ export type TruckIdentity = {
 export const SEEDED_IDENTITIES: TruckIdentity[] = [
   { unitNumber: "1", cards: [], plates: [{ plate: "XPV9531", state: null }], tags: [] },
   { unitNumber: "2", cards: ["00011"], plates: [{ plate: "XRH2610", state: null }], tags: ["B7010395362"] },
-  { unitNumber: "3", cards: ["00003"], plates: [{ plate: "UD12588", state: "VA" }], tags: ["B7010395372"] },
+  { unitNumber: "3", cards: ["00003"], plates: [{ plate: "UD12588", state: "VA" }], tags: ["B7010395372", "UD12588"] },
   { unitNumber: "4", cards: ["00037"], plates: [{ plate: "6OSB7382", state: null }], tags: [] },
   { unitNumber: "5", cards: ["00045"], plates: [{ plate: "5OSB8618", state: null }], tags: [] },
   { unitNumber: "6", cards: ["00094"], plates: [{ plate: "5OSB8623", state: null }], tags: ["B7010405625"] },
-  { unitNumber: "7", cards: ["00029"], plates: [{ plate: "YHM2482", state: null }], tags: ["B7010406687"] },
+  { unitNumber: "7", cards: ["00029"], plates: [{ plate: "YHM2482", state: null }], tags: ["B7010406687", "YHM2482"] },
   { unitNumber: "8", cards: ["00060"], plates: [{ plate: "5OSB8626", state: "TX" }], tags: ["B7010406665"] },
 ];
 

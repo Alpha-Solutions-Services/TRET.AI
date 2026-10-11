@@ -3,17 +3,17 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import { categoryColor } from "@/lib/charts/palette";
 import { KpiCard } from "@/components/motion/kpi-card";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import {
-  centsPerLoadedMile,
-  formatDieselMpg,
   formatGroupedInt,
   formatMilesHundredths,
   formatMilesWhole,
   formatStatementDollars,
 } from "@/lib/reports/format";
+import { fleetFromTrucks } from "@/lib/reports/trip-metrics";
 import { ManagementSummaryTable } from "@/components/dashboard/management-summary";
 import type { ManagementCardSummary } from "@/lib/legacy/summary";
 import type { HubFeed } from "@/lib/overview/hub-feeds";
@@ -21,6 +21,8 @@ import type { OverviewPageData } from "@/lib/overview/queries";
 import type { SnapshotRow } from "@/lib/overview/snapshot";
 import { CopyableError } from "@/components/copyable-error";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
+import { ConnectionBanner } from "@/components/connection-banner";
+import { rereadSheetsAction } from "@/app/sheets/actions";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { PrepareReportButtons, ReportWeekLabel } from "@/components/reports/report-week";
 import { Button } from "@/components/ui/button";
@@ -77,15 +79,24 @@ export function OverviewClient({
   hub: HubFeed[];
 }) {
   const router = useRouter();
+  const [rereading, startReread] = useTransition();
   const readable = data.insOuts.filter((row) => row.readable);
   const fleetIns = readable.reduce((sum, row) => sum + row.insCents, 0);
   const fleetOuts = readable.reduce((sum, row) => sum + row.outsCents, 0);
   const fleetLoads = readable.reduce((sum, row) => sum + row.loadCount, 0);
   const fleetMiles = readable.reduce((sum, row) => sum + (row.loadedMilesHundredths ?? 0), 0);
   const fleetDeadhead = readable.reduce((sum, row) => sum + (row.deadheadMilesHundredths ?? 0), 0);
-  const fleetGallons = readable.reduce((sum, row) => sum + (row.dieselGallonsMilli ?? 0), 0);
-  const fleetRpm = centsPerLoadedMile(fleetIns, fleetMiles);
-  const fleetMpg = formatDieselMpg(fleetMiles, fleetGallons);
+  const fleetFigures = fleetFromTrucks(
+    readable.map((row) => ({
+      grossCents: row.insCents,
+      totalMilesHundredths: (row.loadedMilesHundredths ?? 0) + (row.deadheadMilesHundredths ?? 0),
+      mainMilesHundredths: row.loadedMilesHundredths ?? 0,
+      gallonsMilli: row.dieselGallonsMilli ?? 0,
+      mpg: row.mpg ?? null,
+    })),
+  );
+  const fleetRpm = fleetFigures.rpmCents;
+  const fleetMpg = fleetFigures.mpg;
   const issueStatus = data.openIssueCount == null ? "warn" : data.openIssueCount > 0 ? "danger" : "ok";
 
   function openWeek(next: string) {
@@ -155,7 +166,7 @@ export function OverviewClient({
         <KpiCard
           label="RPM"
           value={fleetRpm == null ? "None" : money(fleetRpm)}
-          detail="Ins per loaded mile"
+          detail="Rate per total mile, from each truck"
           color={categoryColor(6)}
           target={fleetRpm}
           format={fleetRpm == null ? undefined : formatStatementDollars}
@@ -179,6 +190,7 @@ export function OverviewClient({
         />
       </div>
 
+      <ConnectionBanner feeds={hub} />
       <HubFlow feeds={hub} />
 
       <div className="flex flex-wrap items-end gap-3">
@@ -211,11 +223,24 @@ export function OverviewClient({
           </p>
         </div>
         <PrepareReportButtons weekStart={data.weekStart} showAll />
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={rereading}
+          onClick={() => {
+            startReread(async () => {
+              const result = await rereadSheetsAction();
+              if (result.ok) router.refresh();
+            });
+          }}
+        >
+          {rereading ? "Reading sheets…" : "Reread sheets"}
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-3">
         <p className="material flex items-center gap-2 rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm">
-          <StatusDot tone={data.locked ? "warn" : "ok"} glow />
+          <StatusDot tone={data.locked ? "warn" : "ok"} />
           Close status: {data.locked ? "Locked" : "Open"}
           {data.locked && data.closedAt ? ` ${data.closedAt.slice(0, 10)}` : ""}
         </p>
@@ -231,7 +256,7 @@ export function OverviewClient({
             href={`/issues?week=${data.weekStart}`}
             className="pressable material inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-fg)] no-underline hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
-            <StatusDot tone={data.openIssueCount > 0 ? "danger" : "ok"} glow />
+            <StatusDot tone={data.openIssueCount > 0 ? "danger" : "ok"} />
             Open issues: {data.openIssueCount}
           </Link>
         )}

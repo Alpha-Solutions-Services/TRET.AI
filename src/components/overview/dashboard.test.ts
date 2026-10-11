@@ -121,7 +121,10 @@ describe("dashboard display", () => {
     expect(hub).toContain("TRET");
     expect(hub).toContain("Gemini");
     expect(hub).toContain("In TRET");
-    expect(hub).toContain("rv-particle");
+    expect(hub).toContain("Vektor");
+    expect(hub).not.toContain("rv-particle");
+    expect(hub).not.toContain("overflow-auto");
+    expect(hub).not.toContain("overflow-x-auto");
     expect(hub).not.toContain("React Vibe");
 
     const cards = renderToStaticMarkup(createElement(TruckCardGrid, { rows: [sampleTruck()] }));

@@ -31,25 +31,21 @@ export function TruckCardGrid({ rows }: { rows: TruckWeekInsOuts[] }) {
   );
 }
 
-function TruckCard({ row, color }: { row: TruckWeekInsOuts; color: string }) {
+function TruckCard({ row }: { row: TruckWeekInsOuts; color?: string }) {
   const tone = truckTone(row);
   return (
     <article
-      className="material rounded-2xl border px-5 py-4"
-      style={{
-        borderColor: `color-mix(in srgb, ${color} 65%, var(--color-border))`,
-        boxShadow: `0 0 18px color-mix(in srgb, ${color} 32%, transparent)`,
-      }}
+      className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-field)] px-5 py-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="flex items-center gap-2 text-base font-semibold">
-            <StatusDot tone={tone} glow />
+            <StatusDot tone={tone} />
             Unit {row.unitNumber}
           </p>
           <p className="mt-0.5 text-xs text-[var(--color-fg-muted)]">{row.truckName}</p>
         </div>
-        <p className="num text-sm font-semibold" style={{ color }}>
+        <p className="num text-sm font-semibold tabular-nums">
           {row.readable ? money(row.netCents) : ""}
         </p>
       </div>

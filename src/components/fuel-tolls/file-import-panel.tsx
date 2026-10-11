@@ -63,8 +63,14 @@ export function FileImportPanel({
     setError(null);
     if (!next) return;
     startTransition(async () => {
+      try {
       const body = await fileBody(next);
-      const preview = await previewFuelTollFileAction(body);
+      const preview = await Promise.race([
+        previewFuelTollFileAction(body),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("Reading the file took too long. Nothing was written. Try the file again.")), 25_000);
+        }),
+      ]);
       if (!preview.ok) {
         setError(preview.error);
         return;
@@ -73,6 +79,9 @@ export function FileImportPanel({
       setMessage(preview.message);
       setAiNotice(preview.aiNotice);
       setRows(preview.rows);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "The file could not be read.");
+      }
     });
   }
 
@@ -97,7 +106,7 @@ export function FileImportPanel({
   return (
     <section className="space-y-4" aria-label="Upload fuel or toll file">
       <DataFlow counts={counts} />
-      <div className="h-16">{pending ? <Waveform label="Reading the file" /> : null}</div>
+      {pending ? <Waveform label="Reading the file" /> : null}
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
           <span className="mb-1 block text-[var(--color-fg-muted)]">Fuel or toll file</span>

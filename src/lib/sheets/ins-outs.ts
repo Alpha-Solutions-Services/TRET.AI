@@ -1,7 +1,6 @@
 import { weekBoundsForDate, type TruckClass } from "@/lib/fee-engine";
 import { loadsInWeek } from "@/lib/loads/week-membership";
-import { countedLoadedHundredths, layoutManifestGroups } from "@/lib/loads/manifest-miles";
-import { centsPerLoadedMile, formatDieselMpg } from "@/lib/reports/format";
+import { mainTripMilesHundredths, tripMilesHundredths, tripRpmCents, truckMpg, type MetricLoad } from "@/lib/reports/trip-metrics";
 import { inWeek, sheetAmountToCents, sheetDay, columnIndex as sheetColumnIndex, findHeaderRow } from "@/lib/sheets/cell";
 import { gallonsStringToMilli } from "@/lib/fuel-tolls/quantity";
 import { parseLoadLedger } from "@/lib/sheets/ledger";
@@ -420,7 +419,11 @@ export function buildTruckWeekInsOuts(input: {
     outsCents: outs?.outsCents ?? 0,
     netCents: (ins?.insCents ?? 0) - (outs?.outsCents ?? 0),
     loadCount: ins?.loadCount ?? 0,
-    ...milesForLoads(ins?.loads ?? [], dieselGallonsFromFuelLog(input.fuelLog ?? null, input.weekStart, input.weekEnd)),
+    ...milesForLoads(
+      ins?.loads ?? [],
+      dieselGallonsFromFuelLog(input.fuelLog ?? null, input.weekStart, input.weekEnd),
+      input.loadLedger ? parseLoadLedger(input.loadLedger).rows : ins?.loads ?? [],
+    ),
     categories: outs?.categories ?? [],
     outsFromWeekly: useWeekly,
     ledgerLoads: ins?.loads ?? [],
@@ -436,33 +439,37 @@ export function buildTruckWeekInsOuts(input: {
   };
 }
 
-function milesForLoads(loads: LedgerLoadRef[], dieselGallonsMilli: number): {
+function toMetric(load: LedgerLoadRef): MetricLoad {
+  return {
+    loadId: load.loadId,
+    rateCents: load.rateCents ?? 0,
+    loadedMilesHundredths: load.loadedMilesHundredths ?? 0,
+    deadheadMilesHundredths: load.deadheadMilesHundredths ?? 0,
+    tripRef: load.tripGroup || load.manifestId,
+    sheetPrimary: load.sheetPrimary,
+    delivered: Boolean(load.deliveryDay),
+  };
+}
+
+function milesForLoads(
+  loads: LedgerLoadRef[],
+  dieselGallonsMilli: number,
+  allLoads: LedgerLoadRef[],
+): {
   loadedMilesHundredths: number;
   deadheadMilesHundredths: number;
   rpmCents: number | null;
   mpg: string | null;
   dieselGallonsMilli: number;
 } {
-  const laid = layoutManifestGroups(
-    loads.map((load) => ({
-      ...load,
-      manifestRef: load.tripGroup || load.manifestId,
-      rankHundredths: load.loadedMilesHundredths ?? 0,
-      sheetPrimary: load.sheetPrimary,
-    })),
-  );
-  let loaded = 0;
-  let deadhead = 0;
-  for (const load of laid) {
-    loaded += countedLoadedHundredths(load.manifestRole, load.loadedMilesHundredths ?? 0);
-    deadhead += load.deadheadMilesHundredths ?? 0;
-  }
-  const gross = loads.reduce((sum, load) => sum + (load.rateCents ?? 0), 0);
+  const counted = loads.map(toMetric);
+  const total = tripMilesHundredths(counted);
+  const loaded = mainTripMilesHundredths(counted);
   return {
     loadedMilesHundredths: loaded,
-    deadheadMilesHundredths: deadhead,
-    rpmCents: centsPerLoadedMile(gross, loaded),
-    mpg: formatDieselMpg(loaded, dieselGallonsMilli),
+    deadheadMilesHundredths: Math.max(0, total - loaded),
+    rpmCents: tripRpmCents(counted),
+    mpg: truckMpg(counted, allLoads.map(toMetric), dieselGallonsMilli),
     dieselGallonsMilli,
   };
 }

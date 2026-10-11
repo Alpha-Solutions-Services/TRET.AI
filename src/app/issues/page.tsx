@@ -25,8 +25,17 @@ async function IssuesContent({
   severity: string | undefined;
   status: string | undefined;
 }) {
-  const data = await loadIssuesPage(week);
-  return <IssuesClient key={data.weekStart} data={data} severity={severity} status={status} />;
+  try {
+    const data = await loadIssuesPage(week);
+    return <IssuesClient key={data.weekStart} data={data} severity={severity} status={status} />;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Issues could not be loaded.";
+    return (
+      <p className="text-sm text-[var(--color-danger)]" role="alert">
+        {message}
+      </p>
+    );
+  }
 }
 
 export default async function IssuesPage({

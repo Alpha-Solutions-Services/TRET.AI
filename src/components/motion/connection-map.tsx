@@ -5,7 +5,7 @@ import type { AiStatus } from "@/lib/llm-gateway/gemini";
 import { geminiTone, toneCaption, type ConnectionTone } from "@/components/motion/tones";
 
 const OriginMap = dynamic(() => import("@/components/motion/origin").then((mod) => mod.OriginMap), {
-  loading: () => <div className="h-[312px]" aria-hidden="true" />,
+  loading: () => <div className="h-24" aria-hidden="true" />,
 });
 
 export function ConnectionMap({

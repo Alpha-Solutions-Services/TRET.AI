@@ -85,18 +85,7 @@ export function buildWeekStatements(input: WeekStatementInput): WeekStatements {
     assertNonNegativeInteger(load.loadedMilesHundredths, `load ${load.id} loaded miles`);
     assertNonNegativeInteger(load.deadheadMilesHundredths, `load ${load.id} deadhead`);
     const deliveryWeek = weekBoundsForDate(load.deliveryDate).start;
-    const inWeek = deliveryWeek === input.weekStart;
-    const storedSaysWeek = load.storedWeekStart === input.weekStart;
-    if (!inWeek && !storedSaysWeek) continue;
-    if (load.storedWeekStart && load.storedWeekStart !== deliveryWeek) {
-      blockers.push({
-        rule: "delivery_week_mismatch",
-        message: `Load ${load.id} delivery ${load.deliveryDate} is week ${deliveryWeek}, but the stored week is ${load.storedWeekStart}.`,
-        ref: load.id,
-      });
-      continue;
-    }
-    if (!inWeek) continue;
+    if (deliveryWeek !== input.weekStart) continue;
     if (!load.truckId || !load.unitNumber) {
       blockers.push({
         rule: "load_missing_truck",
@@ -112,7 +101,7 @@ export function buildWeekStatements(input: WeekStatementInput): WeekStatements {
     assertNonNegativeInteger(row.amountCents, "fuel amount");
   }
   for (const row of input.tolls) {
-    assertNonNegativeInteger(row.amountCents, "toll amount");
+    assertInteger(row.amountCents, "toll amount");
   }
 
   const loadUnits = new Set(weekLoads.map((load) => load.unitNumber).filter((unit): unit is string => !!unit));
@@ -199,7 +188,7 @@ function assertUnitMoney(unit: UnitStatement): void {
   assertNonNegativeInteger(unit.dispatchFeeCents, "dispatch");
   assertNonNegativeInteger(unit.factoringFeeCents, "factoring");
   assertNonNegativeInteger(unit.fuelCents, "fuel");
-  assertNonNegativeInteger(unit.tollsCents, "tolls");
+  assertInteger(unit.tollsCents, "tolls");
   assertNonNegativeInteger(unit.fixedOwnerCents, "fixed owner");
   assertNonNegativeInteger(unit.fixedManagementCents, "fixed management");
   assertInteger(unit.netCents, "net");
@@ -212,7 +201,7 @@ function assertFleetMoney(fleet: FleetStatement): void {
   assertInteger(fleet.netCents, "fleet net");
   assertNonNegativeInteger(fleet.grossCents, "fleet gross");
   assertNonNegativeInteger(fleet.fuelCents, "fleet fuel");
-  assertNonNegativeInteger(fleet.tollsCents, "fleet tolls");
+  assertInteger(fleet.tollsCents, "fleet tolls");
 }
 
 function assertDropPct(value: number, label: string): void {
@@ -343,9 +332,54 @@ function buildUnit(
     });
   }
 
+  const miscCents = (input.misc ?? [])
+    .filter((row) => row.unitNumber === truck.unitNumber)
+    .reduce((sum, row) => sum + row.amountCents, 0);
+  if (miscCents > 0) {
+    fixedOwnerCents += miscCents;
+    fixedLines.push({
+      lineCode: "MISC",
+      label: "Misc",
+      amountCents: miscCents,
+      rateBp: null,
+      basePctBp: null,
+      chargedTo: "owner",
+      ownerVisible: true,
+      sortOrder: 90,
+    });
+  }
+
   const hasActivity =
     loads.length > 0 || fuelCents > 0 || tollsCents > 0 || fixedOwnerCents > 0 || fixedManagementCents > 0;
-  if (!hasActivity) return null;
+  if (!hasActivity) {
+    if (!truck.active) return null;
+    const lines: StatementLine[] = [expenseLine("FUEL", "Fuel", 0, 50), expenseLine("TOLLS", "Tolls", 0, 60)];
+    ensureUnsetLine(lines, "TOLSON_PAYABLE", truck.truckClass);
+    ensureUnsetLine(lines, "LEGACY_RETAINED", truck.truckClass);
+    lines.sort((a, b) => a.sortOrder - b.sortOrder);
+    return {
+      truckId: truck.id,
+      unitNumber: truck.unitNumber,
+      truckClass: truck.truckClass,
+      contractId: null,
+      grossCents: 0,
+      driverPayCents: 0,
+      managementFeeCents: 0,
+      tolsonPayableCents: 0,
+      legacyRetainedCents: 0,
+      dispatchFeeCents: 0,
+      factoringFeeCents: 0,
+      fuelCents: 0,
+      tollsCents: 0,
+      fixedOwnerCents: 0,
+      fixedManagementCents: 0,
+      netCents: 0,
+      loadCount: 0,
+      loadedMilesHundredths: 0,
+      deadheadMilesHundredths: 0,
+      lines,
+    };
+  }
 
   let feeLines: FeeLineResult[] = [];
   let contractId: string | null = null;

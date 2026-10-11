@@ -22,18 +22,12 @@ export function KpiCard({
   status?: StatusTone | null;
 }) {
   return (
-    <div
-      className="material rounded-2xl border px-6 py-5"
-      style={{
-        borderColor: `color-mix(in srgb, ${color} 70%, var(--color-border))`,
-        boxShadow: `0 0 22px color-mix(in srgb, ${color} 42%, transparent), inset 0 0 0 1px color-mix(in srgb, ${color} 28%, transparent)`,
-      }}
-    >
+    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-field)] px-6 py-5" data-accent={color}>
       <p className="flex items-center gap-2 text-xs tracking-wide text-[var(--color-fg-muted)]">
-        {status ? <StatusDot tone={status} glow /> : null}
+        {status ? <StatusDot tone={status} /> : null}
         {label}
       </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight" style={{ color }}>
+      <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">
         {format ? <CountUp text={value} target={target} format={format} /> : <span className="num">{value}</span>}
       </p>
       {detail ? <p className="mt-1 text-xs text-[var(--color-fg-muted)]">{detail}</p> : null}

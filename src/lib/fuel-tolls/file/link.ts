@@ -25,17 +25,28 @@ export type FuelLink =
   | { ok: true; loadId: string; tripId: string; unclear: false; unlinked: boolean }
   | { ok: false; unclear: true; reason: string };
 
-/** Fill date against pickup and delivery, inclusive. Shared trip writes M-#### only. */
+function fuelLinkOf(load: LoadWindow): FuelLink {
+  if (load.tripId) return { ok: true, loadId: "", tripId: load.tripId, unclear: false, unlinked: false };
+  return { ok: true, loadId: load.loadId, tripId: "", unclear: false, unlinked: false };
+}
+
+/**
+ * Fill date against pickup and delivery, inclusive.
+ * A fill on a handoff day goes to the new load.
+ * A shared trip writes the trip group only.
+ * Two loads that both fit, with no handoff and no shared trip, stay unlinked.
+ */
 export function linkFuelDate(isoDate: string, loads: readonly LoadWindow[]): FuelLink {
   const covering = loads.filter((load) => load.pickupDate <= isoDate && isoDate <= load.deliveryDate);
   if (covering.length === 0) {
     return { ok: true, loadId: "", tripId: "", unclear: false, unlinked: true };
   }
-  if (covering.length === 1) {
-    const load = covering[0]!;
-    if (load.tripId) return { ok: true, loadId: "", tripId: load.tripId, unclear: false, unlinked: false };
-    return { ok: true, loadId: load.loadId, tripId: "", unclear: false, unlinked: false };
+  const starting = covering.filter((load) => load.pickupDate === isoDate);
+  const ending = covering.filter((load) => load.deliveryDate === isoDate && load.pickupDate < isoDate);
+  if (starting.length === 1 && ending.length >= 1 && starting.length + ending.length === covering.length) {
+    return fuelLinkOf(starting[0]!);
   }
+  if (covering.length === 1) return fuelLinkOf(covering[0]!);
   const trips = new Set(covering.map((load) => load.tripId).filter(Boolean));
   if (trips.size === 1 && covering.every((load) => load.tripId)) {
     return { ok: true, loadId: "", tripId: [...trips][0]!, unclear: false, unlinked: false };
@@ -68,9 +79,16 @@ function primaryLoad(loads: readonly LoadWindow[]): LoadWindow {
   })[0]!;
 }
 
+function tripPrimary(load: LoadWindow, loads: readonly LoadWindow[]): string {
+  if (!load.tripId) return load.loadId;
+  const group = loads.filter((row) => row.tripId === load.tripId);
+  return primaryLoad(group.length > 0 ? group : [load]).loadId;
+}
+
 /**
- * A toll stays on the load whose pickup through delivery contains the exit time.
- * Several loads on one trip use that trip's primary load.
+ * A toll between pickup and delivery stays on that load.
+ * A toll on empty miles, after a delivery and before the next pickup, goes to the next load.
+ * Several loads on one trip use that trip's primary row.
  */
 export function linkTollTime(occurredAt: string, loads: readonly LoadWindow[]): TollLink {
   const inside = loads.filter((load) => {
@@ -78,14 +96,22 @@ export function linkTollTime(occurredAt: string, loads: readonly LoadWindow[]): 
     const end = `${load.deliveryDate}T23:59:59`;
     return occurredAt >= start && occurredAt <= end;
   });
-  if (inside.length === 0) return { ok: false, reason: "No load covers this toll time." };
-  if (inside.length === 1) return { ok: true, loadId: inside[0]!.loadId, how: "inside" };
-  const trips = new Set(inside.map((load) => load.tripId).filter(Boolean));
-  if (trips.size === 1 && inside.every((load) => load.tripId)) {
-    return { ok: true, loadId: primaryLoad(inside).loadId, how: "inside" };
+  if (inside.length === 1) return { ok: true, loadId: tripPrimary(inside[0]!, loads), how: "inside" };
+  if (inside.length > 1) {
+    const trips = new Set(inside.map((load) => load.tripId).filter(Boolean));
+    if (trips.size === 1 && inside.every((load) => load.tripId)) {
+      return { ok: true, loadId: primaryLoad(inside).loadId, how: "inside" };
+    }
+    return {
+      ok: false,
+      reason: `More than one load covers this toll (${inside.map((load) => load.loadId).join(", ")}).`,
+    };
   }
-  return {
-    ok: false,
-    reason: `More than one load covers this toll (${inside.map((load) => load.loadId).join(", ")}).`,
-  };
+  const sorted = [...loads].sort(
+    (a, b) => a.pickupDate.localeCompare(b.pickupDate) || a.loadId.localeCompare(b.loadId),
+  );
+  const prior = sorted.filter((load) => `${load.deliveryDate}T23:59:59` < occurredAt);
+  const next = sorted.find((load) => `${load.pickupDate}T00:00:00` > occurredAt);
+  if (prior.length === 0 || !next) return { ok: false, reason: "No load covers this toll time." };
+  return { ok: true, loadId: tripPrimary(next, loads), how: "next" };
 }

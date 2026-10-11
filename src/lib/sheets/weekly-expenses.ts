@@ -47,6 +47,15 @@ export function isWeeklyExpenseLabel(label: string): boolean {
   return WEEKLY_LABEL_SET.has(label);
 }
 
+/** Misc column plus receipt rows that are not a standard weekly line. */
+export function statementMiscCents(categories: readonly ExpenseCategoryTotal[]): number {
+  let total = 0;
+  for (const row of categories) {
+    if (row.category === "Misc" || !isWeeklyExpenseLabel(row.category)) total += row.cents;
+  }
+  return total;
+}
+
 export type WeeklyExpenseOuts = {
   outsCents: number;
   categories: ExpenseCategoryTotal[];
@@ -140,7 +149,9 @@ function receiptRows(
     if (header.includes("date") && (header.includes("amount") || header.includes("cost"))) continue;
     const day = row.map((cell) => sheetDay(cell)).find((value) => value && inWeek(value, weekStart, weekEnd));
     if (!day) continue;
-    const labelCell = row.find((cell) => /tarp|receipt|7-eleven|7 eleven|love'?s|misc/i.test(cell));
+    const labelCell = row.find((cell) =>
+      /tarp|receipt|7-eleven|7 eleven|love'?s|misc|ford|uber|repair/i.test(cell),
+    );
     if (!labelCell) continue;
     const cents = row.map((cell) => sheetAmountToCents(cell)).find((value) => value != null && value > 0);
     if (cents == null) continue;

@@ -36,11 +36,15 @@ export function chooseExistingLoad<T extends ExistingLoadRef>(
   return rows.find((row) => row.manifestId === incoming.manifestId) ?? null;
 }
 
-/** A CSV run must not become the baseline for the next Vektor connection import. */
+/**
+ * Row-count drop compares the last successful run of the same source and the same kind.
+ * A toll file must not become the baseline for a loads import.
+ */
 export function sameSourcePreviousCount(
-  runs: Array<{ source: string | null; rowsFetched: number }>,
+  runs: Array<{ source: string | null; rowsFetched: number; kind?: string | null }>,
   source: string,
+  kind = "loads",
 ): number | null {
-  const match = runs.find((run) => run.source === source);
+  const match = runs.find((run) => run.source === source && (run.kind ?? "loads") === kind);
   return match ? match.rowsFetched : null;
 }

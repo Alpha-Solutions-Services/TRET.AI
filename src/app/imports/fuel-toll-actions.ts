@@ -6,9 +6,10 @@ import { weekBoundsForDate } from "@/lib/fee-engine";
 import { milesToHundredths } from "@/lib/fuel-tolls/quantity";
 import { fuelTollSettingsFromRows } from "@/lib/fuel-tolls/settings";
 import { mapFuelCsv, mapTollCsv } from "@/lib/fuel-tolls/csv";
-import { SEEDED_IDENTITIES } from "@/lib/fuel-tolls/file/mappings";
-import { gridFromUpload } from "@/lib/fuel-tolls/file/parse";
-import { planImport } from "@/lib/fuel-tolls/file/plan";
+import { contextForUnits } from "@/lib/fuel-tolls/file/context";
+import { prepareImport } from "@/lib/fuel-tolls/file/prepare";
+import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
+import { gridFromUpload, parseGrid } from "@/lib/fuel-tolls/file/parse";
 import type { FuelQueuePayload, TollQueuePayload } from "@/lib/fuel-tolls/file/types";
 import { fetchFuelAndTollsLive } from "@/lib/fuel-tolls/live";
 import { runFuelPipeline, runTollPipeline } from "@/lib/fuel-tolls/pipeline";
@@ -55,12 +56,26 @@ function safeMessage(err: unknown): string {
   return message.replace(/Bearer\s+\S+/gi, "Bearer [redacted]");
 }
 
-function draftsFromChosenFiles(fuelText: string, tollText: string): { fuel: FuelDraft[]; tolls: TollDraft[] } {
+async function draftsFromChosenFiles(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  fuelText: string,
+  tollText: string,
+): Promise<{ fuel: FuelDraft[]; tolls: TollDraft[] }> {
   const fuel: FuelDraft[] = [];
   const tolls: TollDraft[] = [];
   const texts = [fuelText, tollText].filter((text) => text.trim());
   for (const text of texts) {
-    const plan = planImport(gridFromUpload({ csvText: text }), {}, SEEDED_IDENTITIES);
+    const grid = gridFromUpload({ csvText: text });
+    const parsed = parseGrid(grid);
+    const units = new Set<string>();
+    if (parsed.kind === "fuel" || parsed.kind === "toll") {
+      for (const row of parsed.rows) {
+        const unit = unitNumberFromRaw(row.unit);
+        if (unit) units.add(unit);
+      }
+    }
+    const loaded = await contextForUnits(supabase, [...units]);
+    const plan = await prepareImport(grid, loaded.context, loaded.identities);
     for (const row of plan.rows) {
       if (row.payload?.kind === "fuel") {
         const payload = row.payload as FuelQueuePayload;
@@ -165,7 +180,7 @@ export async function runFuelAndTollsImportAction(input?: {
 
   try {
     if (fuelFile || tollFile) {
-      const drafted = draftsFromChosenFiles(fuelFile, tollFile);
+      const drafted = await draftsFromChosenFiles(supabase, fuelFile, tollFile);
       fuelRows = drafted.fuel;
       tollRows = drafted.tolls;
       notes = ["The chosen file was used. Vektor was not called."];

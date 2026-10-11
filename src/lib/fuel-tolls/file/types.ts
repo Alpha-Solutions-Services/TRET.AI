@@ -30,6 +30,8 @@ export type ImportContext = {
   importedFuelKeys?: string[];
   /** Sum of toll cents already stored for a load, plus the transaction ids. */
   importedTolls?: { transactionId: string; loadId: string; amountCents: number }[];
+  /** Write over a Toll Expense cell this import did not create. Off unless the owner confirms. */
+  confirmTollOverwrite?: boolean;
 };
 
 export type FuelQueuePayload = {

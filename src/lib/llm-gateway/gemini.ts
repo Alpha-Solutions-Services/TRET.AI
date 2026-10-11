@@ -56,7 +56,7 @@ export async function geminiJson(
     } catch {
       return { ok: false, busy: false };
     }
-    if (response.status === 503) {
+    if (response.status === 503 || response.status === 429) {
       const wait = GEMINI_BUSY_BACKOFF_MS[attempt];
       if (wait == null) return { ok: false, busy: true };
       await pause(wait);

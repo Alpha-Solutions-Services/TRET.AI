@@ -142,6 +142,7 @@ export async function runVektorImportAction(input?: {
       range_from: range.from,
       range_to: range.to,
       source: selected,
+      kind: "loads",
     })
     .select("id")
     .single();
@@ -177,7 +178,7 @@ export async function runVektorImportAction(input?: {
 
     const { data: prevRuns, error: prevErr } = await supabase
       .from("import_runs")
-      .select("rows_fetched, source")
+      .select("rows_fetched, source, kind")
       .eq("status", "success")
       .order("finished_at", { ascending: false })
       .limit(40);
@@ -187,8 +188,10 @@ export async function runVektorImportAction(input?: {
           (prevRuns ?? []).map((run) => ({
             source: run.source ?? null,
             rowsFetched: run.rows_fetched,
+            kind: run.kind ?? "loads",
           })),
           selected,
+          "loads",
         );
 
     const { data: trucks } = await supabase

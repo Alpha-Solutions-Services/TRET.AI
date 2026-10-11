@@ -1,4 +1,8 @@
 import { weekBoundsForDate, type FeeRuleKind, type TruckClass } from "@/lib/fee-engine";
+import { canonicalLoadId } from "@/lib/loads/load-id";
+import { loadActiveTruckInsOuts } from "@/lib/sheets/load-week";
+import { statementMiscCents } from "@/lib/sheets/weekly-expenses";
+import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
 import { lastFinishedWeekStart } from "@/lib/reports/delivery";
 import { isFixedExpenseKind, isChargedTo } from "@/lib/fixed-expenses/kinds";
 import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
@@ -73,12 +77,13 @@ export function resolveWeekStart(raw: string | undefined): string {
 }
 
 const FEE_TRUCK_COLUMNS =
-  "id, unit_number, truck_class, fee_model, tolson_payable_type, tolson_payable_value, tolson_payable_effective_from, management_fee_bp, management_fee_effective_from, legacy_retained_type, legacy_retained_value, legacy_retained_effective_from";
+  "id, unit_number, truck_class, active, fee_model, tolson_payable_type, tolson_payable_value, tolson_payable_effective_from, management_fee_bp, management_fee_effective_from, legacy_retained_type, legacy_retained_value, legacy_retained_effective_from";
 
 type TruckFeeRow = {
   id: string;
   unit_number: string;
   truck_class: TruckClass;
+  active?: boolean | null;
   fee_model?: string | null;
   tolson_payable_type?: string | null;
   tolson_payable_value?: number | null;
@@ -99,7 +104,7 @@ async function loadStatementTrucks(supabase: Awaited<ReturnType<typeof createCli
   if (!missing) return { data: null, error: full.error };
   const base = await supabase
     .from("trucks")
-    .select("id, unit_number, truck_class, tolson_payable_type, tolson_payable_value");
+    .select("id, unit_number, truck_class, active, tolson_payable_type, tolson_payable_value");
   return { data: (base.data ?? null) as TruckFeeRow[] | null, error: base.error };
 }
 
@@ -119,6 +124,7 @@ function mapStatementTruck(truck: TruckFeeRow): StatementTruck {
     legacyRateBp: truck.legacy_retained_type === "percent_of_gross" ? (truck.legacy_retained_value ?? null) : null,
     legacyFixedCents: truck.legacy_retained_type === "fixed_weekly" ? (truck.legacy_retained_value ?? null) : null,
     legacyEffectiveFrom: truck.legacy_retained_effective_from ?? null,
+    active: truck.active === true,
   };
 }
 
@@ -147,13 +153,13 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
       supabase
         .from("loads")
         .select(
-          "id, truck_id, truck_unit_number, delivery_date, week_start, rate_cents, loaded_distance_mi, deadhead_miles",
+          "id, load_id, truck_id, truck_unit_number, delivery_date, week_start, rate_cents, loaded_distance_mi, deadhead_miles",
         )
         .eq("week_start", weekStart),
       supabase
         .from("loads")
         .select(
-          "id, truck_id, truck_unit_number, delivery_date, week_start, rate_cents, loaded_distance_mi, deadhead_miles",
+          "id, load_id, truck_id, truck_unit_number, delivery_date, week_start, rate_cents, loaded_distance_mi, deadhead_miles",
         )
         .gte("delivery_date", bounds.start)
         .lte("delivery_date", bounds.end),
@@ -225,20 +231,57 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
   if (closeRes.error && !lockMissing) return failed(bounds, closeRes.error.message);
 
   const contracts = groupContracts(contractsRes.data ?? [], rulesRes.data ?? []);
+  const trucks = (trucksRes.data ?? []).map(mapStatementTruck);
+  const sheets = await loadActiveTruckInsOuts(bounds.start, bounds.end).catch(() => ({
+    rows: [],
+    error: "Sheets were not read.",
+  }));
+  const baseLoads = (loadsRes.error ? [] : (loadsRes.data ?? [])).map((load) => ({
+    id: load.id,
+    truckId: load.truck_id,
+    unitNumber: load.truck_unit_number,
+    deliveryDate: load.delivery_date,
+    storedWeekStart: load.week_start,
+    grossCents: load.rate_cents,
+    loadedMilesHundredths: milesValueToHundredths(load.loaded_distance_mi),
+    deadheadMilesHundredths: milesValueToHundredths(load.deadhead_miles),
+  }));
+  const seenLoads = new Set(
+    (loadsRes.error ? [] : (loadsRes.data ?? [])).map(
+      (load) => `${unitNumberFromRaw(load.truck_unit_number ?? "")}:${canonicalLoadId(load.load_id ?? "")}`,
+    ),
+  );
+  for (const row of sheets.rows) {
+    const truck = trucks.find((item) => unitNumberFromRaw(item.unitNumber) === unitNumberFromRaw(row.unitNumber));
+    if (!truck) continue;
+    for (const load of row.ledgerLoads) {
+      if (load.rateCents == null || !load.deliveryDay) continue;
+      const key = `${unitNumberFromRaw(row.unitNumber)}:${canonicalLoadId(load.loadId)}`;
+      if (seenLoads.has(key)) continue;
+      seenLoads.add(key);
+      baseLoads.push({
+        id: `sheet:${key}`,
+        truckId: truck.id,
+        unitNumber: truck.unitNumber,
+        deliveryDate: load.deliveryDay,
+        storedWeekStart: bounds.start,
+        grossCents: load.rateCents,
+        loadedMilesHundredths: load.loadedMilesHundredths ?? 0,
+        deadheadMilesHundredths: load.deadheadMilesHundredths ?? 0,
+      });
+    }
+  }
   const input: WeekStatementInput = {
     weekStart: bounds.start,
-    trucks: (trucksRes.data ?? []).map(mapStatementTruck),
+    trucks,
     contracts,
-    loads: (loadsRes.error ? [] : (loadsRes.data ?? [])).map((load) => ({
-      id: load.id,
-      truckId: load.truck_id,
-      unitNumber: load.truck_unit_number,
-      deliveryDate: load.delivery_date,
-      storedWeekStart: load.week_start,
-      grossCents: load.rate_cents,
-      loadedMilesHundredths: milesValueToHundredths(load.loaded_distance_mi),
-      deadheadMilesHundredths: milesValueToHundredths(load.deadhead_miles),
-    })),
+    loads: baseLoads,
+    misc: sheets.rows
+      .map((row) => ({
+        unitNumber: unitNumberFromRaw(row.unitNumber),
+        amountCents: statementMiscCents(row.categories),
+      }))
+      .filter((row) => row.amountCents > 0),
     fuel: (fuelRes.error ? [] : (fuelRes.data ?? [])).map((row) => ({
       unitNumber: row.unit_number,
       weekStart: row.week_start,

@@ -1,6 +1,6 @@
 import { parseCsv } from "@/lib/fuel-tolls/csv";
 import { canonicalLoadId } from "@/lib/loads/load-id";
-import { loadsInWeek } from "@/lib/loads/week-membership";
+import { loadsInWeek, pendingLoads } from "@/lib/loads/week-membership";
 import { cleanCell, columnIndex, isEmptyCell, normalizeHeader, sheetDay } from "@/lib/sheets/cell";
 import { parseLoadLedger } from "@/lib/sheets/ledger";
 import { unitKey } from "@/lib/sheets/mismatch";
@@ -215,24 +215,22 @@ export function parseVektorLoadsCsv(
   }
 
   if (range) {
-    const chosen = new Set(
-      loadsInWeek(
-        rows.flatMap((row) =>
-          row.action === "import"
-            ? [
-                {
-                  loadId: row.loadId,
-                  pickupDay: row.importRow?.pickupDay ?? null,
-                  deliveryDay: row.deliveryDay,
-                  tripRef: row.importRow?.sourceManifestRef ?? null,
-                },
-              ]
-            : [],
-        ),
-        range.from,
-        range.to,
-      ).map((row) => row.loadId),
+    const members = rows.flatMap((row) =>
+      row.action === "import"
+        ? [
+            {
+              loadId: row.loadId,
+              pickupDay: row.importRow?.pickupDay ?? null,
+              deliveryDay: row.deliveryDay,
+              tripRef: row.importRow?.sourceManifestRef ?? null,
+            },
+          ]
+        : [],
     );
+    const chosen = new Set([
+      ...loadsInWeek(members, range.from, range.to).map((row) => row.loadId),
+      ...pendingLoads(members, range.to).map((row) => row.loadId),
+    ]);
     for (const row of rows) {
       if (row.action !== "import" || chosen.has(row.loadId)) continue;
       row.action = "skip";
