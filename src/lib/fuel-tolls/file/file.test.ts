@@ -33,6 +33,22 @@ function fuelPayload(row: { payload: { kind: string } | null }): FuelQueuePayloa
 }
 
 describe("fuel card file", () => {
+  it("reads 7-Eleven FUEL as diesel, keeps DEF separate, and drops the card fee", () => {
+    const grid = [
+      ["Card #", "Tran Date", "Invoice", "Unit", "City", "State/ Prov", "Item", "Qty", "Amt"],
+      ["00011", "10/06/2026", "1", "02", "DALLAS", "TX", "FUEL", "10", "40.00"],
+      ["00011", "10/06/2026", "1", "02", "DALLAS", "TX", "CARD FEE", "1", "2.00"],
+      ["00011", "10/06/2026", "2", "02", "DALLAS", "TX", "DEF", "2", "8.00"],
+    ];
+    const plan = planImport(grid, fuelContext());
+    const items = plan.rows.map((row) => (row.payload?.kind === "fuel" ? row.payload.item : ""));
+    expect(items).toEqual(["FUEL", "DEF"]);
+    expect(plan.rows[0]?.payload && plan.rows[0].payload.kind === "fuel" ? plan.rows[0].payload.product : null).toBe(
+      "diesel",
+    );
+    expect(plan.rows.every((row) => row.truck === "Truck 2")).toBe(true);
+  });
+
   const grid = gridFromUpload({ csvText: fuelCsv });
   const plan = planImport(grid, fuelContext());
 
@@ -221,7 +237,7 @@ describe("E-ZPass file", () => {
     expect(held?.cells).toEqual([]);
   });
 
-  it("leaves a toll flagged when no load window contains the exit time", () => {
+  it("puts a toll on empty miles onto the next load", () => {
     const moved = planImport(grid, {
       ledgers: [
         {
@@ -244,10 +260,9 @@ describe("E-ZPass file", () => {
       ],
     });
     const skyway = moved.rows.find((row) => (row.payload as TollQueuePayload | null)?.transactionId === "1505564277");
-    expect(skyway?.status).toBe("flagged");
-    expect(skyway?.link).toBeNull();
-    expect(skyway?.reason).toMatch(/No load covers/);
-    expect(skyway?.cells).toEqual([]);
+    expect(skyway?.status).toBe("new");
+    expect(skyway?.link).toBe("TBH--2002");
+    expect(skyway?.reason).toMatch(/next load/);
   });
 });
 

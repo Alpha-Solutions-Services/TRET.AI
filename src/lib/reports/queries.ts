@@ -1,4 +1,6 @@
 import { canonicalLoadId } from "@/lib/loads/load-id";
+import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
+import { loadActiveTruckInsOuts } from "@/lib/sheets/load-week";
 import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
 import { assertMonday } from "@/lib/fee-engine";
@@ -29,6 +31,29 @@ export async function buildWeeklyStatementPdf(weekStart: string, unitNumber?: st
     needsTolls,
   });
 
+  const sheets = await loadActiveTruckInsOuts(page.weekStart, page.weekEnd).catch(() => ({ rows: [], error: null }));
+  const known = new Set(details.loads.map((load) => canonicalLoadId(load.loadNumber ?? "")));
+  for (const row of sheets.rows) {
+    const unit = page.units.find((item) => unitNumberFromRaw(item.unitNumber) === unitNumberFromRaw(row.unitNumber));
+    if (!unit) continue;
+    for (const load of row.ledgerLoads) {
+      if (load.rateCents == null) continue;
+      const number = canonicalLoadId(load.loadId);
+      if (!number || known.has(number)) continue;
+      known.add(number);
+      details.loads.push({
+        truckId: unit.truckId,
+        loadNumber: number,
+        deliveryDate: load.deliveryDay,
+        brokerName: null,
+        origin: null,
+        destination: null,
+        loadedMilesHundredths: load.loadedMilesHundredths ?? 0,
+        deadheadMilesHundredths: load.deadheadMilesHundredths ?? 0,
+        rateCents: load.rateCents,
+      });
+    }
+  }
   const source = {
     weekStart: page.weekStart,
     weekEnd: page.weekEnd,

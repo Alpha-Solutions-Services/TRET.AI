@@ -219,6 +219,15 @@ Do this once, in a browser, at [developer.intuit.com](https://developer.intuit.c
 11. Accounting scope is what the connect button requests (`com.intuit.quickbooks.accounting`). If the app page lists scopes, leave Accounting on.
 12. For a sandbox test, open **Sandbox** in the portal and use a sandbox company. For the real Legacy Inc books, finish Intuit's production access, switch the keys and `INTUIT_ENVIRONMENT` to production, and connect that company.
 
+## Week 41 owner reports
+
+1. Open **Dashboard** and set **Week starting** to Monday 2026-10-05. That is week 41.
+2. A load is listed when its delivery date is in that week. A load still on the road shows as pending and is not in the totals.
+3. Open **Truck setup** to check fuel cards, plates, and Bestpass tags.
+4. Open **Daily check** for the same week. The counts are what is already stored: new and cancelled loads, fuel, tolls, unlinked fills, and truck mismatches. Changed loads and duplicate skips are not a file compare yet. Receipt photos are not read yet. **Approve** records that you reviewed this week.
+5. **Reread sheets** on the Dashboard loads the truck sheets again.
+6. **Close week** is at the bottom of **Statements**, away from the other buttons, and it asks you to confirm.
+
 ## Issues
 
 1. Open **Issues**.

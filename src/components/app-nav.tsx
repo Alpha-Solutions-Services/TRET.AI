@@ -10,6 +10,8 @@ const NAV = [
   { href: "/ins-outs", label: "Ins and Outs" },
   { href: "/sheet-compare", label: "Sheet vs Vektor" },
   { href: "/trucks", label: "Trucks" },
+  { href: "/trucks/setup", label: "Truck setup" },
+  { href: "/daily-check", label: "Daily check" },
   { href: "/fee-settings", label: "Fee settings" },
   { href: "/operating-expenses", label: "Legacy expenses" },
   { href: "/loads", label: "Loads" },
@@ -31,7 +33,9 @@ export function AppNav() {
         const active =
           item.href === "/"
             ? pathname === "/"
-            : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            : item.href === "/trucks"
+              ? pathname === "/trucks" || /^\/trucks\/(?!setup$).+/.test(pathname)
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
           <Link
             key={item.href}

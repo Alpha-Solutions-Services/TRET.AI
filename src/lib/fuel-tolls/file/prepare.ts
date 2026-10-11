@@ -1,7 +1,7 @@
 import { geminiConfigured, suggestAssignmentBatch, suggestColumnMap } from "@/lib/llm-gateway/gemini";
 import { SEEDED_IDENTITIES, truckLabel, type TruckIdentity } from "./mappings";
 import { AI_BUSY_NOTE } from "./messages";
-import { markAiMapped, planImport } from "./plan";
+import { planImport } from "./plan";
 import { applyColumnMap, parseGrid } from "./parse";
 import type { ImportContext, ImportPreviewRow, PlanResult } from "./types";
 
@@ -16,7 +16,6 @@ export async function prepareImport(
   sleep?: Sleep,
 ): Promise<PlanResult> {
   let working = grid;
-  let aiMapped = false;
   let aiBusy = false;
   const first = parseGrid(grid);
   if (first.kind === "unknown" && geminiConfigured(env)) {
@@ -25,11 +24,11 @@ export async function prepareImport(
     if (mapped.busy) aiBusy = true;
     else if (mapped.map) {
       working = applyColumnMap(grid, mapped.map.kind, mapped.map.columns);
-      aiMapped = parseGrid(working).kind === mapped.map.kind;
     }
   }
   const planned = planImport(working, context, identities);
-  let rows = aiMapped ? markAiMapped(planned.rows) : planned.rows;
+  // A busy model, or a column map, stays on the rules. Rows are not all flagged.
+  let rows = planned.rows;
   if (geminiConfigured(env) && !aiBusy) {
     const suggested = await addSuggestions(rows, context, identities, env, fetchImpl, sleep);
     rows = suggested.rows;

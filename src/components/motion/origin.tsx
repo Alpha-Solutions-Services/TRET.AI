@@ -1,9 +1,7 @@
 "use client";
 
-import { useId } from "react";
-import { useReducedMotion } from "framer-motion";
 import { type ConnectionTone } from "@/components/motion/tones";
-import { StatusDot, TrafficDots, type StatusTone } from "@/components/ui/status-dot";
+import { StatusDot, type StatusTone } from "@/components/ui/status-dot";
 
 export type OriginNode = {
   label: string;
@@ -11,61 +9,23 @@ export type OriginNode = {
   caption: string;
 };
 
-/** React Vibe Origin, adapted. MIT. https://reactvibe.com/docs/motion/origin */
+/** Connection status. Labels stay fully visible. No inner scrollbar or glow. */
 export function OriginMap({ nodes }: { nodes: OriginNode[] }) {
-  const reduced = useReducedMotion();
-  const filterId = `origin-glow-${useId().replace(/:/g, "")}`;
-  const spots = [90, 270, 450, 630];
-  const paths = spots.map(
-    (x) => `M 360 92 C 360 140, ${x} 150, ${x} 176`,
-  );
-
   return (
-    <section className="material rounded-xl border border-[var(--color-border)] px-4 py-4" aria-label="Connections">
-      <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-        <TrafficDots />
-        Connections
-      </div>
-      <div className="h-[280px] w-full overflow-x-auto">
-        <div className="relative h-[280px] min-w-[720px]">
-          <svg viewBox="0 0 720 280" className="absolute inset-0 h-full w-full" aria-hidden="true">
-            <defs>
-              <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation="1.6" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
-            {paths.map((d, index) => (
-              <g key={d}>
-                <path d={d} stroke="var(--color-fg)" strokeWidth="1.25" fill="none" opacity="0.85" />
-                {reduced ? null : (
-                  <rect width="14" height="2.5" rx="1" fill={pulseFill(nodes[index]?.tone)} filter={`url(#${filterId})`}>
-                    <animateMotion dur="3.2s" repeatCount="indefinite" path={d} rotate="auto" begin={`${index * 0.2}s`} />
-                  </rect>
-                )}
-              </g>
-            ))}
-          </svg>
-          <div
-            className="absolute left-[316px] top-[36px] flex h-16 w-24 items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-field)] text-sm font-medium"
-          >
-            TRET
-          </div>
-          {nodes.slice(0, 4).map((node, index) => (
-            <div
-              key={node.label}
-              className={nodeClass(node.tone)}
-              style={{ left: spots[index]! - 74, top: 168 }}
-            >
-              <p className="flex items-center gap-1.5 text-sm font-medium">
-                <StatusDot tone={dotTone(node.tone)} glow />
-                {node.label}
-              </p>
-              <p className="text-xs text-[var(--color-fg-muted)]">{node.caption}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+    <section className="rounded-xl border border-[var(--color-border)] px-4 py-4" aria-label="Connections">
+      <h2 className="text-sm font-medium">Connections</h2>
+      <ul className="mt-3 flex flex-wrap gap-2">
+        {nodes.map((node) => (
+          <li key={node.label} className={nodeClass()}>
+            <p className="flex items-center justify-center gap-2 text-sm font-medium">
+              <StatusDot tone={dotTone(node.tone)} />
+              {node.label}
+            </p>
+            <p className="mt-1 text-xs text-[var(--color-fg-muted)]">{node.caption}</p>
+          </li>
+        ))}
+      </ul>
+      <p className="mx-auto mt-3 w-fit rounded-full border border-[var(--color-accent)] px-4 py-2 text-sm font-semibold">TRET</p>
     </section>
   );
 }
@@ -80,15 +40,6 @@ function dotTone(tone: ConnectionTone | undefined): StatusTone {
   return "danger";
 }
 
-function pulseFill(tone: ConnectionTone | undefined): string {
-  if (tone === "connected") return "var(--color-ok)";
-  if (tone === "busy") return "var(--color-warn)";
-  return "var(--color-danger)";
-}
-
-function nodeClass(tone: ConnectionTone): string {
-  const base =
-    "absolute flex h-[84px] w-[148px] flex-col items-center justify-center rounded-xl border bg-[var(--color-field)] px-2 text-center";
-  if (tone === "busy") return `${base} rv-busy border-[var(--color-border)]`;
-  return `${base} border-[var(--color-border)]`;
+function nodeClass(): string {
+  return "min-w-[8.5rem] flex-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-field)] px-3 py-2 text-center";
 }

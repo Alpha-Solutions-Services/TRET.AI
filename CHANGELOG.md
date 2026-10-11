@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.0.0.32 — 2026-10-11
+
+- A load counts only in the week it is delivered. TBH--1170 delivered 10/04 is week 40. A delivery on 10/12 is week 42. In-transit loads stay Pending and are not counted. A pickup from the prior week is included when delivery is in the week. Sharing a trip no longer pulls another load in.
+- Owner RPM is rate divided by loaded plus deadhead, with shared trip miles counted once. Per-load RPM shares add up to the trip RPM. MPG uses main trip miles and stays blank until the trip delivers. Fleet RPM and MPG are built from those per-truck figures.
+- Dashboard, Ins and Outs, and Statements use the delivery week. Misc receipts (tarp, Ford, Uber, repairs) are in outs and in the statement as a Misc line. Statements also pick up sheet loads that are missing from the database, including Truck 4 when that sheet has the loads.
+- A chosen fuel or toll file is read by the same planner as the preview. 7-Eleven FUEL is diesel. Card fees are left out. ULSD and DEF stay separate rows. Loads row-count checks compare the last loads run only.
+- Truck setup is one table of fuel cards, plates, and Bestpass tags. Card 00011 is Truck 2. Tags UD12588 and YHM2482 match Truck 3 and Truck 7.
+- A fuel fill on a handoff day goes to the new load. An unclear pair stays unlinked. A toll on empty miles goes to the next load, on the primary row when the trip is shared. Credits are allowed. An existing sheet toll is not overwritten unless the owner confirms. A busy model retries, then the rules decide. Rows are not all flagged.
+- TONU rate-con reading is a tested helper: a written TONU amount sets loaded miles to 0, and a full freight rate only is flagged TONU rate unconfirmed and held to the next Monday. It is not applied during import yet, because the rate con is not fetched from Vektor documents.
+- Receipt text can suggest a misc entry and skip a BOL that was labeled Receipt. Photo reading through Gemini is not wired yet. Daily check lists stored loads, fuel, tolls, open unlinked fills, and truck mismatches for the week, with one Approve. Changed loads and duplicate skips are not a file-to-file diff yet. Reread sheets, Google 429 retry, a Vektor and Bestpass warning, and Close week sit apart from the other buttons with a confirm step.
+- An active truck with no loads, fuel, tolls, or fixed expenses still appears on the statement at zero, so Truck 4 is not dropped. Toll credits (negative amounts) stay on the statement.
+- The Hub and the Integrations connection list no longer clip labels or scroll inside the card. The waveform has a visible label and plays only while work is running. Looping glow and rainbow motion are removed from the dashboard cards and the import diagrams.
+- Migration `supabase/migrations/20261011190000_v32_toll_tags.sql` is included and not applied from this branch. It adds Bestpass tags UD12588 and YHM2482, inserts card 00011 when Truck 2 exists, and drops the toll amount checks that rejected credits.
+
 ## v0.0.0.31 — 2026-10-09
 
 - The Dashboard is rebuilt with React Vibe pieces (MIT, framer-motion). KPI cards count up and use a glow border: Ins, Outs, Net, Loads, Loaded miles, Deadhead, RPM, MPG, and Open issues. The Ins and Outs bars are full width. The eight week trend draws on. The expense donut keeps the category colors, percents, and thousands separators. Each truck is a card with unit, loads, miles, RPM, MPG, net, and a status dot. Hub flow shows Vektor, Sheets, Fuel, Tolls, and Gemini into TRET.

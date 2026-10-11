@@ -196,17 +196,6 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
         </div>
       ) : null}
 
-      {!data.locked && data.lockReady ? (
-        <Button
-          type="button"
-          onClick={onClose}
-          disabled={!data.closeAllowed || pending}
-          aria-describedby={data.blockers.length > 0 ? "statement-blockers" : undefined}
-        >
-          {pending ? "Locking…" : "Close week"}
-        </Button>
-      ) : null}
-
       {data.units.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-field)] px-6 py-12 text-center text-[var(--color-fg-muted)]">
           Nothing to show for this week.
@@ -326,6 +315,24 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
           ) : null}
         </>
       )}
+
+      {!data.locked && data.lockReady ? (
+        <section className="mt-8 rounded-xl border border-[var(--color-border)] px-4 py-4" aria-label="Lock this week">
+          <h2 className="text-sm font-medium">Lock this week</h2>
+          <p className="mt-1 max-w-xl text-sm text-[var(--color-fg-muted)]">
+            Close week is separate from the other buttons. It asks you to confirm before the week is locked.
+          </p>
+          <Button
+            type="button"
+            className="mt-3"
+            onClick={onClose}
+            disabled={!data.closeAllowed || pending}
+            aria-describedby={data.blockers.length > 0 ? "statement-blockers" : undefined}
+          >
+            {pending ? "Locking…" : "Close week"}
+          </Button>
+        </section>
+      ) : null}
     </div>
   );
 }

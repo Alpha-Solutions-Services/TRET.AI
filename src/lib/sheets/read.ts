@@ -37,6 +37,21 @@ export function privateSheetNote(env: Record<string, string | undefined>): strin
 
 type FetchLike = typeof fetch;
 
+const SHEET_BACKOFF_MS = [400, 1200, 3000];
+
+/** Retry a Google 429 or 503. Truck sheets have hit quota. */
+async function fetchSheet(fetchImpl: FetchLike, url: string | URL, init?: RequestInit): Promise<Response> {
+  let last: Response | null = null;
+  for (let attempt = 0; attempt <= SHEET_BACKOFF_MS.length; attempt += 1) {
+    last = await fetchImpl(url, init);
+    if (last.status !== 429 && last.status !== 503) return last;
+    const wait = SHEET_BACKOFF_MS[attempt];
+    if (wait == null) return last;
+    await new Promise((resolve) => setTimeout(resolve, wait));
+  }
+  return last!;
+}
+
 type TruckSheetInput = {
   unitNumber: string;
   truckName: string;
@@ -74,7 +89,7 @@ async function serviceAccountToken(
   signer.end();
   const signingKey = serviceAccountSigningKey(privateKey);
   const assertion = `${header}.${claim}.${signer.sign(signingKey).toString("base64url")}`;
-  const response = await fetchImpl(TOKEN_URL, {
+  const response = await fetchSheet(fetchImpl, TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -145,7 +160,7 @@ async function readWithToken(
   const metaUrl = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`);
   metaUrl.searchParams.set("fields", "sheets.properties.title");
   if (!accessToken && apiKey) metaUrl.searchParams.set("key", apiKey);
-  const metaResponse = await fetchImpl(metaUrl, {
+  const metaResponse = await fetchSheet(fetchImpl, metaUrl, {
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   });
   if (!metaResponse.ok) {
@@ -184,7 +199,7 @@ async function readWithToken(
   batchUrl.searchParams.set("valueRenderOption", "FORMATTED_VALUE");
   batchUrl.searchParams.set("dateTimeRenderOption", "FORMATTED_STRING");
   if (!accessToken && apiKey) batchUrl.searchParams.set("key", apiKey);
-  const batchResponse = await fetchImpl(batchUrl, {
+  const batchResponse = await fetchSheet(fetchImpl, batchUrl, {
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   });
   if (!batchResponse.ok) {
@@ -426,7 +441,7 @@ async function readWorkbookWithToken(
   const metaUrl = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`);
   metaUrl.searchParams.set("fields", "sheets.properties.title");
   if (!accessToken && apiKey) metaUrl.searchParams.set("key", apiKey);
-  const metaResponse = await fetchImpl(metaUrl, {
+  const metaResponse = await fetchSheet(fetchImpl, metaUrl, {
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   });
   if (!metaResponse.ok) {
@@ -456,7 +471,7 @@ async function readWorkbookWithToken(
   batchUrl.searchParams.set("valueRenderOption", "FORMATTED_VALUE");
   batchUrl.searchParams.set("dateTimeRenderOption", "FORMATTED_STRING");
   if (!accessToken && apiKey) batchUrl.searchParams.set("key", apiKey);
-  const batchResponse = await fetchImpl(batchUrl, {
+  const batchResponse = await fetchSheet(fetchImpl, batchUrl, {
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   });
   if (!batchResponse.ok) {

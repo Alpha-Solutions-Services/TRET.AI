@@ -180,8 +180,9 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
   const dieselMilli = sumGallons(fuel, "diesel");
   const defMilli = sumGallons(fuel, "def");
   const otherMilli = sumGallons(fuel, "other");
-  const ratePerMile = centsPerLoadedMile(unit.grossCents, unit.loadedMilesHundredths);
-  const fuelPerMile = centsPerLoadedMile(unit.fuelCents, unit.loadedMilesHundredths);
+  const totalMiles = unit.loadedMilesHundredths + unit.deadheadMilesHundredths;
+  const ratePerMile = centsPerLoadedMile(unit.grossCents, totalMiles);
+  const fuelPerMile = centsPerLoadedMile(unit.fuelCents, totalMiles);
   const perLoad = centsPerLoad(unit.grossCents, unit.loadCount);
   const mpg = formatDieselMpg(unit.loadedMilesHundredths, dieselMilli);
 
@@ -448,7 +449,7 @@ function buildFleetChart(source: WeeklyReportSource): PreparedChart {
     loadedHundredths: loaded,
     deadheadHundredths: deadhead,
     mpg: formatDieselMpg(loaded, diesel),
-    rpmCents: centsPerLoadedMile(fleet.grossCents, loaded),
+    rpmCents: centsPerLoadedMile(fleet.grossCents, loaded + deadhead),
   };
 }
 

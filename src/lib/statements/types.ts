@@ -21,6 +21,8 @@ export type StatementTruck = {
   legacyRateBp?: number | null;
   legacyFixedCents?: number | null;
   legacyEffectiveFrom?: string | null;
+  /** Active trucks stay on the week report even when they have no loads. */
+  active?: boolean;
 };
 
 export type StatementContract = {
@@ -37,7 +39,7 @@ export type StatementLoad = {
   truckId: string | null;
   unitNumber: string | null;
   deliveryDate: string;
-  /** Stored week, when the row has one. A mismatch with the delivery week is a blocker. */
+  /** Stored week, when the row has one. The delivery date decides the week. */
   storedWeekStart: string | null;
   grossCents: number;
   loadedMilesHundredths: number;
@@ -161,6 +163,8 @@ export type WeekStatementInput = {
   fixedVersions: StatementFixedVersion[];
   fixedOverrides: StatementFixedOverride[];
   importRuns: CloseImportRun[];
+  /** Misc receipts for the week, in cents. Folded into owner fixed expenses. */
+  misc?: readonly { unitNumber: string; amountCents: number }[];
   /** From import_settings. Not hardcoded in the close check. */
   rowCountDropPct: {
     loads: number;

@@ -34,6 +34,16 @@ describe("canonical load ids", () => {
       ),
     ).toBe(40);
     expect(sameSourcePreviousCount([{ source: "csv", rowsFetched: 7 }], "mcp")).toBeNull();
+    expect(
+      sameSourcePreviousCount(
+        [
+          { source: "csv", rowsFetched: 400, kind: "tolls" },
+          { source: "csv", rowsFetched: 12, kind: "loads" },
+        ],
+        "csv",
+        "loads",
+      ),
+    ).toBe(12);
   });
 });
 

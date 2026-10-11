@@ -63,6 +63,20 @@ describe("weekly expense parsing", () => {
     expect(outs.categories.some((row) => row.category === "Moved to Management")).toBe(false);
   });
 
+  it("includes Ford, Uber, and repair receipts in outs", () => {
+    const grid = [
+      ...TRUCK_8,
+      ["10/06/2026", "Ford repair", "120.00"],
+      ["10/07/2026", "Uber", "42.00"],
+      ["10/08/2026", "Tarp", "15.00"],
+    ];
+    const outs = outsFromWeeklyExpenses(grid, WEEK.weekStart, WEEK.weekEnd);
+    expect(outs.categories.some((row) => row.category === "Ford repair" && row.cents === 12_000)).toBe(true);
+    expect(outs.categories.some((row) => row.category === "Uber" && row.cents === 4_200)).toBe(true);
+    expect(outs.categories.some((row) => row.category === "Tarp" && row.cents === 1_500)).toBe(true);
+    expect(outs.outsCents).toBe(405_177 + 12_000 + 4_200 + 1_500);
+  });
+
   it("prefers Weekly Expenses over Mgmt Expenses for dashboard outs", () => {
     const built = buildTruckWeekInsOuts({
       unitNumber: "8",

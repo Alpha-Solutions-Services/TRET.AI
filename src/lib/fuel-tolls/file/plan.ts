@@ -87,9 +87,15 @@ export function planImport(
 
 function productOf(item: string): "diesel" | "def" | null {
   const key = item.trim().toUpperCase();
-  if (key === "ULSD" || key === "ULSR") return "diesel";
+  if (key === "ULSD" || key === "ULSR" || key === "FUEL" || key === "DIESEL") return "diesel";
   if (key === "DEFD" || key === "DEF") return "def";
   return null;
+}
+
+/** Card fees are not fuel. They are left out of the import. */
+function isCardFee(item: string): boolean {
+  const key = item.trim().toUpperCase();
+  return key === "FEE" || key === "CARD FEE" || key === "CASH ADVANCE" || key.includes("CARD FEE");
 }
 
 function locationOf(city: string, state: string): string {
@@ -112,6 +118,7 @@ function planFuel(
   const out: ImportPreviewRow[] = [];
 
   for (const raw of rows) {
+    if (isCardFee(raw.item)) continue;
     const reasons: string[] = [];
     const iso = sheetDay(raw.tranDate);
     const cents = sheetAmountToCents(raw.amt);
@@ -463,14 +470,13 @@ function planToll(rows: RawToll[], context: ImportContext, identities: readonly 
     if (!when) reasons.push("Toll time is missing. Post Date is not used.");
     const cents = sheetAmountToCents(raw.amount);
     if (cents == null) reasons.push("Amount is blank or not a dollar amount.");
-    else if (cents < 0) reasons.push("Amount is negative, so this looks like a refund or credit.");
     if (!raw.transactionId.trim()) reasons.push("Transaction Id is blank.");
 
     const resolved = resolveTollTruck(raw, identities);
     if ("reason" in resolved) reasons.push(resolved.reason);
     const unitNumber = "truck" in resolved ? resolved.truck.unitNumber : null;
 
-    if (reasons.length > 0 || !unitNumber || !when || cents == null || cents < 0 || !raw.transactionId.trim()) {
+    if (reasons.length > 0 || !unitNumber || !when || cents == null || !raw.transactionId.trim()) {
       staged.push({
         kind: "toll",
         status: "flagged",
@@ -632,7 +638,7 @@ function applyTollCells(rows: ImportPreviewRow[], context: ImportContext): Impor
     const current = sheetAmountToCents(target.current);
     const blank = isEmptyCell(target.current);
     const owned = !blank && current === logged;
-    if (!blank && !owned) {
+    if (!blank && !owned && !context.confirmTollOverwrite) {
       for (const row of list) {
         flagToll(
           row,
