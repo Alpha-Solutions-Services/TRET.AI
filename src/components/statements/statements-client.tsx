@@ -16,10 +16,12 @@ import { truckClassLabel } from "@/lib/fees/kinds";
 import { PrepareReportButtons, ReportWeekLabel } from "@/components/reports/report-week";
 
 function rateCell(line: { lineCode: string; rateBp: number | null }): string {
-  if (line.rateBp == null) {
-    return line.lineCode === "TOLSON_PAYABLE" || line.lineCode === "LEGACY_RETAINED" ? "Not set" : "";
-  }
+  if (line.rateBp == null) return "";
   return `${bpToPercentString(line.rateBp)}%`;
+}
+
+function managementTotal(unit: UnitStatement): number {
+  return unit.truckClass === "third_party" ? unit.managementFeeCents : unit.legacyRetainedCents + unit.tolsonPayableCents;
 }
 
 function money(cents: number): string {
@@ -32,9 +34,6 @@ function shiftWeek(weekStart: string, delta: number): string {
   return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
 }
 
-function feeCell(unit: UnitStatement): number {
-  return unit.truckClass === "third_party" ? unit.managementFeeCents : unit.tolsonPayableCents;
-}
 
 export function StatementsClient({ data }: { data: StatementsPageData }) {
   const router = useRouter();
@@ -99,8 +98,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Statements</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
-          Monday to Sunday statements by delivery date. Legacy-owned trucks show Tolson payable. Managed trucks
-          show one management fee. The Tolson and Legacy split is stored and is not subtracted again.
+          Monday to Sunday statements by delivery date. Each truck shows the Legacy fee, the Tolson lease fee, and the management fee total. The total is those two lines. It is subtracted once.
         </p>
       </div>
 
@@ -217,7 +215,9 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                   <th className="px-3 py-3 font-medium">Loads</th>
                   <th className="px-3 py-3 font-medium">Gross</th>
                   <th className="px-3 py-3 font-medium">Driver</th>
-                  <th className="px-3 py-3 font-medium">Management / Tolson</th>
+                  <th className="px-3 py-3 font-medium">Legacy fee</th>
+                  <th className="px-3 py-3 font-medium">Tolson lease fee</th>
+                  <th className="px-3 py-3 font-medium">Management fee</th>
                   <th className="px-3 py-3 font-medium">Dispatch</th>
                   <th className="px-3 py-3 font-medium">Factoring</th>
                   <th className="px-3 py-3 font-medium">Fuel</th>
@@ -242,7 +242,9 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                     <td className="px-3 py-2">{unit.loadCount}</td>
                     <td className="px-3 py-2">{money(unit.grossCents)}</td>
                     <td className="px-3 py-2">{money(unit.driverPayCents)}</td>
-                    <td className="px-3 py-2">{money(feeCell(unit))}</td>
+                    <td className="px-3 py-2">{money(unit.legacyRetainedCents)}</td>
+                    <td className="px-3 py-2">{money(unit.tolsonPayableCents)}</td>
+                    <td className="px-3 py-2">{money(managementTotal(unit))}</td>
                     <td className="px-3 py-2">{money(unit.dispatchFeeCents)}</td>
                     <td className="px-3 py-2">{money(unit.factoringFeeCents)}</td>
                     <td className="px-3 py-2">{money(unit.fuelCents)}</td>
@@ -257,7 +259,9 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                   <td className="px-3 py-2">{data.fleet.loadCount}</td>
                   <td className="px-3 py-2">{money(data.fleet.grossCents)}</td>
                   <td className="px-3 py-2">{money(data.fleet.driverPayCents)}</td>
-                  <td className="px-3 py-2">{money(data.units.reduce((sum, unit) => sum + feeCell(unit), 0))}</td>
+                  <td className="px-3 py-2">{money(data.fleet.legacyRetainedCents)}</td>
+                  <td className="px-3 py-2">{money(data.fleet.tolsonPayableCents)}</td>
+                  <td className="px-3 py-2">{money(data.units.reduce((sum, unit) => sum + managementTotal(unit), 0))}</td>
                   <td className="px-3 py-2">{money(data.fleet.dispatchFeeCents)}</td>
                   <td className="px-3 py-2">{money(data.fleet.factoringFeeCents)}</td>
                   <td className="px-3 py-2">{money(data.fleet.fuelCents)}</td>
@@ -281,8 +285,8 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
             </div>
           ) : null}
           <p className="text-sm text-[var(--color-fg-muted)]">
-            Fleet Tolson payable {money(data.fleet.tolsonPayableCents)}. Legacy retained{" "}
-            {money(data.fleet.legacyRetainedCents)}. Fixed expenses charged to management{" "}
+            Fleet Legacy fee {money(data.fleet.legacyRetainedCents)}. Tolson lease fee{" "}
+            {money(data.fleet.tolsonPayableCents)}. Fixed expenses charged to management{" "}
             {money(data.fleet.fixedManagementCents)} are not in net.
           </p>
 
@@ -313,13 +317,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                         {line.basePctBp == null ? "" : `${bpToPercentString(line.basePctBp)}%`}
                       </td>
                       <td className="px-3 py-2">
-                        {line.chargedTo == null
-                          ? line.lineCode === "TOLSON_PAYABLE" || line.lineCode === "LEGACY_RETAINED"
-                            ? "Not set"
-                            : ""
-                          : line.chargedTo === "owner"
-                            ? "Owner"
-                            : "Management"}
+                        {line.chargedTo == null ? "" : line.chargedTo === "owner" ? "Owner" : "Management"}
                       </td>
                       <td className="px-3 py-2">{money(line.amountCents)}</td>
                     </tr>

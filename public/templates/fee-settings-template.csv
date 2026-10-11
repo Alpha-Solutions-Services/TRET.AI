@@ -1,3 +1,11 @@
-unit,fee_type,management_fee_pct,tolson_payable_pct,tolson_payable_fixed_weekly,legacy_retained_pct,legacy_retained_fixed_weekly,effective_from
-02,lease_to_tolson,,10,,,,
-03,owner_management,10,,,,,
+unit,legacy_fee_pct,tolson_lease_fee_pct,effective_from
+1,0,10,2026-10-05
+2,0,10,2026-10-05
+3,10,0,2026-10-05
+4,10,8,2026-10-05
+5,10,8,2026-10-05
+6,10,8,2026-10-05
+7,10,8,2026-10-05
+8,10,8,2026-10-05
+9,10,8,2026-10-05
+10,10,8,2026-10-05

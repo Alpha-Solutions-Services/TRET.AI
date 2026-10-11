@@ -2,6 +2,7 @@
 
 | Date | Decision | Reason |
 |------|----------|--------|
+| 2026-10-11 | Each truck has a Legacy fee and a Tolson lease fee, both a percent of weekly gross. The management fee total is their sum. Trucks 1 and 2 are 0 and 10. Truck 3 is 10 and 0. Trucks 4 to 10 and a new truck are 10 and 8. The sheet Management Fee cell is that total. The two lines split the cell. A TONU delivered in the week is counted and flagged TONU amount unconfirmed. Truck 3 week 41 misc is $974.88. | The CEO set the two lines. The sheets are being updated to that total. The operator checklist names the fee cells and the week 41 amounts. |
 | 2026-10-11 | Owner reports, the dashboard, Ins and Outs, and statements use one function over the truck sheet. Column P is truck miles, once per trip. Columns AM through AQ are misc. Week Report C31 is MPG. A sheet cell wins over an import total. | Week 41 revenue matched the sheet, and miles, misc, expenses, and the PDF did not. |
 | 2026-10-11 | OPEN: Trucks 1, 2, 9, and 10 have no Google Sheet link in the database, so their live fixed costs stay zero until those links are pasted. The week 41 amounts 729.45 and 2,179.57 are proven on fixture sheets. | The database only had trucks 3 through 8. Sheet URLs are not invented. |
 | 2026-10-11 | OPEN: TONU rate cons are not fetched from Vektor documents, and receipt photos are not sent to Gemini. | The helpers are tested. They are not live until import runs them. A TONU status is still listed as pending with TONU rate unconfirmed. |

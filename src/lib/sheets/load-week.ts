@@ -1,3 +1,6 @@
+import { tryPercentStringToBp } from "@/lib/fees/percent";
+import { loadFeeSettings } from "@/lib/fees/load";
+import { unitDigits, type FeeRatePair } from "@/lib/fees/two-lines";
 import { buildTruckWeekInsOuts, type TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { loadTruckWeekInsOuts, missingGoogleServiceAccountEnv } from "@/lib/sheets/read";
 import { sheetLedgerRefs } from "@/lib/sheets/mismatch";
@@ -9,7 +12,7 @@ export async function loadActiveTruckInsOuts(
   weekEnd: string,
 ): Promise<{ rows: TruckWeekInsOuts[]; error: string | null }> {
   try {
-    const { trucks } = await listTrucks();
+    const [{ trucks }, fees] = await Promise.all([listTrucks(), loadFeeSettings().catch(() => null)]);
     const active = trucks.filter((truck) => truck.active);
     const rows = ensureFleetUnits(
       await loadTruckWeekInsOuts(
@@ -18,6 +21,7 @@ export async function loadActiveTruckInsOuts(
           truckName: truck.name,
           googleSheetUrl: truck.google_sheet_url,
           truckClass: truck.truck_class,
+          feeRates: feeRatesFor(truck.unit_number, fees?.rows ?? []),
         })),
         weekStart,
         weekEnd,
@@ -32,6 +36,18 @@ export async function loadActiveTruckInsOuts(
       error: err instanceof Error ? err.message : "Ins and Outs could not be loaded.",
     };
   }
+}
+
+function feeRatesFor(
+  unitNumber: string,
+  rows: Array<{ unitNumber: string; legacyFeePct: string; tolsonLeaseFeePct: string }>,
+): FeeRatePair | undefined {
+  const row = rows.find((item) => unitDigits(item.unitNumber) === unitDigits(unitNumber));
+  if (!row) return undefined;
+  const legacy = tryPercentStringToBp(row.legacyFeePct);
+  const tolson = tryPercentStringToBp(row.tolsonLeaseFeePct);
+  if (!legacy.ok || !tolson.ok) return undefined;
+  return { legacyFeeBp: legacy.bp, tolsonLeaseFeeBp: tolson.bp };
 }
 
 const FLEET_UNITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] as const;

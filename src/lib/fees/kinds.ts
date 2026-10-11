@@ -5,8 +5,8 @@ export const FEE_KIND_LABELS: Record<FeeRuleKind, string> = {
   MANAGEMENT_FEE: "Management fee",
   DISPATCH_FEE: "Dispatch fee",
   FACTORING_FEE: "Factoring fee",
-  TOLSON_PAYABLE: "Tolson payable",
-  LEGACY_RETAINED: "Legacy retained",
+  TOLSON_PAYABLE: "Tolson lease fee",
+  LEGACY_RETAINED: "Legacy fee",
 };
 
 export function allowedFeeKindsForClass(truckClass: TruckClass): FeeRuleKind[] {

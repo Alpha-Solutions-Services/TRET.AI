@@ -424,6 +424,9 @@ function SnapshotTable({ snapshot }: { snapshot: NonNullable<OverviewPageData["s
             <th className="px-3 py-3 font-medium">Unit</th>
             <th className="px-3 py-3 font-medium">Gross</th>
             <th className="px-3 py-3 font-medium">Fees</th>
+            <th className="px-3 py-3 font-medium">Legacy fee</th>
+            <th className="px-3 py-3 font-medium">Tolson lease fee</th>
+            <th className="px-3 py-3 font-medium">Management fee</th>
             <th className="px-3 py-3 font-medium">Fuel</th>
             <th className="px-3 py-3 font-medium">Tolls</th>
             <th className="px-3 py-3 font-medium">Fixed</th>
@@ -447,6 +450,9 @@ function SnapshotLine({ row, fleet }: { row: SnapshotRow; fleet: boolean }) {
       <td className="px-3 py-2">{row.unitNumber}</td>
       <td className="px-3 py-2">{money(row.grossCents)}</td>
       <td className="px-3 py-2">{money(row.feesCents)}</td>
+      <td className="px-3 py-2">{money(row.legacyFeeCents)}</td>
+      <td className="px-3 py-2">{money(row.tolsonLeaseFeeCents)}</td>
+      <td className="px-3 py-2">{money(row.managementFeeCents)}</td>
       <td className="px-3 py-2">{money(row.fuelCents)}</td>
       <td className="px-3 py-2">{money(row.tollsCents)}</td>
       <td className="px-3 py-2">{money(row.fixedCents)}</td>

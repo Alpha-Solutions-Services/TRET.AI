@@ -243,13 +243,13 @@ describe("close blockers", () => {
     });
     expect(legacy?.lines.find((line) => line.lineCode === "LEGACY_RETAINED")).toMatchObject({
       amountCents: 0,
-      rateBp: null,
+      rateBp: 0,
     });
     expect(managed?.contractId).toBe("default:22222222-2222-4222-8222-222222222203");
     expect(managed?.grossCents).toBe(580_000);
     expect(managed?.managementFeeCents).toBe(58_000);
     expect(managed?.tolsonPayableCents).toBe(0);
-    expect(managed?.legacyRetainedCents).toBe(0);
+    expect(managed?.legacyRetainedCents).toBe(58_000);
     expect(managed?.lines.find((line) => line.lineCode === "MANAGEMENT_FEE")?.rateBp).toBe(1000);
 
     const unknown = buildWeekStatements(

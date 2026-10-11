@@ -175,6 +175,8 @@ describe("weekly asset report", () => {
     expect(report.leftExpenses.map((line) => line.label)).toEqual([
       "Driver Compensation - 20%",
       "Management Fee - 10%",
+      "Legacy fee",
+      "Tolson lease fee",
       "Dispatch Fee",
       "Factoring Fee - 1.75%",
       "Fuel (Diesel + DEF)",

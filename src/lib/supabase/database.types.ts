@@ -70,6 +70,9 @@ export type Database = {
           legacy_retained_type: TolsonPayableType | null;
           legacy_retained_value: number | null;
           legacy_retained_effective_from: string | null;
+          legacy_fee_bp: number | null;
+          tolson_lease_fee_bp: number | null;
+          fee_lines_effective_from: string | null;
           active: boolean;
           created_at: string;
         };
@@ -89,6 +92,9 @@ export type Database = {
           legacy_retained_type?: TolsonPayableType | null;
           legacy_retained_value?: number | null;
           legacy_retained_effective_from?: string | null;
+          legacy_fee_bp?: number | null;
+          tolson_lease_fee_bp?: number | null;
+          fee_lines_effective_from?: string | null;
           active?: boolean;
           created_at?: string;
         };
@@ -108,6 +114,9 @@ export type Database = {
           legacy_retained_type?: TolsonPayableType | null;
           legacy_retained_value?: number | null;
           legacy_retained_effective_from?: string | null;
+          legacy_fee_bp?: number | null;
+          tolson_lease_fee_bp?: number | null;
+          fee_lines_effective_from?: string | null;
           active?: boolean;
           created_at?: string;
         };

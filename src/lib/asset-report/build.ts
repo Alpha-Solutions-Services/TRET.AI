@@ -10,6 +10,7 @@ import {
   formatStatementDollars,
 } from "@/lib/reports/format";
 import { buildOwnerTruckWeek } from "@/lib/reports/owner-week";
+import { seededFeeRates, splitSheetManagementFee } from "@/lib/fees/two-lines";
 import {
   columnIndex,
   columnIndexes,
@@ -27,6 +28,8 @@ export type SheetGrid = string[][];
 export type AssetExpenseLine = {
   label: string;
   cents: number;
+  /** Shown on the PDF. Left out of the expense total so the management fee is not added twice. */
+  detail?: boolean;
 };
 
 export type AssetLoadLine = {
@@ -421,6 +424,14 @@ function columnTotal(header: string[], rows: string[][], names: readonly string[
   return sum;
 }
 
+function feeBreakdown(unitNumber: string, managementCents: number): AssetExpenseLine[] {
+  const split = splitSheetManagementFee(managementCents, seededFeeRates(unitNumber));
+  return [
+    { label: "Legacy fee", cents: split.legacyFeeCents, detail: true },
+    { label: "Tolson lease fee", cents: split.tolsonLeaseFeeCents, detail: true },
+  ];
+}
+
 function percentLabel(
   base: string,
   fallback: string,
@@ -643,6 +654,7 @@ export function buildAssetReport(input: {
   const leftExpenses: AssetExpenseLine[] = [
     { label: percentLabel("Driver Compensation", "20%", weekly, ["driver compensation %", "driver compensation percent"]), cents: lines.driver },
     { label: percentLabel("Management Fee", "10%", weekly, ["management fee %", "management fee percent", "mgmt fee %"]), cents: lines.management },
+    ...feeBreakdown(input.unitNumber, lines.management),
     { label: "Dispatch Fee", cents: lines.dispatch },
     { label: percentLabel("Factoring Fee", "1.75%", weekly, ["factoring fee %", "factoring fee percent"]), cents: lines.factoring },
     { label: "Fuel (Diesel + DEF)", cents: lines.fuel },
@@ -662,7 +674,10 @@ export function buildAssetReport(input: {
   if (truckPay !== 0) rightExpenses.push({ label: "Truck payments", cents: truckPay });
   if (trailerPay !== 0) rightExpenses.push({ label: "Trailer payments", cents: trailerPay });
   if (owner.miscCents !== 0) rightExpenses.push({ label: "Misc", cents: owner.miscCents });
-  const expenseCents = [...leftExpenses, ...rightExpenses].reduce((sum, line) => sum + line.cents, 0);
+  const expenseCents = [...leftExpenses, ...rightExpenses].reduce(
+    (sum, line) => sum + (line.detail ? 0 : line.cents),
+    0,
+  );
   const fleet = unitSlice(input.fleet, input.unitNumber);
   const ledgerRows = weekLedger(input.ledger, input.weekStart, input.weekEnd);
   const labelGrids = [

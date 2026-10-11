@@ -8,6 +8,7 @@ import {
   type TruckClass,
 } from "@/lib/fee-engine";
 import { assertInteger, assertNonNegativeInteger } from "@/lib/fee-engine/money";
+import { managementFeeSplit, seededFeeRates } from "@/lib/fees/two-lines";
 import { FIXED_EXPENSE_KINDS, FIXED_EXPENSE_LABELS } from "@/lib/fixed-expenses/kinds";
 import { lookupWeeklyFixedExpense } from "@/lib/fixed-expenses/lookup";
 import { validateUnlinkedFuelAtWeekClose, validateFuelRowCountDrop, validateTollRowCountDrop } from "@/lib/fuel-tolls/validate";
@@ -30,8 +31,8 @@ const FEE_LABELS: Record<FeeRuleKind, string> = {
   MANAGEMENT_FEE: "Management fee",
   DISPATCH_FEE: "Dispatch fee",
   FACTORING_FEE: "Factoring fee",
-  TOLSON_PAYABLE: "Tolson payable",
-  LEGACY_RETAINED: "Legacy retained",
+  TOLSON_PAYABLE: "Tolson lease fee",
+  LEGACY_RETAINED: "Legacy fee",
 };
 
 const FEE_SORT: Record<FeeRuleKind, number> = {
@@ -428,7 +429,7 @@ function buildUnit(
   }
 
   const driverPayCents = feeAmount(feeLines, "DRIVER_PAY");
-  const managementFeeCents = feeAmount(feeLines, "MANAGEMENT_FEE");
+  let managementFeeCents = feeAmount(feeLines, "MANAGEMENT_FEE");
   let tolsonPayableCents = feeAmount(feeLines, "TOLSON_PAYABLE");
   let legacyRetainedCents = feeAmount(feeLines, "LEGACY_RETAINED");
   const tolsonFixed =
@@ -460,6 +461,20 @@ function buildUnit(
   ensureUnsetLine(lines, "LEGACY_RETAINED", truck.truckClass);
   if (tolsonFixed) syncFixedLine(lines, "TOLSON_PAYABLE", tolsonPayableCents);
   if (legacyFixed) syncFixedLine(lines, "LEGACY_RETAINED", legacyRetainedCents);
+  if (contractId?.startsWith("default:")) {
+    const rates =
+      truck.legacyFeeBp != null && truck.tolsonLeaseFeeBp != null
+        ? { legacyFeeBp: truck.legacyFeeBp, tolsonLeaseFeeBp: truck.tolsonLeaseFeeBp }
+        : seededFeeRates(truck.unitNumber);
+    const split = managementFeeSplit(grossCents, rates);
+    const owned = feeClassFor(truck) === "legacy_owned";
+    managementFeeCents = owned ? 0 : split.managementFeeCents;
+    tolsonPayableCents = owned ? split.managementFeeCents : split.tolsonLeaseFeeCents;
+    legacyRetainedCents = split.legacyFeeCents;
+    upsertFeeLine(lines, "MANAGEMENT_FEE", managementFeeCents, rates.legacyFeeBp + rates.tolsonLeaseFeeBp, true, !owned);
+    upsertFeeLine(lines, "TOLSON_PAYABLE", owned ? split.managementFeeCents : split.tolsonLeaseFeeCents, rates.tolsonLeaseFeeBp, true, owned);
+    upsertFeeLine(lines, "LEGACY_RETAINED", split.legacyFeeCents, rates.legacyFeeBp, true, false);
+  }
   lines.push(expenseLine("FUEL", "Fuel", fuelCents, 50));
   lines.push(expenseLine("TOLLS", "Tolls", tollsCents, 60));
   lines.push(...fixedLines);
@@ -510,6 +525,29 @@ function expenseLine(code: string, label: string, amountCents: number, sortOrder
     ownerVisible: true,
     sortOrder,
   };
+}
+
+function upsertFeeLine(
+  lines: StatementLine[],
+  kind: "MANAGEMENT_FEE" | "TOLSON_PAYABLE" | "LEGACY_RETAINED",
+  cents: number,
+  rateBp: number,
+  ownerVisible: boolean,
+  charged: boolean,
+): void {
+  const line = lines.find((row) => row.lineCode === kind);
+  const next = {
+    lineCode: kind,
+    label: FEE_LABELS[kind],
+    amountCents: cents,
+    rateBp,
+    basePctBp: 10000,
+    chargedTo: charged && cents > 0 ? ("owner" as const) : null,
+    ownerVisible,
+    sortOrder: FEE_SORT[kind],
+  };
+  if (line) Object.assign(line, next);
+  else lines.push(next);
 }
 
 function feeAmount(lines: FeeLineResult[], kind: FeeRuleKind): number {

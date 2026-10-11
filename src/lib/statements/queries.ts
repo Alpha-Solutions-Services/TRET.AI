@@ -79,7 +79,7 @@ export function resolveWeekStart(raw: string | undefined): string {
 }
 
 const FEE_TRUCK_COLUMNS =
-  "id, unit_number, truck_class, active, fee_model, tolson_payable_type, tolson_payable_value, tolson_payable_effective_from, management_fee_bp, management_fee_effective_from, legacy_retained_type, legacy_retained_value, legacy_retained_effective_from";
+  "id, unit_number, truck_class, active, fee_model, tolson_payable_type, tolson_payable_value, tolson_payable_effective_from, management_fee_bp, management_fee_effective_from, legacy_retained_type, legacy_retained_value, legacy_retained_effective_from, legacy_fee_bp, tolson_lease_fee_bp, fee_lines_effective_from";
 
 type TruckFeeRow = {
   id: string;
@@ -95,6 +95,9 @@ type TruckFeeRow = {
   legacy_retained_type?: string | null;
   legacy_retained_value?: number | null;
   legacy_retained_effective_from?: string | null;
+  legacy_fee_bp?: number | null;
+  tolson_lease_fee_bp?: number | null;
+  fee_lines_effective_from?: string | null;
 };
 
 async function loadStatementTrucks(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -102,7 +105,7 @@ async function loadStatementTrucks(supabase: Awaited<ReturnType<typeof createCli
   if (!full.error) return { data: (full.data ?? []) as TruckFeeRow[], error: null };
   const missing =
     isMissingSchemaError(full.error) ||
-    /fee_model|management_fee_bp|legacy_retained|tolson_payable_effective/i.test(full.error.message);
+    /legacy_fee_bp|fee_model|management_fee_bp|legacy_retained|tolson_payable_effective/i.test(full.error.message);
   if (!missing) return { data: null, error: full.error };
   const base = await supabase
     .from("trucks")
@@ -126,6 +129,8 @@ function mapStatementTruck(truck: TruckFeeRow): StatementTruck {
     legacyRateBp: truck.legacy_retained_type === "percent_of_gross" ? (truck.legacy_retained_value ?? null) : null,
     legacyFixedCents: truck.legacy_retained_type === "fixed_weekly" ? (truck.legacy_retained_value ?? null) : null,
     legacyEffectiveFrom: truck.legacy_retained_effective_from ?? null,
+    legacyFeeBp: truck.legacy_fee_bp ?? null,
+    tolsonLeaseFeeBp: truck.tolson_lease_fee_bp ?? null,
     active: truck.active === true,
   };
 }

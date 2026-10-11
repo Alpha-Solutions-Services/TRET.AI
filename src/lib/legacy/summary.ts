@@ -77,40 +77,38 @@ export function monthPortalExpenseCents(
 
 /**
  * Management cards for one week.
- * Income is the summed management fee on sheet loads.
+ * Income is the sum of Legacy fees, each a percent of that truck's weekly gross.
+ * Tolson payable is the sum of Tolson lease fees. It is not subtracted from Legacy income.
  * Expenses are portal costs for the week's expense month.
- * Tolson payable is the sum of each truck setting and is its own expense.
- * Net is income minus portal expenses minus Tolson payable.
- * Legacy kept is income minus Tolson payable.
+ * Net is Legacy income minus those portal expenses.
+ * Legacy kept is the Legacy fee income.
  */
 export function buildManagementCards(input: {
-  fees: Array<{ feeCents: number }>;
-  tolson: TruckTolsonInput[];
+  /** Sum of Legacy fees. This is Legacy income. */
+  legacyFeeCents: number;
+  /** Sum of Tolson lease fees. */
+  tolsonLeaseFeeCents: number;
   operatingExpenses: Array<{ expenseDate: string; amountCents: number }>;
   expenseMonth: string;
 }): ManagementCardSummary {
   if (!parseMonth(input.expenseMonth)) {
     throw new Error("Expense month must be YYYY-MM");
   }
-  let incomeCents = 0;
-  for (const fee of input.fees) {
-    if (!Number.isInteger(fee.feeCents) || fee.feeCents < 0) {
-      throw new Error("Management fee must be zero or more cents");
-    }
-    incomeCents += fee.feeCents;
+  if (!Number.isInteger(input.legacyFeeCents) || input.legacyFeeCents < 0) {
+    throw new Error("Legacy fee must be zero or more cents");
   }
-  let tolsonPayableCents = 0;
-  for (const row of input.tolson) {
-    tolsonPayableCents += tolsonPayableForTruck(row);
+  if (!Number.isInteger(input.tolsonLeaseFeeCents) || input.tolsonLeaseFeeCents < 0) {
+    throw new Error("Tolson lease fee must be zero or more cents");
   }
+  const incomeCents = input.legacyFeeCents;
+  const tolsonPayableCents = input.tolsonLeaseFeeCents;
   const expenseCents = monthPortalExpenseCents(input.operatingExpenses, input.expenseMonth);
-  const legacyKeptCents = incomeCents - tolsonPayableCents;
   return {
     incomeCents,
     expenseCents,
-    netCents: incomeCents - expenseCents - tolsonPayableCents,
+    netCents: incomeCents - expenseCents,
     tolsonPayableCents,
-    legacyKeptCents,
+    legacyKeptCents: incomeCents,
     expenseMonth: input.expenseMonth,
   };
 }

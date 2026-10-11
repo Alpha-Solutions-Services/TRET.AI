@@ -1,11 +1,9 @@
 import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
-import { buildLegacyEarnings, DEFAULT_MANAGEMENT_FEE_BP } from "@/lib/legacy/fees";
+import { DEFAULT_MANAGEMENT_FEE_BP } from "@/lib/legacy/fees";
 import { expenseTotalCents, monthBounds } from "@/lib/legacy/expenses";
 import { buildManagementCards, type ManagementCardSummary } from "@/lib/legacy/summary";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
-import { unitKey } from "@/lib/sheets/mismatch";
-import { listTrucks } from "@/lib/trucks/queries";
 
 export type LegacyFeeState = {
   ready: boolean;
@@ -105,24 +103,16 @@ export async function loadManagementCardSummary(
   trucks: TruckWeekInsOuts[],
   operatingExpenses: Array<{ expenseDate: string; amountCents: number }>,
 ): Promise<ManagementCardSummary> {
-  const [fees, stored] = await Promise.all([loadLegacyFeeState(weekStart), listTrucks()]);
-  const earnings = buildLegacyEarnings({
-    trucks,
-    orgFeeBp: fees.orgFeeBp,
-    truckWeeks: fees.truckWeeks,
-    loadFees: fees.loadFees,
-  });
-  const byUnit = new Map(stored.trucks.map((truck) => [unitKey(truck.unit_number), truck]));
+  let legacyFeeCents = 0;
+  let tolsonLeaseFeeCents = 0;
+  for (const truck of trucks) {
+    if (!truck.readable) continue;
+    legacyFeeCents += truck.legacyFeeCents ?? 0;
+    tolsonLeaseFeeCents += truck.tolsonLeaseFeeCents ?? 0;
+  }
   return buildManagementCards({
-    fees: earnings.trucks.map((truck) => ({ feeCents: truck.feeCents })),
-    tolson: trucks.map((truck) => {
-      const row = byUnit.get(unitKey(truck.unitNumber));
-      return {
-        type: row?.tolson_payable_type ?? null,
-        value: row?.tolson_payable_value ?? null,
-        grossCents: truck.readable ? truck.insCents : 0,
-      };
-    }),
+    legacyFeeCents,
+    tolsonLeaseFeeCents,
     operatingExpenses,
     expenseMonth: weekStart.slice(0, 7),
   });

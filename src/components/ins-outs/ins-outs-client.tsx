@@ -55,8 +55,16 @@ export function InsOutsClient({
 }) {
   const router = useRouter();
   const fleet = fleetInsOutsTotals(rows);
+  const feeTotals = rows.filter((row) => row.readable).reduce(
+    (sum, row) => ({
+      legacy: sum.legacy + (row.legacyFeeCents ?? 0),
+      tolson: sum.tolson + (row.tolsonLeaseFeeCents ?? 0),
+      management: sum.management + (row.managementFeeCents ?? 0),
+    }),
+    { legacy: 0, tolson: 0, management: 0 },
+  );
   const columns = displayExpenseColumns(rows);
-  const columnCount = 6 + columns.length;
+  const columnCount = 9 + columns.length;
 
   function openWeek(next: string) {
     router.push(`/ins-outs?week=${next}`);
@@ -150,6 +158,9 @@ export function InsOutsClient({
               <th className="px-3 py-3 font-medium">Unit</th>
               <th className="px-3 py-3 font-medium">Loads</th>
               <th className="px-3 py-3 font-medium">Ins</th>
+              <th className="px-3 py-3 font-medium">Legacy fee</th>
+              <th className="px-3 py-3 font-medium">Tolson lease fee</th>
+              <th className="px-3 py-3 font-medium">Management fee</th>
               {columns.map((category) => (
                 <th key={category} className="px-3 py-3 font-medium whitespace-nowrap">
                   {category}
@@ -188,6 +199,9 @@ export function InsOutsClient({
                     )}
                   </td>
                   <td className="px-3 py-2">{row.readable ? money(row.insCents) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.legacyFeeCents ?? 0) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.tolsonLeaseFeeCents ?? 0) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.managementFeeCents ?? 0) : ""}</td>
                   {columns.map((category) => (
                     <td key={category} className="px-3 py-2 whitespace-nowrap">
                       {row.readable ? money(categoryCents(row, category)) : ""}
@@ -212,6 +226,9 @@ export function InsOutsClient({
                 <td className="px-3 py-2">Fleet</td>
                 <td className="px-3 py-2">{fleet.loadCount}</td>
                 <td className="px-3 py-2">{money(fleet.insCents)}</td>
+                <td className="px-3 py-2">{money(feeTotals.legacy)}</td>
+                <td className="px-3 py-2">{money(feeTotals.tolson)}</td>
+                <td className="px-3 py-2">{money(feeTotals.management)}</td>
                 {columns.map((category) => (
                   <td key={category} className="px-3 py-2 whitespace-nowrap">
                     {money(fleet.categories.find((item) => item.category === category)?.cents ?? 0)}

@@ -33,7 +33,7 @@ export class ReportBlockedError extends Error {
 }
 
 const FLEET_NOTE =
-  "Managed trucks deduct one management fee. Tolson payable and Legacy retained on those trucks are internal and are not deducted again. Fuel is the discounted amount.";
+  "Managed trucks deduct one management fee. The Legacy fee and the Tolson lease fee on those trucks are the two parts of that fee and are not deducted again. Fuel is the discounted amount.";
 
 export function prepareWeeklyReport(source: WeeklyReportSource): PreparedReport {
   if (source.units.length === 0) {
@@ -328,8 +328,8 @@ function fleetRows(fleet: FleetStatement): PreparedPair[] {
     { label: "Gross", value: formatStatementDollars(fleet.grossCents) },
     { label: "Driver pay", value: formatStatementDollars(fleet.driverPayCents) },
     { label: "Management fee", value: formatStatementDollars(fleet.managementFeeCents) },
-    { label: "Tolson payable", value: formatStatementDollars(fleet.tolsonPayableCents) },
-    { label: "Legacy retained", value: formatStatementDollars(fleet.legacyRetainedCents) },
+    { label: "Tolson lease fee", value: formatStatementDollars(fleet.tolsonPayableCents) },
+    { label: "Legacy fee", value: formatStatementDollars(fleet.legacyRetainedCents) },
     { label: "Dispatch fee", value: formatStatementDollars(fleet.dispatchFeeCents) },
     { label: "Factoring fee", value: formatStatementDollars(fleet.factoringFeeCents) },
     { label: "Discounted fuel", value: formatStatementDollars(fleet.fuelCents) },
@@ -403,7 +403,7 @@ function buildUnitChart(
     keepsCents: keeps,
     expenses: moneySlices(
       unit.lines
-        .filter((line) => line.amountCents > 0)
+        .filter((line) => line.amountCents > 0 && line.chargedTo === "owner")
         .map((line) => [line.label, line.amountCents]),
     ),
     loads: loads.map((load, index) => ({
@@ -415,6 +415,27 @@ function buildUnitChart(
     mpg,
     rpmCents,
   };
+}
+
+/** Chart the fee that is actually deducted. The two parts are not added on top of the total. */
+function fleetChartExpenses(source: WeeklyReportSource): Array<[string, number]> {
+  let management = 0;
+  let tolson = 0;
+  for (const unit of source.units) {
+    if (unit.truckClass === "third_party") management += unit.managementFeeCents;
+    else tolson += unit.tolsonPayableCents;
+  }
+  const fleet = source.fleet;
+  return [
+    ["Driver pay", fleet.driverPayCents],
+    ["Management fee", management],
+    ["Tolson lease fee", tolson],
+    ["Dispatch fee", fleet.dispatchFeeCents],
+    ["Factoring fee", fleet.factoringFeeCents],
+    ["Fuel", fleet.fuelCents],
+    ["Tolls", fleet.tollsCents],
+    ["Fixed expenses", fleet.fixedOwnerCents],
+  ];
 }
 
 function buildFleetChart(source: WeeklyReportSource): PreparedChart {
@@ -434,17 +455,7 @@ function buildFleetChart(source: WeeklyReportSource): PreparedChart {
     earnedCents: fleet.grossCents,
     spentCents: fleet.grossCents - fleet.netCents,
     keepsCents: fleet.netCents,
-    expenses: moneySlices([
-      ["Driver pay", fleet.driverPayCents],
-      ["Management fee", fleet.managementFeeCents],
-      ["Tolson payable", fleet.tolsonPayableCents],
-      ["Legacy retained", fleet.legacyRetainedCents],
-      ["Dispatch fee", fleet.dispatchFeeCents],
-      ["Factoring fee", fleet.factoringFeeCents],
-      ["Fuel", fleet.fuelCents],
-      ["Tolls", fleet.tollsCents],
-      ["Fixed expenses", fleet.fixedOwnerCents],
-    ]),
+    expenses: moneySlices(fleetChartExpenses(source)),
     loads: source.units.map((unit) => ({ label: `Truck ${unit.unitNumber}`, cents: unit.grossCents })),
     loadedHundredths: loaded,
     deadheadHundredths: deadhead,
