@@ -6,8 +6,8 @@
 
 export const GEMINI_DEFAULT_MODEL = "gemini-flash-latest";
 
-/** Two retries after a 503, then the caller stays on the rules. */
-export const GEMINI_BUSY_BACKOFF_MS = [500, 1000] as const;
+/** Three waits after a 429 or 503, then the caller stays on the rules. */
+export const GEMINI_BUSY_BACKOFF_MS = [500, 1500, 4000] as const;
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 

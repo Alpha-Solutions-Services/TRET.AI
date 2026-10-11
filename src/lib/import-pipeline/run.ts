@@ -221,7 +221,6 @@ async function matchLoads(
     const mapped = await suggestLoadColumnMap(headerCells(parseCsv(csvText)), env, fetchImpl, sleep);
     if (mapped.busy) {
       setNotice(AI_BUSY_NOTE);
-      review.push({ source: "vektor", unitNumber: null, label: "Loads file", reason: AI_BUSY_NOTE });
     } else if (mapped.map) {
       mapping = mapped.map;
       parsed = parseVektorLoadsCsv(csvText, mapping, input.range);
@@ -293,7 +292,7 @@ async function matchLoads(
     );
     if (suggested.busy) {
       setNotice(AI_BUSY_NOTE);
-      review.push(reviewForDecision(decision, AI_BUSY_NOTE));
+      review.push(reviewForDecision(decision, null));
       break;
     }
     const choice = suggested.choice;

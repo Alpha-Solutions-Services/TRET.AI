@@ -10,7 +10,6 @@ import { weekBoundsForDate } from "@/lib/fee-engine";
 import {
   formatGroupedInt,
   formatMilesHundredths,
-  formatMilesWhole,
   formatStatementDollars,
 } from "@/lib/reports/format";
 import { fleetFromTrucks } from "@/lib/reports/trip-metrics";
@@ -84,14 +83,18 @@ export function OverviewClient({
   const fleetIns = readable.reduce((sum, row) => sum + row.insCents, 0);
   const fleetOuts = readable.reduce((sum, row) => sum + row.outsCents, 0);
   const fleetLoads = readable.reduce((sum, row) => sum + row.loadCount, 0);
-  const fleetMiles = readable.reduce((sum, row) => sum + (row.loadedMilesHundredths ?? 0), 0);
+  const fleetMiles = readable.reduce(
+    (sum, row) => sum + (row.truckMilesHundredths ?? (row.loadedMilesHundredths ?? 0) + (row.deadheadMilesHundredths ?? 0)),
+    0,
+  );
   const fleetDeadhead = readable.reduce((sum, row) => sum + (row.deadheadMilesHundredths ?? 0), 0);
   const fleetFigures = fleetFromTrucks(
     readable.map((row) => ({
       grossCents: row.insCents,
-      totalMilesHundredths: (row.loadedMilesHundredths ?? 0) + (row.deadheadMilesHundredths ?? 0),
-      mainMilesHundredths: row.loadedMilesHundredths ?? 0,
-      gallonsMilli: row.dieselGallonsMilli ?? 0,
+      totalMilesHundredths:
+        row.truckMilesHundredths ?? (row.loadedMilesHundredths ?? 0) + (row.deadheadMilesHundredths ?? 0),
+      mainMilesHundredths: row.mpgFromSheet ? 0 : (row.loadedMilesHundredths ?? 0),
+      gallonsMilli: row.mpgFromSheet ? 0 : (row.dieselGallonsMilli ?? 0),
       mpg: row.mpg ?? null,
     })),
   );
@@ -148,12 +151,12 @@ export function OverviewClient({
           format={formatGroupedInt}
         />
         <KpiCard
-          label="Loaded miles"
-          value={formatMilesWhole(fleetMiles)}
-          detail="Primary miles on each trip"
+          label="Truck miles"
+          value={formatMilesHundredths(fleetMiles)}
+          detail="Loaded plus deadhead, each trip once"
           color={categoryColor(4)}
-          target={Math.floor(fleetMiles / 100)}
-          format={formatGroupedInt}
+          target={fleetMiles}
+          format={formatMilesHundredths}
         />
         <KpiCard
           label="Deadhead"
@@ -314,7 +317,7 @@ function InsOutsTable({
       insCents: sum.insCents + row.insCents,
       outsCents: sum.outsCents + row.outsCents,
       loadCount: sum.loadCount + row.loadCount,
-      loaded: sum.loaded + (row.loadedMilesHundredths ?? 0),
+      loaded: sum.loaded + (row.truckMilesHundredths ?? row.loadedMilesHundredths ?? 0),
       deadhead: sum.deadhead + (row.deadheadMilesHundredths ?? 0),
     }),
     { insCents: 0, outsCents: 0, loadCount: 0, loaded: 0, deadhead: 0 },
@@ -329,7 +332,7 @@ function InsOutsTable({
             <tr>
               <th className="px-3 py-3 font-medium">Unit</th>
               <th className="px-3 py-3 font-medium">Loads</th>
-              <th className="px-3 py-3 font-medium">Loaded miles</th>
+              <th className="px-3 py-3 font-medium">Truck miles</th>
               <th className="px-3 py-3 font-medium">Deadhead</th>
               <th className="px-3 py-3 font-medium">RPM</th>
               <th className="px-3 py-3 font-medium">MPG</th>
@@ -366,7 +369,7 @@ function InsOutsTable({
                       <CopyableError headline={row.note ?? "Sheet was not read."} detail={row.noteDetail} />
                     )}
                   </td>
-                  <td className="px-3 py-2">{row.readable ? formatMilesWhole(row.loadedMilesHundredths ?? 0) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? formatMilesHundredths(row.truckMilesHundredths ?? row.loadedMilesHundredths ?? 0) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? miles(row.deadheadMilesHundredths) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? rpm(row.rpmCents) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? (row.mpg ?? "") : ""}</td>
@@ -381,7 +384,7 @@ function InsOutsTable({
               <tr className="bg-[var(--color-muted)] font-medium">
                 <td className="px-3 py-2">Fleet</td>
                 <td className="px-3 py-2">{fleet.loadCount}</td>
-                <td className="px-3 py-2">{formatMilesWhole(fleet.loaded)}</td>
+                <td className="px-3 py-2">{formatMilesHundredths(fleet.loaded)}</td>
                 <td className="px-3 py-2">{formatMilesHundredths(fleet.deadhead)}</td>
                 <td className="px-3 py-2" />
                 <td className="px-3 py-2" />
@@ -398,7 +401,7 @@ function InsOutsTable({
         Ins are load rates from each truck Google Sheet. Outs are that truck&apos;s Weekly Expenses row for the
         week (driver pay, management fee, fuel, and the other weekly lines). If that tab is missing, Outs use
         the Mgmt Expenses rows instead. Monthly Legacy company expenses stay on Management and are not added
-        into these outs. Loaded miles are whole miles.{" "}
+        into these outs. Truck miles are loaded plus deadhead, each trip once.{" "}
         <Link
           href={`/ins-outs?week=${weekStart}`}
           className="font-medium text-[var(--color-accent)] no-underline hover:underline"

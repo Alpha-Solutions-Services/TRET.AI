@@ -131,6 +131,7 @@ function parseMapping(raw: string | null | undefined): Record<string, string> | 
 export async function runFuelAndTollsImportAction(input?: {
   from?: string;
   to?: string;
+  acknowledgeReason?: string | null;
   fuelCsvText?: string | null;
   tollCsvText?: string | null;
 }): Promise<FuelTollImportResult> {
@@ -228,6 +229,8 @@ export async function runFuelAndTollsImportAction(input?: {
   const fuelSettings = fuelTollSettingsFromRows(settingsList, "fuel");
   const tollSettings = fuelTollSettingsFromRows(settingsList, "toll");
 
+  const acknowledgeReason = input?.acknowledgeReason?.trim() ?? "";
+  const skipDrop = acknowledgeReason.length >= 3;
   const fuelOutcome = await persistFuel(supabase, {
     range,
     source: fuelFile || tollFile ? "csv" : (registry.selected ?? "csv"),
@@ -235,6 +238,7 @@ export async function runFuelAndTollsImportAction(input?: {
     settings: fuelSettings,
     context: context.context,
     notes,
+    skipDrop,
   });
   if (!fuelOutcome.ok) return fuelOutcome;
 
@@ -245,6 +249,7 @@ export async function runFuelAndTollsImportAction(input?: {
     settings: tollSettings,
     context: context.context,
     notes,
+    skipDrop,
   });
   if (!tollOutcome.ok) {
     revalidatePath("/imports");
@@ -252,6 +257,13 @@ export async function runFuelAndTollsImportAction(input?: {
     return { ok: false, error: `${fuelOutcome.message} ${tollOutcome.error}`.trim() };
   }
 
+  if (skipDrop && !fuelOutcome.blocked && !tollOutcome.blocked) {
+    const weekStart = range.from;
+    await supabase.from("issues").insert([
+      { severity: "Info", rule: "row_count_ack", message: acknowledgeReason, ref: `${weekStart}:fuel`, status: "resolved" },
+      { severity: "Info", rule: "row_count_ack", message: acknowledgeReason, ref: `${weekStart}:tolls`, status: "resolved" },
+    ]);
+  }
   revalidatePath("/imports");
   revalidatePath("/fuel");
   revalidatePath("/tolls");
@@ -412,6 +424,7 @@ async function persistFuel(
     settings: ReturnType<typeof fuelTollSettingsFromRows>;
     context: MatchContext;
     notes: string[];
+    skipDrop?: boolean;
   },
 ): Promise<{ ok: true; blocked: boolean; message: string } | { ok: false; error: string }> {
   const started = await startRun(supabase, input.range, input.source, "fuel");
@@ -430,7 +443,7 @@ async function persistFuel(
       transactedAt: normalizeTimestamp(row.transacted_at) ?? row.transacted_at,
       amountCents: row.amount_cents,
     }));
-    const previous = await previousFetched(supabase, "fuel");
+    const previous = input.skipDrop ? null : await previousFetched(supabase, "fuel");
     const pipeline = runFuelPipeline(input.rows, {
       knownUnits: input.context.knownUnits,
       loadSpans: input.context.loadSpans,
@@ -589,6 +602,7 @@ async function persistTolls(
     settings: ReturnType<typeof fuelTollSettingsFromRows>;
     context: MatchContext;
     notes: string[];
+    skipDrop?: boolean;
   },
 ): Promise<{ ok: true; blocked: boolean; message: string } | { ok: false; error: string }> {
   const started = await startRun(supabase, input.range, input.source, "tolls");
@@ -607,7 +621,7 @@ async function persistTolls(
       transactedAt: normalizeTimestamp(row.transacted_at) ?? row.transacted_at,
       amountCents: row.amount_cents,
     }));
-    const previous = await previousFetched(supabase, "tolls");
+    const previous = input.skipDrop ? null : await previousFetched(supabase, "tolls");
     const pipeline = runTollPipeline(input.rows, {
       knownUnits: input.context.knownUnits,
       loadSpans: input.context.loadSpans,

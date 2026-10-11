@@ -121,11 +121,26 @@ export function InsOutsClient({
         >
           Next week
         </button>
-        <p className="text-sm text-[var(--color-fg-muted)]">
+        <div className="text-sm text-[var(--color-fg-muted)]">
           <ReportWeekLabel weekStart={weekStart} />
-          Showing {weekStart} through {weekEnd}
-        </p>
+          <p>Showing {weekStart} through {weekEnd}</p>
+        </div>
       </div>
+
+      {rows.some((row) => (row.pending?.length ?? 0) > 0) ? (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-field)] px-4 py-3">
+          <h2 className="text-sm font-medium">Pending</h2>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--color-fg-muted)]">
+            {rows.flatMap((row) =>
+              (row.pending ?? []).map((item) => (
+                <li key={`${row.unitNumber}:${item.loadId}`}>
+                  Truck {row.unitNumber} {item.loadId}: {item.reason}
+                </li>
+              )),
+            )}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="material overflow-x-auto rounded-xl border border-[var(--color-border)]">
         <table className="min-w-full text-left text-sm">

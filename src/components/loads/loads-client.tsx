@@ -1,10 +1,11 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { sheetLoadsForWeek } from "@/app/loads/sheet-action";
+import { canonicalLoadId } from "@/lib/loads/load-id";
 import { ReportWeekLabel } from "@/components/reports/report-week";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import { lastFinishedWeekStart } from "@/lib/reports/delivery";
-import { canonicalLoadId } from "@/lib/loads/load-id";
 import { loadsInWeek } from "@/lib/loads/week-membership";
 import { countedLoadedHundredths, layoutManifestGroups } from "@/lib/loads/manifest-miles";
 import { centsToDollarString } from "@/lib/money/cents";
@@ -58,6 +59,31 @@ export function LoadsClient({
 }) {
   const [weekStart, setWeekStart] = useState(() => lastFinishedWeekStart());
   const [truck, setTruck] = useState("");
+  const [sheetLoads, setSheetLoads] = useState<LoadListRow[]>([]);
+
+  useEffect(() => {
+    let cancel = false;
+    sheetLoadsForWeek(weekStart)
+      .then((rows) => {
+        if (!cancel) setSheetLoads(rows);
+      })
+      .catch(() => {
+        if (!cancel) setSheetLoads([]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [weekStart]);
+
+  const combined = useMemo(() => {
+    const seen = new Set(
+      loads.map((row) => `${(row.truck_unit_number ?? "").replace(/^0+/, "")}:${canonicalLoadId(row.load_id ?? "")}`),
+    );
+    const extra = sheetLoads.filter(
+      (row) => !seen.has(`${(row.truck_unit_number ?? "").replace(/^0+/, "")}:${canonicalLoadId(row.load_id ?? "")}`),
+    );
+    return [...loads, ...extra];
+  }, [loads, sheetLoads]);
 
   const weekEnd = useMemo(
     () => weekBoundsForDate(weekStart).end,
@@ -65,7 +91,7 @@ export function LoadsClient({
   );
 
   const filtered = useMemo(() => {
-    const members = loads
+    const members = combined
       .filter((row) => !truck || row.truck_unit_number === truck)
       .map((row) => ({
         row,
@@ -75,7 +101,7 @@ export function LoadsClient({
         tripRef: row.source_manifest_ref ?? null,
       }));
     const chosen = new Set(loadsInWeek(members, weekStart, weekEnd).map((item) => item.loadId));
-    const rows = loads.filter((row) => chosen.has(row.id));
+    const rows = combined.filter((row) => chosen.has(row.id));
     return layoutManifestGroups(
       rows.map((row) => ({
         ...row,
@@ -83,7 +109,7 @@ export function LoadsClient({
         rankHundredths: hundredths(row.loaded_distance_mi),
       })),
     );
-  }, [loads, weekStart, weekEnd, truck]);
+  }, [combined, weekStart, weekEnd, truck]);
 
   const totals = useMemo(() => {
     return filtered.reduce(
@@ -108,7 +134,7 @@ export function LoadsClient({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Loads</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Read-only. Week is Monday to Sunday. A load is in the week when pickup or delivery falls in it, or when it shares a trip with one that does. Loads that share a Vektor manifest stay together. Loaded miles count once for that manifest.
+          Read-only. Week is Monday to Sunday. A load counts when its delivery date is in that week. In-transit loads stay Pending. The count matches the truck sheet.
         </p>
       </div>
 
@@ -149,7 +175,7 @@ export function LoadsClient({
         </p>
       </div>
 
-      {loads.length === 0 ? (
+      {combined.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-field)] px-6 py-12 text-center text-[var(--color-fg-muted)]">
           No loads yet. Run Import now on the Imports page after Vektor is configured.
         </div>

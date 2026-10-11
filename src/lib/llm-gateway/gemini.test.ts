@@ -45,7 +45,7 @@ describe("gemini gateway", () => {
     expect(seenUrl).toContain("/models/custom-flash:generateContent");
   });
 
-  it("retries a 503 twice, then reports the model is busy", async () => {
+  it("retries a 503 three times, then reports the model is busy", async () => {
     const sleeps: number[] = [];
     let calls = 0;
     const fetchImpl = (async () => {
@@ -55,7 +55,7 @@ describe("gemini gateway", () => {
     const result = await geminiJson("headers only", { GEMINI_API_KEY: "secret-key" }, fetchImpl, async (ms) => {
       sleeps.push(ms);
     });
-    expect(calls).toBe(3);
+    expect(calls).toBe(4);
     expect(sleeps).toEqual([...GEMINI_BUSY_BACKOFF_MS]);
     expect(result).toEqual({ ok: false, busy: true });
   });

@@ -1,7 +1,7 @@
 "use client";
 
 import { categoryColor } from "@/lib/charts/palette";
-import { formatMilesWhole, formatStatementDollars } from "@/lib/reports/format";
+import { formatMilesHundredths, formatStatementDollars } from "@/lib/reports/format";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { CopyableError } from "@/components/copyable-error";
 import { StatusDot, type StatusTone } from "@/components/ui/status-dot";
@@ -52,7 +52,7 @@ function TruckCard({ row }: { row: TruckWeekInsOuts; color?: string }) {
       {row.readable ? (
         <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
           <Stat label="Loads" value={String(row.loadCount)} />
-          <Stat label="Miles" value={formatMilesWhole(row.loadedMilesHundredths ?? 0)} />
+          <Stat label="Miles" value={formatMilesHundredths(row.truckMilesHundredths ?? row.loadedMilesHundredths ?? 0)} />
           <Stat label="RPM" value={rpm(row.rpmCents)} />
           <Stat label="MPG" value={row.mpg ?? "None"} />
           <Stat label="Net" value={money(row.netCents)} />

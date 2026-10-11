@@ -37,7 +37,34 @@ export function privateSheetNote(env: Record<string, string | undefined>): strin
 
 type FetchLike = typeof fetch;
 
-const SHEET_BACKOFF_MS = [400, 1200, 3000];
+const SHEET_BACKOFF_MS = [400, 1200, 3000, 8000];
+const SHEET_CACHE_MS = 8 * 60 * 1000;
+
+type CachedTabs = {
+  at: number;
+  tabs: TabGrids;
+};
+
+const sheetCache = new Map<string, CachedTabs>();
+
+function freshCache(spreadsheetId: string): TabGrids | null {
+  const hit = sheetCache.get(spreadsheetId);
+  if (!hit) return null;
+  if (Date.now() - hit.at > SHEET_CACHE_MS) return null;
+  return hit.tabs;
+}
+
+function staleCache(spreadsheetId: string, note: string): TabGrids | null {
+  const hit = sheetCache.get(spreadsheetId);
+  if (!hit) return null;
+  const prefix = "Showing the last good read. Google Sheets was busy.";
+  return { ...hit.tabs, note: hit.tabs.note ? `${prefix} ${hit.tabs.note}` : `${prefix} ${note}` };
+}
+
+function storeCache(spreadsheetId: string, tabs: TabGrids): void {
+  if (!tabs.loadLedger && !tabs.weeklyExpenses && !tabs.mgmtExpenses && !tabs.weekReport) return;
+  sheetCache.set(spreadsheetId, { at: Date.now(), tabs });
+}
 
 /** Retry a Google 429 or 503. Truck sheets have hit quota. */
 async function fetchSheet(fetchImpl: FetchLike, url: string | URL, init?: RequestInit): Promise<Response> {
@@ -147,6 +174,7 @@ type TabGrids = {
   mgmtExpenses: SheetGrid | null;
   weeklyExpenses: SheetGrid | null;
   fuelLog?: SheetGrid | null;
+  weekReport?: SheetGrid | null;
   note: string | null;
 };
 
@@ -156,7 +184,10 @@ async function readWithToken(
   accessToken: string,
   apiKey: string,
   fetchImpl: FetchLike,
+  useCache = true,
 ): Promise<TabGrids> {
+  const cached = useCache ? freshCache(spreadsheetId) : null;
+  if (cached) return cached;
   const metaUrl = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`);
   metaUrl.searchParams.set("fields", "sheets.properties.title");
   if (!accessToken && apiKey) metaUrl.searchParams.set("key", apiKey);
@@ -164,11 +195,12 @@ async function readWithToken(
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   });
   if (!metaResponse.ok) {
-    return {
+    const note = await googleErrorNote(metaResponse, "This Google Sheet is not readable");
+    return staleCache(spreadsheetId, note) ?? {
       loadLedger: null,
       mgmtExpenses: null,
       weeklyExpenses: null,
-      note: await googleErrorNote(metaResponse, "This Google Sheet is not readable"),
+      note,
     };
   }
   const meta = (await metaResponse.json()) as {
@@ -181,7 +213,8 @@ async function readWithToken(
   const expenseTitle = pickMgmtExpensesTitle(titles);
   const weeklyTitle = pickTitled(titles, /weekly expenses/i, unitNumber);
   const fuelTitle = pickTitled(titles, /fuel log/i, unitNumber);
-  const wanted = [ledgerTitle, expenseTitle, weeklyTitle, fuelTitle].filter((title): title is string => Boolean(title));
+  const weekTitle = pickTitled(titles, /week report/i, unitNumber);
+  const wanted = [ledgerTitle, expenseTitle, weeklyTitle, fuelTitle, weekTitle].filter((title): title is string => Boolean(title));
   if (wanted.length === 0) {
     return {
       loadLedger: null,
@@ -203,11 +236,12 @@ async function readWithToken(
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   });
   if (!batchResponse.ok) {
-    return {
+    const note = await googleErrorNote(batchResponse, "This Google Sheet is not readable");
+    return staleCache(spreadsheetId, note) ?? {
       loadLedger: null,
       mgmtExpenses: null,
       weeklyExpenses: null,
-      note: await googleErrorNote(batchResponse, "This Google Sheet is not readable"),
+      note,
     };
   }
   const batch = (await batchResponse.json()) as {
@@ -220,13 +254,16 @@ async function readWithToken(
   const notes: string[] = [];
   if (!ledgerTitle) notes.push("Load Ledger tab was not found.");
   if (!expenseTitle) notes.push("Mgmt Expenses tab was not found.");
-  return {
+  const tabs: TabGrids = {
     loadLedger: ledgerTitle ? (grids.get(ledgerTitle) ?? null) : null,
     mgmtExpenses: expenseTitle ? (grids.get(expenseTitle) ?? null) : null,
     weeklyExpenses: weeklyTitle ? (grids.get(weeklyTitle) ?? null) : null,
     fuelLog: fuelTitle ? (grids.get(fuelTitle) ?? null) : null,
+    weekReport: weekTitle ? (grids.get(weekTitle) ?? null) : null,
     note: notes.length ? notes.join(" ") : null,
   };
+  if (useCache) storeCache(spreadsheetId, tabs);
+  return tabs;
 }
 
 function looksPrivate(status: number, body: string): boolean {
@@ -322,8 +359,11 @@ export async function loadTruckWeekInsOuts(
     authFailure = authFailureFromError(err);
   }
 
-  return Promise.all(
-    trucks.map(async (truck) => {
+  const rows: TruckWeekInsOuts[] = [];
+  let pauseMs = 0;
+  for (const truck of trucks) {
+    if (pauseMs > 0) await new Promise((resolve) => setTimeout(resolve, pauseMs));
+    const row = await (async () => {
       if (!truck.googleSheetUrl) {
         return buildTruckWeekInsOuts({
           unitNumber: truck.unitNumber,
@@ -368,7 +408,14 @@ export async function loadTruckWeekInsOuts(
       try {
         const tabs =
           accessToken || apiKey
-            ? await readWithToken(spreadsheetId, truck.unitNumber, accessToken, apiKey, fetchImpl)
+            ? await readWithToken(
+                spreadsheetId,
+                truck.unitNumber,
+                accessToken,
+                apiKey,
+                fetchImpl,
+                fetchImpl === fetch,
+              )
             : await readPublicTabs(spreadsheetId, truck.unitNumber, fetchImpl, env);
         return buildTruckWeekInsOuts({
           unitNumber: truck.unitNumber,
@@ -380,6 +427,7 @@ export async function loadTruckWeekInsOuts(
           mgmtExpenses: tabs.mgmtExpenses,
           weeklyExpenses: tabs.weeklyExpenses,
           fuelLog: tabs.fuelLog ?? null,
+          weekReport: tabs.weekReport ?? null,
           note: tabs.note,
         });
       } catch (err) {
@@ -400,8 +448,12 @@ export async function loadTruckWeekInsOuts(
           noteDetail: failure.noteDetail,
         });
       }
-    }),
-  );
+    })();
+    if (row.note?.includes("429") || row.note?.includes("503")) pauseMs = pauseMs === 0 ? 400 : Math.min(pauseMs * 2, 8000);
+    else pauseMs = 0;
+    rows.push(row);
+  }
+  return rows;
 }
 
 export type TruckWorkbook = {
@@ -410,6 +462,7 @@ export type TruckWorkbook = {
   weeklyExpenses: SheetGrid | null;
   fuelLog: SheetGrid | null;
   fleetDirectory: SheetGrid | null;
+  weekReport: SheetGrid | null;
   note: string | null;
 };
 
@@ -445,7 +498,9 @@ async function readWorkbookWithToken(
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   });
   if (!metaResponse.ok) {
-    return emptyWorkbook(await googleErrorNote(metaResponse, "This Google Sheet is not readable"));
+    const note = await googleErrorNote(metaResponse, "This Google Sheet is not readable");
+    const stale = staleCache(spreadsheetId, note);
+    return stale ? workbookFromTabs(stale) : emptyWorkbook(note);
   }
   const meta = (await metaResponse.json()) as {
     sheets?: Array<{ properties?: { title?: string } }>;
@@ -459,6 +514,7 @@ async function readWorkbookWithToken(
     weeklyExpenses: pickTitled(titles, /weekly expenses/i, unitNumber),
     fuelLog: pickTitled(titles, /fuel log/i, unitNumber),
     fleetDirectory: pickTitled(titles, /fleet directory/i, null),
+    weekReport: pickTitled(titles, /week report/i, unitNumber),
   };
   const wanted = [...new Set(Object.values(named).filter((title): title is string => Boolean(title)))];
   if (wanted.length === 0) {
@@ -475,7 +531,9 @@ async function readWorkbookWithToken(
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   });
   if (!batchResponse.ok) {
-    return emptyWorkbook(await googleErrorNote(batchResponse, "This Google Sheet is not readable"));
+    const note = await googleErrorNote(batchResponse, "This Google Sheet is not readable");
+    const stale = staleCache(spreadsheetId, note);
+    return stale ? workbookFromTabs(stale) : emptyWorkbook(note);
   }
   const batch = (await batchResponse.json()) as { valueRanges?: Array<{ values?: unknown }> };
   const grids = new Map<string, SheetGrid>();
@@ -485,14 +543,17 @@ async function readWorkbookWithToken(
   const notes: string[] = [];
   if (!named.loadLedger) notes.push("Load Ledger tab was not found.");
   if (!named.mgmtExpenses) notes.push("Mgmt Expenses tab was not found.");
-  return {
+  const book: TruckWorkbook = {
     loadLedger: named.loadLedger ? (grids.get(named.loadLedger) ?? null) : null,
     mgmtExpenses: named.mgmtExpenses ? (grids.get(named.mgmtExpenses) ?? null) : null,
     weeklyExpenses: named.weeklyExpenses ? (grids.get(named.weeklyExpenses) ?? null) : null,
     fuelLog: named.fuelLog ? (grids.get(named.fuelLog) ?? null) : null,
     fleetDirectory: named.fleetDirectory ? (grids.get(named.fleetDirectory) ?? null) : null,
+    weekReport: named.weekReport ? (grids.get(named.weekReport) ?? null) : null,
     note: notes.length ? notes.join(" ") : null,
   };
+  storeCache(spreadsheetId, book);
+  return book;
 }
 
 function emptyWorkbook(note: string): TruckWorkbook {
@@ -502,7 +563,20 @@ function emptyWorkbook(note: string): TruckWorkbook {
     weeklyExpenses: null,
     fuelLog: null,
     fleetDirectory: null,
+    weekReport: null,
     note,
+  };
+}
+
+function workbookFromTabs(tabs: TabGrids): TruckWorkbook {
+  return {
+    loadLedger: tabs.loadLedger,
+    mgmtExpenses: tabs.mgmtExpenses,
+    weeklyExpenses: tabs.weeklyExpenses,
+    fuelLog: tabs.fuelLog ?? null,
+    fleetDirectory: null,
+    weekReport: tabs.weekReport ?? null,
+    note: tabs.note,
   };
 }
 
@@ -546,6 +620,7 @@ async function readPublicWorkbook(
     weeklyExpenses,
     fuelLog,
     fleetDirectory,
+    weekReport: null,
     note: notes.length ? notes.join(" ") : null,
   };
 }

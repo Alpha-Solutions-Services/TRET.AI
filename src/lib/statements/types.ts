@@ -171,4 +171,6 @@ export type WeekStatementInput = {
     fuel: number;
     tolls: number;
   };
+  /** Kinds the operator acknowledged for this week, with a reason. */
+  acknowledgedDrops?: readonly ("loads" | "fuel" | "tolls")[];
 };

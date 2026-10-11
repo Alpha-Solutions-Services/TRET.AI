@@ -27,13 +27,16 @@ describe("canonical load ids", () => {
     expect(
       sameSourcePreviousCount(
         [
-          { source: "csv", rowsFetched: 7 },
-          { source: "mcp", rowsFetched: 40 },
+          { source: "csv", rowsFetched: 7, kind: "loads" },
+          { source: "mcp", rowsFetched: 40, kind: "loads" },
+          { source: "mcp", rowsFetched: 9 },
         ],
         "mcp",
+        "loads",
       ),
     ).toBe(40);
-    expect(sameSourcePreviousCount([{ source: "csv", rowsFetched: 7 }], "mcp")).toBeNull();
+    expect(sameSourcePreviousCount([{ source: "csv", rowsFetched: 7, kind: "loads" }], "mcp", "loads")).toBeNull();
+    expect(sameSourcePreviousCount([{ source: "mcp", rowsFetched: 40 }], "mcp", "loads")).toBeNull();
     expect(
       sameSourcePreviousCount(
         [

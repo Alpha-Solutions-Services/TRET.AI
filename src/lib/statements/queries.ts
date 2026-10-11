@@ -9,6 +9,7 @@ import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { buildWeekStatements, lockPayload } from "./engine";
+import { overlaySheetStatements } from "./sheet-week";
 import { milesValueToHundredths } from "./miles";
 import type {
   CloseImportRun,
@@ -47,6 +48,7 @@ export type StatementsPageData = {
   /** Close checks from the current rows. Still filled when the week is locked. */
   liveBlockers: StatementBlocker[];
   closeAllowed: boolean;
+  pending: { unitNumber: string; loadId: string; reason: string }[];
 };
 
 const EMPTY_FLEET: FleetStatement = {
@@ -145,6 +147,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
     runsRes,
     settingsRes,
     closeRes,
+    acksRes,
   ] = await Promise.all([
     loadStatementTrucks(supabase),
     supabase.from("fee_contracts").select("id, truck_id, effective_from, effective_to"),
@@ -200,6 +203,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
         "toll_row_count_drop_block_pct",
       ]),
     supabase.from("week_closes").select("id, week_start, closed_at, closed_by").eq("week_start", weekStart).maybeSingle(),
+    supabase.from("issues").select("ref, message").eq("rule", "row_count_ack").eq("status", "resolved"),
   ]);
 
   if (trucksRes.error) {
@@ -319,11 +323,12 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
       fuel: settingPct(settingsRes.data ?? [], "fuel_row_count_drop_block_pct"),
       tolls: settingPct(settingsRes.data ?? [], "toll_row_count_drop_block_pct"),
     },
+    acknowledgedDrops: acknowledgedKinds(acksRes.error ? [] : (acksRes.data ?? []), bounds.start),
   };
 
   let live: WeekStatements;
   try {
-    live = buildWeekStatements(input);
+    live = overlaySheetStatements(buildWeekStatements(input), sheets.rows);
   } catch (err) {
     return failed(bounds, err instanceof Error ? err.message : "Could not compute this week.");
   }
@@ -347,6 +352,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
       blockers: live.blockers,
       liveBlockers: live.blockers,
       closeAllowed: live.closeAllowed && !lockMissing,
+      pending: pendingFromSheets(sheets.rows),
     };
   }
 
@@ -388,6 +394,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
     blockers: [],
     liveBlockers: live.blockers,
     closeAllowed: false,
+    pending: pendingFromSheets(sheets.rows),
   };
 }
 
@@ -455,7 +462,34 @@ function failed(
     blockers: [],
     liveBlockers: [],
     closeAllowed: false,
+    pending: [],
   };
+}
+
+function acknowledgedKinds(
+  rows: readonly { ref: string | null; message: string | null }[],
+  weekStart: string,
+): ("loads" | "fuel" | "tolls")[] {
+  const kinds: ("loads" | "fuel" | "tolls")[] = [];
+  for (const row of rows) {
+    const ref = row.ref ?? "";
+    if (!ref.startsWith(`${weekStart}:`)) continue;
+    const kind = ref.slice(weekStart.length + 1);
+    if ((kind === "loads" || kind === "fuel" || kind === "tolls") && !kinds.includes(kind)) kinds.push(kind);
+  }
+  return kinds;
+}
+
+function pendingFromSheets(
+  rows: readonly { unitNumber: string; pending?: readonly { loadId: string; reason: string }[] }[],
+): { unitNumber: string; loadId: string; reason: string }[] {
+  const pending: { unitNumber: string; loadId: string; reason: string }[] = [];
+  for (const row of rows) {
+    for (const item of row.pending ?? []) {
+      pending.push({ unitNumber: row.unitNumber, loadId: item.loadId, reason: item.reason });
+    }
+  }
+  return pending;
 }
 
 function noteMissing(

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { closeWeekAction } from "@/app/statements/actions";
+import { acknowledgeRowCountAction, closeWeekAction } from "@/app/statements/actions";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
 import { useToast } from "@/components/ui/toast";
@@ -190,6 +190,9 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                     </Link>
                   </>
                 ) : null}
+                {blocker.rule === "row_count_drop" ? (
+                  <AcknowledgeDrop weekStart={data.weekStart} message={blocker.message} />
+                ) : null}
               </li>
             ))}
           </ul>
@@ -265,6 +268,18 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
               </tbody>
             </table>
           </div>
+          {data.pending.length > 0 ? (
+            <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-4 py-3">
+              <h2 className="text-sm font-medium">Pending</h2>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--color-fg-muted)]">
+                {data.pending.map((item) => (
+                  <li key={`${item.unitNumber}:${item.loadId}`}>
+                    Truck {item.unitNumber} {item.loadId}: {item.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <p className="text-sm text-[var(--color-fg-muted)]">
             Fleet Tolson payable {money(data.fleet.tolsonPayableCents)}. Legacy retained{" "}
             {money(data.fleet.legacyRetainedCents)}. Fixed expenses charged to management{" "}
@@ -334,5 +349,46 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
         </section>
       ) : null}
     </div>
+  );
+}
+
+function AcknowledgeDrop({ weekStart, message }: { weekStart: string; message: string }) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [reason, setReason] = useState("");
+  const [pending, startTransition] = useTransition();
+  const kind = message.startsWith("fuel:") ? "fuel" : message.startsWith("tolls:") ? "tolls" : message.startsWith("loads:") ? "loads" : null;
+  if (!kind) return null;
+  return (
+    <form
+      className="mt-2 flex flex-wrap items-end gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        startTransition(async () => {
+          const result = await acknowledgeRowCountAction(weekStart, kind, reason);
+          if (!result.ok) {
+            toast(result.error, "error");
+            return;
+          }
+          toast("Drop acknowledged. Close week can proceed when no other blocker remains.", "success");
+          router.refresh();
+        });
+      }}
+    >
+      <label className="text-sm text-[var(--color-fg)]">
+        <span className="mb-1 block">Acknowledge this {kind} drop</span>
+        <input
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          required
+          minLength={3}
+          placeholder="Reason"
+          className="h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-[var(--color-fg)]"
+        />
+      </label>
+      <Button type="submit" disabled={pending}>
+        {pending ? "Saving…" : "Acknowledge"}
+      </Button>
+    </form>
   );
 }

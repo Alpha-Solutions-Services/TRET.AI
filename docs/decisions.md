@@ -2,7 +2,9 @@
 
 | Date | Decision | Reason |
 |------|----------|--------|
-| 2026-10-11 | OPEN: TONU rate cons are not fetched from Vektor documents, and receipt photos are not sent to Gemini. | The helpers are tested. They are not live until import runs them. |
+| 2026-10-11 | Owner reports, the dashboard, Ins and Outs, and statements use one function over the truck sheet. Column P is truck miles, once per trip. Columns AM through AQ are misc. Week Report C31 is MPG. A sheet cell wins over an import total. | Week 41 revenue matched the sheet, and miles, misc, expenses, and the PDF did not. |
+| 2026-10-11 | OPEN: Trucks 1, 2, 9, and 10 have no Google Sheet link in the database, so their live fixed costs stay zero until those links are pasted. The week 41 amounts 729.45 and 2,179.57 are proven on fixture sheets. | The database only had trucks 3 through 8. Sheet URLs are not invented. |
+| 2026-10-11 | OPEN: TONU rate cons are not fetched from Vektor documents, and receipt photos are not sent to Gemini. | The helpers are tested. They are not live until import runs them. A TONU status is still listed as pending with TONU rate unconfirmed. |
 | 2026-10-11 | A load counts only in the week of its delivery date. In transit is Pending. Trip companions are not pulled in. RPM uses loaded plus deadhead, shared miles once. MPG stays blank until the trip delivers. Fleet RPM and MPG come from the per-truck figures. | The week 41 owner reports counted the wrong loads and the fleet RPM and MPG did not match the trucks. This replaces the 2026-10-09 pickup-or-delivery trip rule. |
 | 2026-10-09 | When no stored fee contract covers the week, a Legacy owned truck uses a 10 percent lease fee to Tolson. An owner truck uses a 10 percent management fee. The Legacy and Tolson split stays empty until both percents are saved and they add up to that fee. A stored contract still wins. | The CEO set the lease trucks apart from trucks 3 to 8, and said the split is unknown until it is entered. |
 | 2026-10-09 | Week pickers default to the last finished Monday to Sunday. The report is labeled for delivery on the following Monday. | Owners receive the week 41 report on Monday of week 42. |

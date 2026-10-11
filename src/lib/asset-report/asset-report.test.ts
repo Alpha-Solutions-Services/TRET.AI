@@ -121,7 +121,7 @@ describe("weekly asset report", () => {
     expect(report.leftExpenses.map((line) => line.label)).not.toContain("MC Lease");
     expect(report.leftExpenses.find((line) => line.label.startsWith("Driver"))?.cents).toBe(96_000);
     expect(report.leftExpenses.find((line) => line.label.startsWith("Management"))?.label).toBe("Management Fee - 10%");
-    expect(report.expenseCents).toBe(190_539);
+    expect(report.expenseCents).toBe(221_841);
     expect(report.fuelCostCents).toBe(4_000);
     expect(report.fuelEconomy).toBe("10.00");
     expect(report.netCents).toBe(report.grossCents - report.expenseCents);
@@ -146,7 +146,7 @@ describe("weekly asset report", () => {
     expect(pdf.getPage(0).getHeight()).toBe(PAGE_H);
   });
 
-  it("drops truck and trailer payments and fills active defaults for truck 8", async () => {
+  it("includes truck and trailer payments and fills active defaults for truck 8", async () => {
     const report = buildAssetReport({
       ...TRUCK8_WEEK,
       unitNumber: "8",
@@ -170,8 +170,8 @@ describe("weekly asset report", () => {
     expect(report.escrowBalanceCents).toBeNull();
     expect(report.loadCount).toBe(4);
     expect(report.driver).toBe("Brison Hunter");
-    expect(report.expenseCents).toBe(360_454);
-    expect(report.netCents).toBe(339_546);
+    expect(report.expenseCents).toBe(405_177);
+    expect(report.netCents).toBe(294_823);
     expect(report.leftExpenses.map((line) => line.label)).toEqual([
       "Driver Compensation - 20%",
       "Management Fee - 10%",
@@ -208,13 +208,12 @@ describe("weekly asset report", () => {
     expect(pdf.getPageCount()).toBe(4);
     expect(pdf.getPage(0).getWidth()).toBe(PAGE_W);
     expect(pdf.getPage(0).getHeight()).toBe(PAGE_H);
-    expect(text).toContain("$3,604.54");
-    expect(text).toContain("$3,395.46");
+    expect(text).toContain("$4,051.77");
+    expect(text).toContain("$2,948.23");
     expect(text).toContain("Brison Hunter");
     expect(text).toContain("Legacy Dispatch Team");
     expect(text).not.toContain("because the truck record");
     expect(text).not.toContain("Notes");
-    expect(text).not.toContain("$4,051.77");
     expect(text).toContain("TOTALS");
     expect(text).toContain("Manifest 1195");
     expect(text).toContain("partial");

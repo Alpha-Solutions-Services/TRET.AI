@@ -9,6 +9,7 @@ import {
   formatMilesHundredths,
   formatStatementDollars,
 } from "@/lib/reports/format";
+import { buildOwnerTruckWeek } from "@/lib/reports/owner-week";
 import {
   columnIndex,
   columnIndexes,
@@ -514,6 +515,7 @@ export function buildAssetReport(input: {
   weekly: SheetGrid | null;
   fuelLog: SheetGrid | null;
   fleet: SheetGrid | null;
+  weekReport?: SheetGrid | null;
   sheetNote: string | null;
   dbFuelCents?: number;
   dbGallonsMilli?: number;
@@ -593,17 +595,30 @@ export function buildAssetReport(input: {
     tollCents = input.dbTollCents ?? 0;
     notes.push("Toll charges came from toll transactions because the sheet toll cell was blank.");
   }
+  const owner = buildOwnerTruckWeek({
+    ledger: input.ledger,
+    weekly: input.weekly,
+    weekReport: input.weekReport ?? null,
+    weekStart: input.weekStart,
+    weekEnd: input.weekEnd,
+  });
+  if (owner.milesFromAllocated) {
+    dispatchMilesHundredths = owner.milesHundredths;
+  }
+  for (const item of owner.pending) notes.push(`${item.loadId}: ${item.reason}.`);
   if (input.importTotals) {
-    if (input.importTotals.fuelCostCents > 0) {
+    if (fuelCents === 0 && input.importTotals.fuelCostCents > 0) {
       fuelCents = input.importTotals.fuelCostCents;
-      if (input.importTotals.dieselGallonsMilli > 0) gallonsMilli = input.importTotals.dieselGallonsMilli;
-      notes.push("Fuel cost uses the import total.");
+      if (gallonsMilli === 0 && input.importTotals.dieselGallonsMilli > 0) {
+        gallonsMilli = input.importTotals.dieselGallonsMilli;
+      }
+      notes.push("Fuel cost uses the import total because the sheet fuel cell was blank.");
     }
-    if (input.importTotals.tollCents > 0) {
+    if (tollCents === 0 && input.importTotals.tollCents > 0) {
       tollCents = input.importTotals.tollCents;
-      notes.push("Toll charges use the import total.");
+      notes.push("Toll charges use the import total because the sheet toll cell was blank.");
     }
-    if (input.importTotals.dispatchMilesHundredths > 0) {
+    if (!owner.milesFromAllocated && dispatchMilesHundredths === 0 && input.importTotals.dispatchMilesHundredths > 0) {
       loadedMilesHundredths = input.importTotals.loadedMilesHundredths;
       deadheadMilesHundredths = input.importTotals.deadheadMilesHundredths;
       dispatchMilesHundredths = input.importTotals.dispatchMilesHundredths;
@@ -642,6 +657,11 @@ export function buildAssetReport(input: {
     { label: "Toll Charges", cents: lines.tolls },
     { label: "Permits", cents: lines.permits },
   ];
+  const truckPay = read(["truck pymts", "truck payments"]);
+  const trailerPay = read(["trailer pymts", "trailer payments"]);
+  if (truckPay !== 0) rightExpenses.push({ label: "Truck payments", cents: truckPay });
+  if (trailerPay !== 0) rightExpenses.push({ label: "Trailer payments", cents: trailerPay });
+  if (owner.miscCents !== 0) rightExpenses.push({ label: "Misc", cents: owner.miscCents });
   const expenseCents = [...leftExpenses, ...rightExpenses].reduce((sum, line) => sum + line.cents, 0);
   const fleet = unitSlice(input.fleet, input.unitNumber);
   const ledgerRows = weekLedger(input.ledger, input.weekStart, input.weekEnd);
@@ -696,7 +716,7 @@ export function buildAssetReport(input: {
       : fuelLog.milesHundredths > 0
         ? fuelLog.milesHundredths
         : dispatchMilesHundredths;
-  const fuelEconomy = formatDieselMpg(economyMiles, gallonsMilli) ?? "n/a";
+  const fuelEconomy = owner.mpg ?? formatDieselMpg(economyMiles, gallonsMilli) ?? "n/a";
   const fuelPerMileCents = centsPerLoadedMile(fuelCents, dispatchMilesHundredths);
   const netCents = grossCents - expenseCents;
   const periodLabel = `${shortDate(input.weekStart)} to ${shortDate(input.weekEnd)}`;

@@ -129,9 +129,8 @@ describe("dashboard display", () => {
 
     const cards = renderToStaticMarkup(createElement(TruckCardGrid, { rows: [sampleTruck()] }));
     expect(cards).toContain("Unit 3");
-    expect(cards).toContain("4,877");
+    expect(cards).toContain("4,877.00");
     expect(cards).toContain("6.42");
-    expect(cards).not.toContain("4,877.00");
   });
 
   it("renders the dashboard week controls and whole loaded miles", () => {
@@ -157,11 +156,10 @@ describe("dashboard display", () => {
     );
     expect(html).toContain("Previous week");
     expect(html).toContain("Next week");
-    expect(html).toContain("4,877");
-    expect(html).toContain("Loaded miles");
+    expect(html).toContain("4,889.50");
+    expect(html).toContain("Truck miles");
     expect(html).toContain("Deadhead");
     expect(html).toContain("Open issues");
-    expect(html).not.toContain("4,877.00");
     expect(html).not.toContain("—");
   });
 });
