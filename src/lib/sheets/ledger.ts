@@ -34,7 +34,11 @@ const MANIFEST = ["manifest id", "manifestid", "manifest_id"];
 const TRIP = ["trip group", "trip group id", "trip", "trip #", "trip id"];
 const PRIMARY = ["primary", "primary load"];
 const TRUCK_MILES = ["truck miles"];
+const ALLOCATED = ["allocated miles", "allocated mile", "trip miles"];
 const STATUS = ["status"];
+/** Load Ledger columns AM through AQ. Misc receipts live here. */
+const MISC_START = 38;
+const MISC_END = 42;
 
 export type LedgerLoadRow = {
   loadId: string;
@@ -55,6 +59,10 @@ export type LedgerLoadRow = {
   sheetPrimary: boolean | null;
   /** Column AL. Zero on a non-primary row. Not added into loaded miles. */
   truckMilesHundredths: number | null;
+  /** Column P, or a header named Allocated Miles. The trip total. Null when that column is absent. */
+  allocatedMilesHundredths: number | null;
+  /** Columns AM through AQ, in cents. Zero when those cells are blank. */
+  miscCents: number;
   status: string | null;
   /** order: the delivery column. fallback: Destination Datetime. */
   deliverySource: "column" | "fallback" | null;
@@ -69,6 +77,8 @@ export type ParsedLoadLedger = {
   statusHint: string | null;
   /** Truck # cell above the header. */
   unitHint: string | null;
+  /** True when column P or an Allocated Miles header was on the header row. */
+  allocatedColumn: boolean;
 };
 
 function cell(row: string[], index: number): string {
@@ -121,7 +131,14 @@ export function parseLoadLedger(
 ): ParsedLoadLedger {
   const headerIndex = findHeaderRow(grid, [DELIVERY, LOAD_ID, RATE]);
   if (headerIndex < 0) {
-    return { headerFound: false, rows: [], driverHint: null, statusHint: null, unitHint: null };
+    return {
+      headerFound: false,
+      rows: [],
+      driverHint: null,
+      statusHint: null,
+      unitHint: null,
+      allocatedColumn: false,
+    };
   }
   const preamble = grid.slice(0, headerIndex);
   const header = grid[headerIndex] ?? [];
@@ -144,6 +161,7 @@ export function parseLoadLedger(
   const tripCol = columnIndex(header, TRIP);
   const primaryCol = columnIndex(header, PRIMARY);
   const truckMilesCol = columnIndex(header, TRUCK_MILES);
+  const allocatedCol = allocatedColumnIndex(header);
   const statusCol = columnIndex(header, STATUS);
   const rows: LedgerLoadRow[] = [];
   for (const row of grid.slice(headerIndex + 1)) {
@@ -169,6 +187,8 @@ export function parseLoadLedger(
       tripGroup: textOrNull(cell(row, tripCol)),
       sheetPrimary: primaryFlag(cell(row, primaryCol), primaryCol >= 0),
       truckMilesHundredths: truckMilesCol >= 0 ? milesToHundredths(cell(row, truckMilesCol)) : null,
+      allocatedMilesHundredths: allocatedCol >= 0 ? milesToHundredths(cell(row, allocatedCol)) : null,
+      miscCents: miscColumnsCents(row),
       status: textOrNull(cell(row, statusCol)),
       deliverySource: primaryDay ? "column" : fallbackDay ? "fallback" : null,
     });
@@ -179,5 +199,26 @@ export function parseLoadLedger(
     driverHint: neighbor(preamble, "Primary Driver"),
     statusHint: neighbor(preamble, "Status"),
     unitHint: neighbor(preamble, "Truck #") ?? neighbor(preamble, "Truck"),
+    allocatedColumn: allocatedCol >= 0,
   };
+}
+
+/** Column P when its header is a miles column, otherwise a header named Allocated Miles. */
+function allocatedColumnIndex(header: string[]): number {
+  const named = columnIndex(header, ALLOCATED);
+  if (named >= 0) return named;
+  const label = cleanCell(header[15] ?? "").toLowerCase();
+  if (!label.includes("mile")) return -1;
+  if (label.includes("loaded") || label.includes("dead") || label.includes("empty") || label === "truck miles") {
+    return -1;
+  }
+  return 15;
+}
+
+function miscColumnsCents(row: string[]): number {
+  let total = 0;
+  for (let index = MISC_START; index <= MISC_END; index += 1) {
+    total += sheetAmountToCents(row[index] ?? "") ?? 0;
+  }
+  return total;
 }

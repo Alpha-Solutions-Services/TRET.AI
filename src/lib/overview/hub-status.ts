@@ -22,6 +22,8 @@ export async function loadHubStatus(): Promise<HubFeed[]> {
   let vektor = vektorTone(null);
   let fuelCount: number | null = null;
   let tollCount: number | null = null;
+  let fuelFile = false;
+  let tollFile = false;
   try {
     const supabase = await createClient();
     try {
@@ -31,9 +33,11 @@ export async function loadHubStatus(): Promise<HubFeed[]> {
       vektor = vektorTone(null);
     }
     try {
-      [fuelCount, tollCount] = await Promise.all([
+      [fuelCount, tollCount, fuelFile, tollFile] = await Promise.all([
         rowCount(supabase, "fuel_transactions"),
         rowCount(supabase, "toll_transactions"),
+        lastFileImport(supabase, "fuel"),
+        lastFileImport(supabase, "tolls"),
       ]);
     } catch {
       fuelCount = null;
@@ -44,5 +48,21 @@ export async function loadHubStatus(): Promise<HubFeed[]> {
   }
 
   const gemini = await geminiPromise;
-  return buildHubFeeds({ vektor, sheets, fuelCount, tollCount, gemini });
+  return buildHubFeeds({ vektor, sheets, fuelCount, tollCount, gemini, fuelFile, tollFile });
+}
+
+async function lastFileImport(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  kind: "fuel" | "tolls",
+): Promise<boolean> {
+  const runs = await supabase
+    .from("import_runs")
+    .select("id")
+    .eq("kind", kind)
+    .eq("status", "success")
+    .limit(1);
+  if (!runs.error && (runs.data?.length ?? 0) > 0) return true;
+  const table = kind === "fuel" ? "fuel_file_imports" : "toll_file_imports";
+  const files = await supabase.from(table).select("id").limit(1);
+  return !files.error && (files.data?.length ?? 0) > 0;
 }

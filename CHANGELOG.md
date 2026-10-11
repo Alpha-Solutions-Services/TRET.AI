@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.0.0.33 — 2026-10-11
+
+- Dashboard, Ins and Outs, Statements, and the owner PDF use one calculation from the truck sheet: Load Ledger, Weekly Expenses, and Week Report. Import totals do not replace a sheet fuel, toll, or mile cell that already has a value.
+- Misc is the sum of Load Ledger columns AM through AQ. Truck miles are column P (loaded plus deadhead), counted once per trip. RPM is revenue divided by those miles. MPG is the Week Report C31 cell.
+- A load that delivers next week is listed as Pending. A TONU in that set is flagged TONU rate unconfirmed and is not counted in this week. The Loads page uses the same delivery-week sheet count.
+- Trucks 1 through 10 stay on the week report. Trucks 1, 2, 9, and 10 show zeros until a Google Sheet link is saved. Migration `supabase/migrations/20261011210000_v33_fleet_trucks.sql` inserts those four trucks when they are missing. It is not applied from this branch.
+- A row-count drop can be acknowledged with a reason. The comparison is the same import type only. Statements Close and the PDF stay blocked until that acknowledgement, or until the drop is gone.
+- Sheet reads are cached for about 8 minutes, one batch per spreadsheet, trucks one after another. A Google 429 shows the last good read instead of an empty page.
+- Fuel Log headers are found by name in the first rows. A toll row whose Toll Expense cell already has a value is a duplicate, not a flag. Hub Fuel and Tolls say Last file after a successful file import. A busy model waits longer, then the rules decide, without marking every row AI busy.
+- Daily check compares each truck's sheet loads, fuel, and tolls to the imported rows.
+- TONU rate-con reading and receipt photo reading are still not wired.
+
 ## v0.0.0.32 — 2026-10-11
 
 - A load counts only in the week it is delivered. TBH--1170 delivered 10/04 is week 40. A delivery on 10/12 is week 42. In-transit loads stay Pending and are not counted. A pickup from the prior week is included when delivery is in the week. Sharing a trip no longer pulls another load in.

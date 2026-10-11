@@ -17,6 +17,8 @@ export const SEEDED_IDENTITIES: TruckIdentity[] = [
   { unitNumber: "6", cards: ["00094"], plates: [{ plate: "5OSB8623", state: null }], tags: ["B7010405625"] },
   { unitNumber: "7", cards: ["00029"], plates: [{ plate: "YHM2482", state: null }], tags: ["B7010406687", "YHM2482"] },
   { unitNumber: "8", cards: ["00060"], plates: [{ plate: "5OSB8626", state: "TX" }], tags: ["B7010406665"] },
+  { unitNumber: "9", cards: [], plates: [], tags: [] },
+  { unitNumber: "10", cards: [], plates: [], tags: [] },
 ];
 
 export function unitNumberFromRaw(raw: string | null | undefined): string {

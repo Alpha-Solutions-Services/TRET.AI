@@ -216,6 +216,7 @@ function rowCountBlockers(input: WeekStatementInput): StatementBlocker[] {
   const blockers: StatementBlocker[] = [];
   const kinds = ["loads", "fuel", "tolls"] as const;
   for (const kind of kinds) {
+    if (input.acknowledgedDrops?.includes(kind)) continue;
     const overlapping = input.importRuns
       .filter(
         (run) =>

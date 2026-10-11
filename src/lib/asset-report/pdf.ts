@@ -249,7 +249,7 @@ function drawLoads(doc: PDFDocument, background: PDFImage, font: PDFFont, bold: 
     "Total Loads Completed",
     "Loaded Miles",
     "Deadhead Miles",
-    "Dispatch Miles",
+    "Truck miles",
     "Fuel Economy",
     "Average Revenue Per Load",
     "Average Rate Per Dispatch Mile",
@@ -317,12 +317,12 @@ function drawEarnings(doc: PDFDocument, background: PDFImage, font: PDFFont, bol
     textIn(page, { x: 370, y, w: 88, h: 18 }, money(line.cents), bold, 7.5, INK, "right");
   });
 
-  const rightY = [160, 187, 214, 241, 268, 295, 322];
-  rightY.forEach((y, index) => {
-    const line = report.rightExpenses[index];
+  const rightStep = report.rightExpenses.length > 7 ? 22 : 27;
+  report.rightExpenses.forEach((line, index) => {
+    const y = 160 + index * rightStep;
     paint(page, { x: 490, y, w: 345, h: 18 }, WHITE);
-    textIn(page, { x: 496, y, w: 330, h: 18 }, line?.label ?? "", font, 7.4, INK, "left");
-    fill(page, { x: 840, y, w: 83, h: 18 }, line ? money(line.cents) : "", bold, 7.5, INK, "right", WHITE);
+    textIn(page, { x: 496, y, w: 330, h: 18 }, line.label, font, 7.4, INK, "left");
+    fill(page, { x: 840, y, w: 83, h: 18 }, money(line.cents), bold, 7.5, INK, "right", WHITE);
   });
 
   paint(page, { x: 36, y: 418, w: 888, h: 72 }, CARD);
@@ -399,7 +399,7 @@ function drawSummary(doc: PDFDocument, background: PDFImage, font: PDFFont, bold
     "Fuel Cost Per Mile",
     "Owner Earnings",
     "Loads Completed",
-    "Dispatch Miles",
+    "Truck miles",
     "Rate Per Dispatch Mile",
   ];
   kpiLabels.forEach((label, index) => {
@@ -441,7 +441,7 @@ function drawSummary(doc: PDFDocument, background: PDFImage, font: PDFFont, bold
     fill(page, { x: 525, y, w: 79.5, h: 15 }, money(line.cents), strong ? bold : font, 5, BLACK, "right", ROW);
   });
 
-  const fuelLabels = ["Fuel Purchased", "Fuel Cost", "Avg Unit Price", "Fuel Economy", "Fuel Cost / Mile", "Dispatch Miles"];
+  const fuelLabels = ["Fuel Purchased", "Fuel Cost", "Avg Unit Price", "Fuel Economy", "Fuel Cost / Mile", "Truck miles"];
   const fuelY = statusY;
   fuelLabels.forEach((label, index) => {
     textIn(page, { x: 610, y: fuelY[index] ?? 0, w: 90, h: 24 }, label, font, 6, BLACK, "left");

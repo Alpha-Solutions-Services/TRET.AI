@@ -66,6 +66,7 @@ export async function runVektorImportAction(input?: {
   from?: string;
   to?: string;
   csvText?: string | null;
+  acknowledgeReason?: string | null;
 }): Promise<ImportActionResult> {
   const access = await checkAccess();
   if (access.status !== "allowed") {
@@ -182,13 +183,14 @@ export async function runVektorImportAction(input?: {
       .eq("status", "success")
       .order("finished_at", { ascending: false })
       .limit(40);
-    const previousFetched = prevErr
+    const acknowledgeReason = input?.acknowledgeReason?.trim() ?? "";
+    const previousFetched = prevErr || acknowledgeReason.length >= 3
       ? null
       : sameSourcePreviousCount(
           (prevRuns ?? []).map((run) => ({
             source: run.source ?? null,
             rowsFetched: run.rows_fetched,
-            kind: run.kind ?? "loads",
+            kind: run.kind,
           })),
           selected,
           "loads",
@@ -463,6 +465,16 @@ export async function runVektorImportAction(input?: {
         } as unknown as Json,
       })
       .eq("id", run.id);
+
+    if (acknowledgeReason.length >= 3) {
+      await supabase.from("issues").insert({
+        severity: "Info",
+        rule: "row_count_ack",
+        message: acknowledgeReason,
+        ref: `${range.from}:loads`,
+        status: "resolved",
+      });
+    }
 
     revalidatePath("/imports");
     revalidatePath("/loads");

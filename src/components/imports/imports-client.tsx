@@ -58,6 +58,7 @@ export function ImportsClient({
   const [fuelFile, setFuelFile] = useState<File | null>(null);
   const [tollFile, setTollFile] = useState<File | null>(null);
   const [loadsFile, setLoadsFile] = useState<File | null>(null);
+  const [acknowledgeReason, setAcknowledgeReason] = useState("");
   const [preview, setPreview] = useState<
     Array<{
       loadId: string;
@@ -92,7 +93,7 @@ export function ImportsClient({
   function onImport() {
     startTransition(async () => {
       const loadsCsv = await fileText(loadsFile);
-      const result = await runVektorImportAction({ from, to, csvText: loadsCsv });
+      const result = await runVektorImportAction({ from, to, csvText: loadsCsv, acknowledgeReason });
       if (!result.ok) {
         toast(result.error, "error");
         return;
@@ -111,6 +112,7 @@ export function ImportsClient({
         to,
         fuelCsvText: fuelCsv,
         tollCsvText: tollCsv,
+        acknowledgeReason,
       });
       if (!result.ok) {
         toast(result.error, "error");
@@ -153,6 +155,15 @@ export function ImportsClient({
             value={to}
             onChange={(e) => setTo(e.target.value)}
             className="h-10 rounded-md border border-[var(--color-border)] px-3"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-[var(--color-fg-muted)]">Acknowledge a drop</span>
+          <input
+            value={acknowledgeReason}
+            onChange={(event) => setAcknowledgeReason(event.target.value)}
+            placeholder="Reason, same import type only"
+            className="h-10 w-64 rounded-md border border-[var(--color-border)] px-3"
           />
         </label>
         <Button variant={pending ? "warn" : "secondary"} disabled={pending} onClick={onPreview}>

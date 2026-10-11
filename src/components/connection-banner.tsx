@@ -8,8 +8,8 @@ export function ConnectionBanner({ feeds }: { feeds: HubFeed[] }) {
   if (vektor && vektor.tone !== "connected") {
     notes.push("Vektor login or token is not active. Sign in again before the next Vektor import.");
   }
-  if (tolls && tolls.tone !== "connected") {
-    notes.push("Bestpass is not connected. Tolls stay out until that login is renewed.");
+  if (tolls && tolls.tone !== "connected" && tolls.caption !== "Last file") {
+    notes.push("Bestpass is not connected. Toll file rows are still compared to the sheet.");
   }
   if (notes.length === 0) return null;
   return (

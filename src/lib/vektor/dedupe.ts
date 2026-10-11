@@ -45,6 +45,6 @@ export function sameSourcePreviousCount(
   source: string,
   kind = "loads",
 ): number | null {
-  const match = runs.find((run) => run.source === source && (run.kind ?? "loads") === kind);
+  const match = runs.find((run) => run.source === source && run.kind === kind);
   return match ? match.rowsFetched : null;
 }

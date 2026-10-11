@@ -16,8 +16,7 @@ type ExpenseCategoryTotal = {
 
 /**
  * Weekly Expenses columns for dashboard Outs.
- * Truck payments and trailer payments are included here.
- * The asset report PDF leaves those two lines off.
+ * Truck payments and trailer payments are included here and on the owner PDF.
  * "Moved to Management" is left out.
  */
 export const WEEKLY_EXPENSE_LINES = [

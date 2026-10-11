@@ -1,5 +1,6 @@
 import { weekBoundsForDate, type TruckClass } from "@/lib/fee-engine";
 import { loadsInWeek } from "@/lib/loads/week-membership";
+import { buildOwnerTruckWeek, type OwnerPendingLoad } from "@/lib/reports/owner-week";
 import { mainTripMilesHundredths, tripMilesHundredths, tripRpmCents, truckMpg, type MetricLoad } from "@/lib/reports/trip-metrics";
 import { inWeek, sheetAmountToCents, sheetDay, columnIndex as sheetColumnIndex, findHeaderRow } from "@/lib/sheets/cell";
 import { gallonsStringToMilli } from "@/lib/fuel-tolls/quantity";
@@ -59,6 +60,12 @@ export type TruckWeekInsOuts = {
   deadheadMilesHundredths?: number;
   rpmCents?: number | null;
   mpg?: string | null;
+  /** True when mpg came from the Week Report cell, not from miles divided by gallons. */
+  mpgFromSheet?: boolean;
+  /** Allocated truck miles (loaded plus deadhead, each trip once). Omitted when that column is absent. */
+  truckMilesHundredths?: number;
+  /** Loads that belong to the next week, including a TONU held out of this week. */
+  pending?: OwnerPendingLoad[];
   /** Diesel gallons already used for mpg. Thousandths. Omitted when the sheet was not read. */
   dieselGallonsMilli?: number;
   categories: ExpenseCategoryTotal[];
@@ -302,14 +309,19 @@ export function recentWeeksFromGrids(
 ): WeekMoney[] {
   return trendWeekStarts(weekStart).map((start) => {
     const bounds = weekBoundsForDate(start);
-    const ins = loadLedger ? insFromLoadLedger(loadLedger, bounds.start, bounds.end) : null;
-    const weekly = weeklyExpenses ? outsFromWeeklyExpenses(weeklyExpenses, bounds.start, bounds.end) : null;
     const mgmt = mgmtExpenses ? outsFromMgmtExpenses(mgmtExpenses, bounds.start, bounds.end) : null;
-    const outs = weekly?.headerFound ? weekly : mgmt;
+    const owner = buildOwnerTruckWeek({
+      ledger: loadLedger,
+      weekly: weeklyExpenses,
+      weekStart: bounds.start,
+      weekEnd: bounds.end,
+      fallbackOutsCents: mgmt?.headerFound ? mgmt.outsCents : 0,
+      fallbackCategories: mgmt?.headerFound ? mgmt.categories : [],
+    });
     return {
       weekStart: bounds.start,
-      insCents: ins?.headerFound ? ins.insCents : 0,
-      outsCents: outs?.headerFound ? outs.outsCents : 0,
+      insCents: owner.grossCents,
+      outsCents: owner.expenseCents,
     };
   });
 }
@@ -358,6 +370,7 @@ export function buildTruckWeekInsOuts(input: {
   mgmtExpenses: SheetGrid | null;
   weeklyExpenses?: SheetGrid | null;
   fuelLog?: SheetGrid | null;
+  weekReport?: SheetGrid | null;
   note: string | null;
   noteDetail?: string | null;
 }): TruckWeekInsOuts {
@@ -413,18 +426,39 @@ export function buildTruckWeekInsOuts(input: {
       readable: false,
     };
   }
+  const tripMiles = milesForLoads(
+    ins?.loads ?? [],
+    dieselGallonsFromFuelLog(input.fuelLog ?? null, input.weekStart, input.weekEnd),
+    input.loadLedger ? parseLoadLedger(input.loadLedger).rows : ins?.loads ?? [],
+  );
+  const owner = buildOwnerTruckWeek({
+    ledger: input.loadLedger,
+    weekly: input.weeklyExpenses ?? null,
+    weekReport: input.weekReport ?? null,
+    weekStart: input.weekStart,
+    weekEnd: input.weekEnd,
+    fallbackOutsCents: useWeekly ? 0 : (outs?.outsCents ?? 0),
+    fallbackCategories: useWeekly ? [] : (outs?.categories ?? []),
+  });
+  const grossCents = input.loadLedger ? owner.grossCents : (ins?.insCents ?? 0);
+  const expenseCents = owner.expenseCents;
   return {
     ...base,
-    insCents: ins?.insCents ?? 0,
-    outsCents: outs?.outsCents ?? 0,
-    netCents: (ins?.insCents ?? 0) - (outs?.outsCents ?? 0),
-    loadCount: ins?.loadCount ?? 0,
-    ...milesForLoads(
-      ins?.loads ?? [],
-      dieselGallonsFromFuelLog(input.fuelLog ?? null, input.weekStart, input.weekEnd),
-      input.loadLedger ? parseLoadLedger(input.loadLedger).rows : ins?.loads ?? [],
-    ),
-    categories: outs?.categories ?? [],
+    insCents: grossCents,
+    outsCents: expenseCents,
+    netCents: grossCents - expenseCents,
+    loadCount: input.loadLedger ? owner.loadCount : (ins?.loadCount ?? 0),
+    ...tripMiles,
+    ...(owner.milesFromAllocated
+      ? {
+          truckMilesHundredths: owner.milesHundredths,
+          rpmCents: owner.rpmCents,
+        }
+      : {}),
+    mpg: owner.mpg ?? tripMiles.mpg,
+    mpgFromSheet: owner.mpg != null,
+    pending: owner.pending,
+    categories: owner.categories,
     outsFromWeekly: useWeekly,
     ledgerLoads: ins?.loads ?? [],
     recentWeeks: recentWeeksFromGrids(

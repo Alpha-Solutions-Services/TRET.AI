@@ -33,6 +33,7 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
     weekly: book.weeklyExpenses,
     fuelLog: book.fuelLog,
     fleet: book.fleetDirectory,
+    weekReport: book.weekReport,
     sheetNote: book.note,
     dbFuelCents: extras.fuelCents,
     dbGallonsMilli: extras.gallonsMilli,

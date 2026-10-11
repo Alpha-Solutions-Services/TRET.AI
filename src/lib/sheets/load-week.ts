@@ -1,5 +1,5 @@
+import { buildTruckWeekInsOuts, type TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { loadTruckWeekInsOuts, missingGoogleServiceAccountEnv } from "@/lib/sheets/read";
-import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { sheetLedgerRefs } from "@/lib/sheets/mismatch";
 import { syncSheetMismatches } from "@/lib/sheets/sync-mismatches";
 import { listTrucks } from "@/lib/trucks/queries";
@@ -11,13 +11,17 @@ export async function loadActiveTruckInsOuts(
   try {
     const { trucks } = await listTrucks();
     const active = trucks.filter((truck) => truck.active);
-    const rows = await loadTruckWeekInsOuts(
-      active.map((truck) => ({
-        unitNumber: truck.unit_number,
-        truckName: truck.name,
-        googleSheetUrl: truck.google_sheet_url,
-        truckClass: truck.truck_class,
-      })),
+    const rows = ensureFleetUnits(
+      await loadTruckWeekInsOuts(
+        active.map((truck) => ({
+          unitNumber: truck.unit_number,
+          truckName: truck.name,
+          googleSheetUrl: truck.google_sheet_url,
+          truckClass: truck.truck_class,
+        })),
+        weekStart,
+        weekEnd,
+      ),
       weekStart,
       weekEnd,
     );
@@ -28,6 +32,31 @@ export async function loadActiveTruckInsOuts(
       error: err instanceof Error ? err.message : "Ins and Outs could not be loaded.",
     };
   }
+}
+
+const FLEET_UNITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] as const;
+
+function unitKey(unitNumber: string): string {
+  return unitNumber.replace(/\D/g, "").replace(/^0+/, "") || unitNumber.trim();
+}
+
+/** Trucks 1 through 10 stay on the week report. A missing sheet link shows zeros until it is pasted. */
+function ensureFleetUnits(rows: TruckWeekInsOuts[], weekStart: string, weekEnd: string): TruckWeekInsOuts[] {
+  const present = new Set(rows.map((row) => unitKey(row.unitNumber)));
+  const extra = FLEET_UNITS.filter((unit) => !present.has(unit)).map((unit) =>
+    buildTruckWeekInsOuts({
+      unitNumber: unit,
+      truckName: `Truck ${unit}`,
+      truckClass: "third_party",
+      weekStart,
+      weekEnd,
+      loadLedger: null,
+      mgmtExpenses: null,
+      weeklyExpenses: null,
+      note: "No Google Sheet link. Paste it on Trucks.",
+    }),
+  );
+  return [...rows, ...extra].sort((a, b) => Number(unitKey(a.unitNumber)) - Number(unitKey(b.unitNumber)));
 }
 
 export async function loadInsOutsWeek(

@@ -41,7 +41,8 @@
 - Dispatch is deducted from the owner. It is also Legacy income on the management P&L, on its own line.
 - Owner net = gross − driver − (management fee, or Tolson on a Legacy-owned truck) − dispatch − factoring − discounted fuel − tolls − fixed expenses charged to the owner.
 - A fixed expense charged to management is stored and left out of owner net. A kind with no row is zero. Overlapping versions block the close.
-- Close is blocked by unlinked fuel, a row-count drop on an import whose dates overlap the week, a missing or mid-week contract, a load whose stored week disagrees with its delivery date, or a net that does not reconcile.
+- Close is blocked by unlinked fuel, a row-count drop on an import whose dates overlap the week, a missing or mid-week contract, a load whose stored week disagrees with its delivery date, or a net that does not reconcile. A row-count drop the operator acknowledged with a reason, for that same import type and week, does not block.
+- Displayed statement dollars for a truck with a Weekly Expenses sheet come from that sheet plus Load Ledger misc, not from a second fee pass. Truck miles are Load Ledger column P, once per trip. MPG is Week Report C31.
 
 ## Weekly PDF
 
@@ -98,10 +99,10 @@ Locked Assumption Log defaults are in `docs/decisions.md` (2026-10-07). Still op
 - The weekly statement PDF has no logo file. The Weekly Asset Management Report cover uses the Legacy truck artwork extracted from the template.
 - The weekly statement PDF still prints “Not stored” for trailer, VIN, dispatcher, compliance, and the operations note.
 - The Weekly Asset Management Report reads trailer, VIN, dispatcher, and status from the truck sheet when those fields are present. Asset partner is `trucks.owner_name`. There is no trailer or VIN column on `trucks`. A missing dispatcher prints Legacy Dispatch Team and does not add a note. The Driver line uses the truck name or owner name when it continues the sheet first name. The operations note is omitted when there are no notes. That report does not print “Not stored”. The weekly expense line is Maintenance Escrow Weekly. The escrow card is Escrow Balance when the sheet has that column, and Escrow Balance (this week) when it does not.
-- Loads on one trip are one group. The sheet Trip Group and Primary columns are the signal. Trip M-1195 is the same group as Vektor manifest 1195. Loaded miles count only from the row marked Primary. The other rows on that trip show as partial. When the sheet has no Primary flag, loaded miles count from the load with the most loaded miles, using the Vektor manifest. Revenue still sums every load. Dispatch miles, rate per mile, and fuel cost per mile use the counted loaded miles plus every deadhead mile. Truck Miles on the sheet is 0 for a non-primary row and is not added again.
+- Loads on one trip are one group. The sheet Trip Group and Primary columns are the signal. Trip M-1195 is the same group as Vektor manifest 1195. Loaded miles count only from the row marked Primary. The other rows on that trip show as partial. When the sheet has no Primary flag, loaded miles count from the load with the most loaded miles, using the Vektor manifest. Revenue still sums every load. Owner truck miles are Load Ledger column P (allocated miles), counted once per trip. RPM is revenue divided by those miles. When that column is missing, miles stay on the older loaded-plus-deadhead rule.
 - The Dashboard week snapshot uses sheet Ins and Outs for the selected week. Gross is Ins. Fees, fuel, tolls, and fixed split Outs. Net is Ins minus Outs.
 - Vektor REST list path. Probes are documented in decisions. Set `VEKTOR_API_MANIFESTS_PATH` when Vektor confirms it.
-- Truck Pymts and Trailer Pymts are not lines on the asset report. They are not combined into MC Lease.
+- Truck payments and trailer payments are lines on the owner PDF when the sheet has them. They are not combined into MC Lease.
 - A separate PDF file per truck is OPEN. This version downloads one week file.
 - The locked snapshot does not store load rows. Current loads must still sum to the snapshot or the PDF is refused.
 - Whether an import may keep updating source rows inside a locked week. The snapshot itself does not change. Default: source updates are still allowed.

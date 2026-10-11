@@ -232,8 +232,8 @@ describe("E-ZPass file", () => {
       tollTargets: [{ unitNumber: "3", column: 44, rows: [{ loadId: "TBH--2001", rowNumber: 4, current: "12.00" }] }],
     });
     const held = foreign.rows.find((row) => (row.payload as TollQueuePayload | null)?.transactionId === "1505564277");
-    expect(held?.status).toBe("flagged");
-    expect(held?.reason).toMatch(/left unchanged/);
+    expect(held?.status).toBe("duplicate");
+    expect(held?.reason).toMatch(/already has this toll/);
     expect(held?.cells).toEqual([]);
   });
 
@@ -382,7 +382,7 @@ describe("AI fallback", () => {
       async () => {},
     );
     const flagged = plan.rows.find((row) => row.status === "flagged")!;
-    expect(calls).toBe(3);
+    expect(calls).toBe(4);
     expect(plan.aiNotice).toBe(AI_BUSY_NOTE);
     expect(flagged.reason).toContain("Unit 99");
     expect(flagged.reason).not.toContain(AI_BUSY_NOTE);

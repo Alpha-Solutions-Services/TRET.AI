@@ -8,11 +8,11 @@ import { canonicalStoredLoadId, canonicalTripId } from "@/lib/fuel-tolls/file/li
 import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
 import { runSharedImport } from "@/lib/import-pipeline/run";
 import { gridFromUpload, parseGrid } from "@/lib/fuel-tolls/file/parse";
-import { cellA1, fuelLogTab, ledgerTab, locateFuelLogColumns } from "@/lib/fuel-tolls/file/sheet-columns";
+import { cellA1, findFuelLogHeader, fuelLogTab, ledgerTab, locateFuelLogColumns } from "@/lib/fuel-tolls/file/sheet-columns";
 import type { FuelQueuePayload, ImportPreviewRow, TollQueuePayload } from "@/lib/fuel-tolls/file/types";
 import { batchWriteRanges, spreadsheetIdFromUrl } from "@/lib/fuel-tolls/file/write-sheets";
 import { centsToDollarString } from "@/lib/money/cents";
-import { findHeaderRow, isEmptyCell, sheetAmountToCents } from "@/lib/sheets/cell";
+import { isEmptyCell, sheetAmountToCents } from "@/lib/sheets/cell";
 import { loadTruckWorkbook } from "@/lib/sheets/read";
 import type { Json } from "@/lib/supabase/database.types";
 import { FILE_IMPORT_MIGRATION_MESSAGE } from "@/lib/fuel-tolls/file/messages";
@@ -465,7 +465,7 @@ async function writeApprovedFuel(
   const book = await loadTruckWorkbook({ unitNumber: truck.unit_number, googleSheetUrl: truck.google_sheet_url });
   const grid = book.fuelLog;
   if (!grid) return { ok: false, error: "Fuel Log was not found on this truck's sheet." };
-  const headerIndex = findHeaderRow(grid, [["date"], ["gallons"]]);
+  const headerIndex = findFuelLogHeader(grid);
   if (headerIndex < 0) return { ok: false, error: "Fuel Log headers were not found." };
   const located = locateFuelLogColumns(grid[headerIndex] ?? []);
   if (!located.ok) return { ok: false, error: located.error };

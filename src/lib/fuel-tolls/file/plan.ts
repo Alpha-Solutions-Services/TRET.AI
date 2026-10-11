@@ -1,7 +1,7 @@
 import { weekBoundsForDate } from "@/lib/fee-engine/week";
 import { gallonsStringToMilli } from "@/lib/fuel-tolls/quantity";
 import { centsToDollarString } from "@/lib/money/cents";
-import { findHeaderRow, isEmptyCell, sheetAmountToCents, sheetDay } from "@/lib/sheets/cell";
+import { isEmptyCell, sheetAmountToCents, sheetDay } from "@/lib/sheets/cell";
 import {
   SEEDED_IDENTITIES,
   findByCard,
@@ -12,7 +12,7 @@ import {
   truckLabel,
   type TruckIdentity,
 } from "./mappings";
-import { cellA1, fuelLogTab, ledgerTab, locateFuelLogColumns, locateTollExpenseColumn } from "./sheet-columns";
+import { cellA1, findFuelLogHeader, fuelLogTab, ledgerTab, locateFuelLogColumns, locateTollExpenseColumn } from "./sheet-columns";
 import { columnLetter } from "@/lib/sheets/write-cell";
 import { isoToUs, linkFuelDate, linkTollTime } from "./link";
 import { parseGrid, type RawFuel, type RawToll } from "./parse";
@@ -343,7 +343,7 @@ function logFor(
     cache.set(unitNumber, missing);
     return missing;
   }
-  const headerIndex = findHeaderRow(grid, [["date"], ["gallons"]]);
+  const headerIndex = findFuelLogHeader(grid);
   if (headerIndex < 0) {
     const missing = { error: "header" };
     cache.set(unitNumber, missing);
@@ -635,15 +635,16 @@ function applyTollCells(rows: ImportPreviewRow[], context: ImportContext): Impor
       for (const row of list) flagToll(row, "Toll Expense cell for this load was not found, so the amount was not added.");
       continue;
     }
-    const current = sheetAmountToCents(target.current);
     const blank = isEmptyCell(target.current);
-    const owned = !blank && current === logged;
-    if (!blank && !owned && !context.confirmTollOverwrite) {
+    if (!blank && !context.confirmTollOverwrite) {
       for (const row of list) {
-        flagToll(
-          row,
-          "Toll Expense already has a value that this import did not write. It was left unchanged for your approval.",
-        );
+        row.status = "duplicate";
+        row.queue = false;
+        row.cells = [];
+        row.reason = "The sheet already has this toll, so the file row was not written.";
+        if (row.payload?.kind === "toll") {
+          row.payload = { ...row.payload, written: false, reason: row.reason };
+        }
       }
       continue;
     }
