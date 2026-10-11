@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { saveFeeSettingsAction, type FeeSaveRow } from "@/app/fee-settings/actions";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { FEE_CSV_HEADER, feeModelLabel, parseFeeCsv, type FeeSettingView } from "@/lib/fees/fee-settings";
+import { FEE_CSV_HEADER, feeTotalLabel, parseFeeCsv, type FeeSettingView } from "@/lib/fees/fee-settings";
 
 const field = "h-10 w-full min-w-[7rem] rounded-md border border-[var(--color-border)] px-2 text-sm";
 
@@ -55,9 +55,9 @@ export function FeeSettingsClient({ rows, ready, error, migrationMessage }: Prop
       <div>
         <h1 className="text-2xl font-semibold">Fee settings</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">
-          The first trucks on a lease to Tolson Black Hawk pay a 10 percent lease fee. Trucks 3 to 8, and any truck
-          added later, pay a 10 percent management fee. Leave the split blank until you know it. Legacy percent and
-          Tolson percent must add up to that fee.
+          Every truck has two fee lines, both a percent of weekly gross. Legacy fee plus Tolson lease fee is the
+          management fee. Trucks 1 and 2 are 0 percent Legacy and 10 percent Tolson. Truck 3 is 10 percent Legacy
+          and 0 percent Tolson. Trucks 4 to 8, and a new truck, are 10 percent Legacy and 8 percent Tolson.
         </p>
       </div>
       {!ready && migrationMessage ? <p className="text-sm text-[var(--color-danger)]">{migrationMessage}</p> : null}
@@ -83,16 +83,13 @@ export function FeeSettingsClient({ rows, ready, error, migrationMessage }: Prop
         </Button>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[960px] text-left text-sm">
+        <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="text-[var(--color-fg-muted)]">
               <th className="py-2 pr-2">Unit</th>
-              <th className="py-2 pr-2">Fee type</th>
-              <th className="py-2 pr-2">Fee percent</th>
-              <th className="py-2 pr-2">Tolson percent</th>
-              <th className="py-2 pr-2">Tolson fixed weekly</th>
-              <th className="py-2 pr-2">Legacy percent</th>
-              <th className="py-2 pr-2">Legacy fixed weekly</th>
+              <th className="py-2 pr-2">Legacy fee percent</th>
+              <th className="py-2 pr-2">Tolson lease fee percent</th>
+              <th className="py-2 pr-2">Management fee total</th>
               <th className="py-2 pr-2">Effective from</th>
             </tr>
           </thead>
@@ -100,23 +97,21 @@ export function FeeSettingsClient({ rows, ready, error, migrationMessage }: Prop
             {draft.map((row) => (
               <tr key={row.truckId} className="border-t border-[var(--color-border)]">
                 <td className="py-2 pr-2 font-medium">{row.unitNumber}</td>
-                <td className="py-2 pr-2">
-                  <select className={field} value={row.feeModel} disabled={!ready} onChange={(event) => patch(row.truckId, "feeModel", event.target.value)}>
-                    <option value="lease_to_tolson">{feeModelLabel("lease_to_tolson")}</option>
-                    <option value="owner_management">{feeModelLabel("owner_management")}</option>
-                  </select>
-                </td>
-                {(["managementFeePct", "tolsonPayablePct", "tolsonFixedWeekly", "legacyRetainedPct", "legacyFixedWeekly", "effectiveFrom"] as const).map((key) => (
+                {(["legacyFeePct", "tolsonLeaseFeePct"] as const).map((key) => (
                   <td key={key} className="py-2 pr-2">
-                    <input
-                      className={field}
-                      value={row[key]}
-                      disabled={!ready}
-                      placeholder={key === "effectiveFrom" ? "YYYY-MM-DD" : "Not set"}
-                      onChange={(event) => patch(row.truckId, key, event.target.value)}
-                    />
+                    <input className={field} value={row[key]} disabled={!ready} onChange={(event) => patch(row.truckId, key, event.target.value)} />
                   </td>
                 ))}
+                <td className="py-2 pr-2">{feeTotalLabel(row.legacyFeePct, row.tolsonLeaseFeePct)}%</td>
+                <td className="py-2 pr-2">
+                  <input
+                    className={field}
+                    value={row.effectiveFrom}
+                    disabled={!ready}
+                    placeholder="YYYY-MM-DD"
+                    onChange={(event) => patch(row.truckId, "effectiveFrom", event.target.value)}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>

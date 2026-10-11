@@ -12,49 +12,35 @@ type TruckFixture = {
   grossCents: number;
   milesHundredths: number;
   miscCents: number;
+  driverCents: number;
+  dispatchCents: number;
+  factoringCents: number;
+  managementCents: number;
+  fuelCents: number;
+  tollCents: number;
+  fixedCents: number;
   expenseCents: number;
   netCents: number;
   mpg: string | null;
   rpmCents?: number;
-  pending?: { loadId: string; delivery: string; status?: string }[];
+  rpmLabel?: string;
+  legacyCents: number;
+  tolsonCents: number;
+  pending?: { loadId: string; delivery: string }[];
+  tonu?: { loadId: string; delivery: string };
 };
 
 const TRUCKS: TruckFixture[] = [
-  { unit: "1", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, expenseCents: 72_945, netCents: -72_945, mpg: null },
-  { unit: "2", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, expenseCents: 217_957, netCents: -217_957, mpg: null },
-  { unit: "3", loads: 4, grossCents: 855_000, milesHundredths: 285_200, miscCents: 98_990, expenseCents: 705_162, netCents: 149_838, mpg: "7.16", rpmCents: 300 },
-  { unit: "4", loads: 1, grossCents: 250_000, milesHundredths: 150_700, miscCents: 198_456, expenseCents: 465_863, netCents: -215_863, mpg: "8.29" },
-  { unit: "5", loads: 5, grossCents: 720_000, milesHundredths: 258_839, miscCents: 0, expenseCents: 449_622, netCents: 270_378, mpg: "10.65", rpmCents: 278 },
-  { unit: "6", loads: 4, grossCents: 530_000, milesHundredths: 166_100, miscCents: 56_152, expenseCents: 455_267, netCents: 74_733, mpg: "8.00", rpmCents: 319 },
-  {
-    unit: "7",
-    loads: 2,
-    grossCents: 470_000,
-    milesHundredths: 130_076,
-    miscCents: 10_598,
-    expenseCents: 417_896,
-    netCents: 52_104,
-    mpg: "7.42",
-    rpmCents: 361,
-    pending: [
-      { loadId: "TBH--1200", delivery: "10/12/2026" },
-      { loadId: "TBH--1202", delivery: "10/12/2026" },
-    ],
-  },
-  {
-    unit: "8",
-    loads: 5,
-    grossCents: 790_000,
-    milesHundredths: 265_000,
-    miscCents: 33_420,
-    expenseCents: 566_684,
-    netCents: 223_316,
-    mpg: null,
-    rpmCents: 298,
-    pending: [{ loadId: "TBH--1201", delivery: "10/12/2026", status: "TONU" }],
-  },
-  { unit: "9", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, expenseCents: 0, netCents: 0, mpg: null },
-  { unit: "10", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, expenseCents: 0, netCents: 0, mpg: null },
+  { unit: "1", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, driverCents: 0, dispatchCents: 0, factoringCents: 0, managementCents: 0, fuelCents: 0, tollCents: 0, fixedCents: 72_945, expenseCents: 72_945, netCents: -72_945, mpg: null, legacyCents: 0, tolsonCents: 0 },
+  { unit: "2", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, driverCents: 0, dispatchCents: 0, factoringCents: 0, managementCents: 0, fuelCents: 139_665, tollCents: 0, fixedCents: 78_292, expenseCents: 217_957, netCents: -217_957, mpg: null, legacyCents: 0, tolsonCents: 0 },
+  { unit: "3", loads: 4, grossCents: 855_000, milesHundredths: 285_200, miscCents: 97_488, driverCents: 171_000, dispatchCents: 47_025, factoringCents: 14_963, managementCents: 85_500, fuelCents: 156_430, tollCents: 64_213, fixedCents: 67_041, expenseCents: 703_660, netCents: 151_340, mpg: "7.16", rpmCents: 300, rpmLabel: "2.9979", legacyCents: 85_500, tolsonCents: 0 },
+  { unit: "4", loads: 1, grossCents: 250_000, milesHundredths: 150_700, miscCents: 198_456, driverCents: 68_125, dispatchCents: 0, factoringCents: 0, managementCents: 45_000, fuelCents: 106_556, tollCents: 0, fixedCents: 67_726, expenseCents: 485_863, netCents: -235_863, mpg: "8.29", rpmCents: 166, rpmLabel: "1.6589", legacyCents: 25_000, tolsonCents: 20_000 },
+  { unit: "5", loads: 5, grossCents: 720_000, milesHundredths: 258_839, miscCents: 0, driverCents: 192_600, dispatchCents: 0, factoringCents: 0, managementCents: 129_600, fuelCents: 108_260, tollCents: 0, fixedCents: 76_762, expenseCents: 507_222, netCents: 212_778, mpg: "10.65", rpmCents: 278, rpmLabel: "2.7817", legacyCents: 72_000, tolsonCents: 57_600 },
+  { unit: "6", loads: 2, grossCents: 200_000, milesHundredths: 69_880, miscCents: 0, driverCents: 53_500, dispatchCents: 0, factoringCents: 0, managementCents: 36_000, fuelCents: 116_586, tollCents: 0, fixedCents: 83_455, expenseCents: 289_541, netCents: -89_541, mpg: null, rpmCents: 286, rpmLabel: "2.8621", legacyCents: 20_000, tolsonCents: 16_000, pending: [{ loadId: "TBH--1181", delivery: "10/12/2026" }, { loadId: "TBH--1191", delivery: "10/12/2026" }] },
+  { unit: "7", loads: 2, grossCents: 470_000, milesHundredths: 130_076, miscCents: 10_598, driverCents: 128_075, dispatchCents: 0, factoringCents: 0, managementCents: 84_600, fuelCents: 158_464, tollCents: 3_647, fixedCents: 70_112, expenseCents: 455_496, netCents: 14_504, mpg: "7.42", rpmCents: 361, rpmLabel: "3.6133", legacyCents: 47_000, tolsonCents: 37_600, pending: [{ loadId: "TBH--1200", delivery: "10/12/2026" }, { loadId: "TBH--1202", delivery: "10/12/2026" }] },
+  { unit: "8", loads: 6, grossCents: 990_000, milesHundredths: 266_000, miscCents: 33_420, driverCents: 264_825, dispatchCents: 0, factoringCents: 0, managementCents: 178_200, fuelCents: 158_816, tollCents: 4_861, fixedCents: 80_462, expenseCents: 720_584, netCents: 269_416, mpg: "7.04", rpmCents: 372, rpmLabel: "3.7218", legacyCents: 99_000, tolsonCents: 79_200, tonu: { loadId: "TBH--1201", delivery: "10/09/2026" } },
+  { unit: "9", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, driverCents: 0, dispatchCents: 0, factoringCents: 0, managementCents: 0, fuelCents: 0, tollCents: 0, fixedCents: 0, expenseCents: 0, netCents: 0, mpg: null, legacyCents: 0, tolsonCents: 0 },
+  { unit: "10", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, driverCents: 0, dispatchCents: 0, factoringCents: 0, managementCents: 0, fuelCents: 0, tollCents: 0, fixedCents: 0, expenseCents: 0, netCents: 0, mpg: null, legacyCents: 0, tolsonCents: 0 },
 ];
 
 function header(): string[] {
@@ -81,13 +67,14 @@ function dollars(cents: number): string {
 
 function ledgerFor(truck: TruckFixture): string[][] {
   const rows: string[][] = [header()];
-  let grossLeft = truck.grossCents;
+  const counted = truck.tonu ? truck.loads - 1 : truck.loads;
+  let grossLeft = truck.grossCents - (truck.tonu ? 200_000 : 0);
   let milesLeft = truck.milesHundredths;
   let miscLeft = truck.miscCents;
-  for (let index = 0; index < truck.loads; index += 1) {
-    const last = index === truck.loads - 1;
-    const gross = last ? grossLeft : Math.floor(truck.grossCents / truck.loads);
-    const miles = last ? milesLeft : Math.floor(truck.milesHundredths / truck.loads);
+  for (let index = 0; index < counted; index += 1) {
+    const last = index === counted - 1;
+    const gross = last ? grossLeft : Math.floor((truck.grossCents - (truck.tonu ? 200_000 : 0)) / counted);
+    const miles = last ? milesLeft : Math.floor(truck.milesHundredths / counted);
     const misc = last ? miscLeft : 0;
     grossLeft -= gross;
     milesLeft -= miles;
@@ -102,12 +89,19 @@ function ledgerFor(truck: TruckFixture): string[][] {
     row[38] = misc === 0 ? "" : dollars(misc);
     rows.push(row);
   }
+  if (truck.tonu) {
+    const row = Array.from({ length: 43 }, () => "");
+    row[0] = truck.tonu.delivery;
+    row[1] = truck.tonu.loadId;
+    row[2] = "$2,000.00";
+    row[3] = "TONU";
+    rows.push(row);
+  }
   for (const pending of truck.pending ?? []) {
     const row = Array.from({ length: 43 }, () => "");
     row[0] = pending.delivery;
     row[1] = pending.loadId;
     row[2] = "$2,000.00";
-    row[3] = pending.status ?? "";
     row[15] = "100.00";
     rows.push(row);
   }
@@ -115,16 +109,48 @@ function ledgerFor(truck: TruckFixture): string[][] {
 }
 
 function weeklyFor(truck: TruckFixture): string[][] {
-  const driver = truck.expenseCents - truck.miscCents;
   return [
-    ["Week Start Date", "Driver Compensation"],
-    ["10/05/2026", driver === 0 ? "" : dollars(driver)],
+    ["Week Start Date", "Driver Compensation", "Management Fee", "Dispatch Fee", "Factoring Fee", "Fuel", "Toll Fees", "Insurance"],
+    [
+      "10/05/2026",
+      dollars(truck.driverCents),
+      dollars(truck.managementCents),
+      dollars(truck.dispatchCents),
+      dollars(truck.factoringCents),
+      dollars(truck.fuelCents),
+      dollars(truck.tollCents),
+      dollars(truck.fixedCents),
+    ],
   ];
 }
 
-function weekReport(mpg: string | null): string[][] {
-  const grid = Array.from({ length: 31 }, () => ["", "", ""]);
-  if (mpg) grid[30]![2] = mpg;
+function weekReport(truck: TruckFixture): string[][] {
+  const grid = Array.from({ length: 32 }, () => Array.from({ length: 15 }, () => ""));
+  grid[3]![1] = "Total Revenue";
+  grid[3]![2] = dollars(truck.grossCents);
+  grid[3]![5] = dollars(truck.expenseCents);
+  grid[3]![8] = dollars(truck.netCents);
+  if (truck.rpmLabel) {
+    grid[6]![4] = "Avg Rate / Mile";
+    grid[6]![5] = truck.rpmLabel;
+  }
+  grid[18]![1] = "Total Miles";
+  grid[18]![2] = truck.milesHundredths === 0 ? "" : `${Math.floor(truck.milesHundredths / 100)}.${String(truck.milesHundredths % 100).padStart(2, "0")}`;
+  grid[21]![1] = "Dispatch Fee";
+  grid[21]![2] = dollars(truck.dispatchCents);
+  grid[22]![1] = "Factoring Fee";
+  grid[22]![2] = dollars(truck.factoringCents);
+  grid[23]![1] = "Driver Pay";
+  grid[23]![2] = dollars(truck.driverCents);
+  grid[24]![1] = "Management Fee";
+  grid[24]![2] = dollars(truck.managementCents);
+  grid[25]![13] = "Misc Expenses (1-5)";
+  grid[25]![14] = dollars(truck.miscCents);
+  grid[29]![13] = "Toll Fees";
+  grid[29]![14] = dollars(truck.tollCents);
+  grid[28]![1] = "Fuel Total Cost";
+  grid[28]![2] = dollars(truck.fuelCents);
+  if (truck.mpg) grid[30]![2] = truck.mpg;
   return grid;
 }
 
@@ -135,7 +161,8 @@ describe("week 41 owner sheet", () => {
       const week = buildOwnerTruckWeek({
         ledger: truck.loads === 0 && !(truck.pending?.length) ? [["Delivery Date", "Load ID", "Rate"]] : ledgerFor(truck),
         weekly: weeklyFor(truck),
-        weekReport: weekReport(truck.mpg),
+        weekReport: weekReport(truck),
+        unitNumber: truck.unit,
         ...WEEK,
       });
       loads += week.loadCount;
@@ -144,19 +171,29 @@ describe("week 41 owner sheet", () => {
       expect(week.netCents, truck.unit).toBe(truck.netCents);
       expect(week.grossCents, truck.unit).toBe(truck.grossCents);
       expect(week.loadCount, truck.unit).toBe(truck.loads);
+      expect(week.fees.legacyFeeCents, truck.unit).toBe(truck.legacyCents);
+      expect(week.fees.tolsonLeaseFeeCents, truck.unit).toBe(truck.tolsonCents);
+      expect(week.fees.managementFeeCents, truck.unit).toBe(truck.managementCents);
       if (truck.milesHundredths > 0) {
         expect(week.milesHundredths, truck.unit).toBe(truck.milesHundredths);
         expect(week.rpmCents, truck.unit).toBe(centsPerLoadedMile(truck.grossCents, truck.milesHundredths));
       }
       if (truck.rpmCents != null) expect(week.rpmCents, truck.unit).toBe(truck.rpmCents);
+      if (truck.rpmLabel) expect(week.rpmLabel, truck.unit).toBe(truck.rpmLabel);
       expect(week.mpg, truck.unit).toBe(truck.mpg);
     }
-    expect(loads).toBe(21);
-    const truck7 = buildOwnerTruckWeek({ ledger: ledgerFor(TRUCKS[6]!), weekly: weeklyFor(TRUCKS[6]!), ...WEEK });
+    expect(loads).toBe(20);
+    const truck6 = buildOwnerTruckWeek({ ledger: ledgerFor(TRUCKS[5]!), weekly: weeklyFor(TRUCKS[5]!), unitNumber: "6", ...WEEK });
+    expect(truck6.pending.map((row) => row.loadId)).toEqual(["TBH--1181", "TBH--1191"]);
+    expect(truck6.loadIds).not.toContain("TBH--1181");
+    const truck7 = buildOwnerTruckWeek({ ledger: ledgerFor(TRUCKS[6]!), weekly: weeklyFor(TRUCKS[6]!), unitNumber: "7", ...WEEK });
     expect(truck7.pending.map((row) => row.loadId)).toEqual(["TBH--1200", "TBH--1202"]);
     expect(truck7.pending.every((row) => row.reason === "Delivers next week")).toBe(true);
-    const truck8 = buildOwnerTruckWeek({ ledger: ledgerFor(TRUCKS[7]!), weekly: weeklyFor(TRUCKS[7]!), ...WEEK });
+    expect(truck7.loadIds).not.toContain("TBH--1200");
+    const truck8 = buildOwnerTruckWeek({ ledger: ledgerFor(TRUCKS[7]!), weekly: weeklyFor(TRUCKS[7]!), weekReport: weekReport(TRUCKS[7]!), unitNumber: "8", ...WEEK });
     expect(truck8.pending).toEqual([{ loadId: "TBH--1201", reason: TONU_RATE_NOTE }]);
+    expect(truck8.loadIds).toContain("TBH--1201");
+    expect(truck8.loadCount).toBe(6);
   });
 
   it("counts allocated miles once per trip", () => {

@@ -2,6 +2,7 @@ import { createSign } from "node:crypto";
 import { parseCsv } from "@/lib/fuel-tolls/csv";
 import { readEnv } from "@/lib/env";
 import type { TruckClass } from "@/lib/fee-engine";
+import type { FeeRatePair } from "@/lib/fees/two-lines";
 import {
   buildTruckWeekInsOuts,
   loadLedgerCandidates,
@@ -84,6 +85,7 @@ type TruckSheetInput = {
   truckName: string;
   googleSheetUrl: string | null;
   truckClass?: TruckClass;
+  feeRates?: FeeRatePair;
 };
 
 function spreadsheetIdFromUrl(url: string): string | null {
@@ -369,6 +371,7 @@ export async function loadTruckWeekInsOuts(
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
           truckClass: truck.truckClass,
+          feeRates: truck.feeRates,
           weekStart,
           weekEnd,
           loadLedger: null,
@@ -383,6 +386,7 @@ export async function loadTruckWeekInsOuts(
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
           truckClass: truck.truckClass,
+          feeRates: truck.feeRates,
           weekStart,
           weekEnd,
           loadLedger: null,
@@ -396,6 +400,7 @@ export async function loadTruckWeekInsOuts(
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
           truckClass: truck.truckClass,
+          feeRates: truck.feeRates,
           weekStart,
           weekEnd,
           loadLedger: null,
@@ -421,6 +426,7 @@ export async function loadTruckWeekInsOuts(
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
           truckClass: truck.truckClass,
+          feeRates: truck.feeRates,
           weekStart,
           weekEnd,
           loadLedger: tabs.loadLedger,
@@ -437,6 +443,7 @@ export async function loadTruckWeekInsOuts(
           unitNumber: truck.unitNumber,
           truckName: truck.truckName,
           truckClass: truck.truckClass,
+          feeRates: truck.feeRates,
           weekStart,
           weekEnd,
           loadLedger: null,

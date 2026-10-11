@@ -1,5 +1,13 @@
+import {
+  managementFeeSplit,
+  seededFeeRates,
+  splitSheetManagementFee,
+  type FeeRatePair,
+  type FeeSplit,
+} from "@/lib/fees/two-lines";
+import { roundHalfUpDivide } from "@/lib/fee-engine/money";
 import { centsPerLoadedMile } from "@/lib/reports/format";
-import { inWeek, normalizeHeader } from "@/lib/sheets/cell";
+import { inWeek, normalizeHeader, sheetAmountToCents } from "@/lib/sheets/cell";
 import { parseLoadLedger, type LedgerLoadRow } from "@/lib/sheets/ledger";
 import { outsFromWeeklyExpenses } from "@/lib/sheets/weekly-expenses";
 
@@ -23,6 +31,8 @@ export type OwnerTruckWeek = {
   milesHundredths: number;
   milesFromAllocated: boolean;
   rpmCents: number | null;
+  /** Week Report F7, four decimals. Null when truck miles are zero. */
+  rpmLabel: string | null;
   /** Week Report MPG. Null when that cell is blank. */
   mpg: string | null;
   miscCents: number;
@@ -31,9 +41,11 @@ export type OwnerTruckWeek = {
   categories: OwnerCategory[];
   pending: OwnerPendingLoad[];
   loadIds: string[];
+  /** Legacy fee, Tolson lease fee, and their total. The total matches the sheet Management Fee cell when that cell is present. */
+  fees: FeeSplit;
 };
 
-export const TONU_RATE_NOTE = "TONU rate unconfirmed";
+export const TONU_RATE_NOTE = "TONU amount unconfirmed";
 
 /**
  * Owner-week figures from the Load Ledger, Weekly Expenses, and Week Report.
@@ -48,6 +60,9 @@ export function buildOwnerTruckWeek(input: {
   /** Used only when the Weekly Expenses tab has no header. */
   fallbackOutsCents?: number;
   fallbackCategories?: readonly OwnerCategory[];
+  /** Blank uses the truck seed. Trucks 1 to 10 are seeded. A new truck is Legacy 10 percent and Tolson 8 percent. */
+  unitNumber?: string;
+  feeRates?: FeeRatePair;
 }): OwnerTruckWeek {
   const parsed = input.ledger ? parseLoadLedger(input.ledger) : null;
   const counted: LedgerLoadRow[] = [];
@@ -58,7 +73,12 @@ export function buildOwnerTruckWeek(input: {
     const inThis = inWeek(row.deliveryDay, input.weekStart, input.weekEnd);
     const inNext = Boolean(row.deliveryDay) && row.deliveryDay > input.weekEnd && row.deliveryDay <= nextEnd;
     const inTransit = !row.deliveryDay && row.pickupDay != null && row.pickupDay <= input.weekEnd;
-    if (tonu && (inThis || inNext || inTransit)) {
+    if (tonu && inThis) {
+      counted.push(row);
+      pending.push({ loadId: row.loadId, reason: TONU_RATE_NOTE });
+      continue;
+    }
+    if (tonu && (inNext || inTransit)) {
       pending.push({ loadId: row.loadId, reason: TONU_RATE_NOTE });
       continue;
     }
@@ -95,22 +115,115 @@ export function buildOwnerTruckWeek(input: {
     expenseCents += miscCents;
   }
 
-  const milesFromAllocated = Boolean(parsed?.allocatedColumn);
-  const milesHundredths = milesFromAllocated ? allocatedMilesOnce(counted) : 0;
+  let milesFromAllocated = Boolean(parsed?.allocatedColumn);
+  let milesHundredths = milesFromAllocated ? allocatedMilesOnce(counted) : 0;
+  const report = readWeekReportMoney(input.weekReport);
+  if (report.grossCents != null) grossCents = report.grossCents;
+  if (report.milesHundredths != null) {
+    milesHundredths = report.milesHundredths;
+    milesFromAllocated = true;
+  }
+  if (report.miscCents != null) replaceCategory(categories, "Misc", report.miscCents);
+  if (report.driverCents != null) replaceCategory(categories, "Driver compensation", report.driverCents);
+  if (report.dispatchCents != null) replaceCategory(categories, "Dispatch fee", report.dispatchCents);
+  if (report.factoringCents != null) replaceCategory(categories, "Factoring fee", report.factoringCents);
+  if (report.managementCents != null) replaceCategory(categories, "Management fee", report.managementCents);
+  if (report.fuelCents != null) replaceCategory(categories, "Fuel", report.fuelCents);
+  if (report.tollCents != null) replaceCategory(categories, "Toll fees", report.tollCents);
+  miscCents = categories.find((row) => row.category === "Misc")?.cents ?? 0;
+  expenseCents = categories.reduce((sum, row) => sum + row.cents, 0);
+  const rates = input.feeRates ?? seededFeeRates(input.unitNumber ?? "");
+  const sheetManagement = categories.find((row) => row.category === "Management fee")?.cents;
+  const fees =
+    sheetManagement != null ? splitSheetManagementFee(sheetManagement, rates) : managementFeeSplit(grossCents, rates);
   return {
     loadCount,
     grossCents,
     milesHundredths,
     milesFromAllocated,
     rpmCents: milesFromAllocated ? centsPerLoadedMile(grossCents, milesHundredths) : null,
-    mpg: weekReportMpg(input.weekReport),
+    rpmLabel: milesFromAllocated ? rpmLabelFromReport(input.weekReport, grossCents, milesHundredths) : null,
+    mpg: report.mpg ?? weekReportMpg(input.weekReport),
     miscCents,
     expenseCents,
     netCents: grossCents - expenseCents,
     categories,
     pending,
     loadIds,
+    fees,
   };
+}
+
+function replaceCategory(categories: OwnerCategory[], name: string, cents: number): void {
+  const found = categories.find((row) => row.category === name);
+  if (found) found.cents = cents;
+  else if (cents !== 0) categories.push({ category: name, cents });
+}
+
+type WeekReportMoney = {
+  grossCents: number | null;
+  expenseCents: number | null;
+  milesHundredths: number | null;
+  driverCents: number | null;
+  dispatchCents: number | null;
+  factoringCents: number | null;
+  managementCents: number | null;
+  fuelCents: number | null;
+  tollCents: number | null;
+  miscCents: number | null;
+  mpg: string | null;
+};
+
+/** Week Report cells named in the operator checklist. A blank cell stays null. */
+export function readWeekReportMoney(grid: SheetGrid | null | undefined): WeekReportMoney {
+  const empty: WeekReportMoney = {
+    grossCents: null,
+    expenseCents: null,
+    milesHundredths: null,
+    driverCents: null,
+    dispatchCents: null,
+    factoringCents: null,
+    managementCents: null,
+    fuelCents: null,
+    tollCents: null,
+    miscCents: null,
+    mpg: weekReportMpg(grid),
+  };
+  if (!grid) return empty;
+  return {
+    grossCents: reportMoney(grid, ["total revenue"], 3, 2),
+    expenseCents: reportMoney(grid, ["total expenses", "total weekly expense"], 3, 5),
+    milesHundredths: reportMoney(grid, ["total miles"], 18, 2),
+    dispatchCents: reportMoney(grid, ["dispatch fee"], 21, 2),
+    factoringCents: reportMoney(grid, ["factoring fee"], 22, 2),
+    driverCents: reportMoney(grid, ["driver pay", "driver compensation"], 23, 2),
+    managementCents: reportMoney(grid, ["management fee"], 24, 2),
+    fuelCents: reportMoney(grid, ["fuel total cost", "fuel total"], 28, 2),
+    tollCents: reportMoney(grid, ["toll fees"], 29, 14),
+    miscCents: reportMoney(grid, ["misc expenses", "misc expenses (1-5)"], 25, 14),
+    mpg: empty.mpg,
+  };
+}
+
+function reportMoney(grid: SheetGrid, labels: readonly string[], rowIndex: number, colIndex: number): number | null {
+  const labeled = moneyByLabel(grid, labels);
+  if (labeled != null) return labeled;
+  return sheetAmountToCents(grid[rowIndex]?.[colIndex] ?? "");
+}
+
+function moneyByLabel(grid: SheetGrid, labels: readonly string[]): number | null {
+  const wanted = new Set(labels);
+  for (const row of grid) {
+    for (let index = 0; index < row.length; index += 1) {
+      const label = normalizeHeader(row[index] ?? "");
+      if (!wanted.has(label)) continue;
+      for (let next = index + 1; next < row.length; next += 1) {
+        const cents = sheetAmountToCents(row[next] ?? "");
+        if (cents != null) return cents;
+      }
+    }
+  }
+  return null;
 }
 
 /** Week Report MPG. A labeled MPG cell wins. Otherwise cell C31. */
@@ -154,6 +267,47 @@ function allocatedMilesOnce(rows: readonly LedgerLoadRow[]): number {
     total += primary?.allocatedMilesHundredths ?? Math.max(0, ...values);
   }
   return total;
+}
+
+/** Week Report F7 when that cell is filled. Otherwise revenue divided by truck miles, four decimals, half up. */
+function rpmLabelFromReport(grid: SheetGrid | null | undefined, grossCents: number, milesHundredths: number): string | null {
+  const shown = readShownRpm(grid);
+  if (shown) return shown;
+  return rpmFourDecimals(grossCents, milesHundredths);
+}
+
+function readShownRpm(grid: SheetGrid | null | undefined): string | null {
+  if (!grid) return null;
+  const labels = new Set(["avg rate / mile", "avg rate/mile", "rate per mile"]);
+  for (const row of grid) {
+    for (let index = 0; index < row.length; index += 1) {
+      if (!labels.has(normalizeHeader(row[index] ?? ""))) continue;
+      for (let next = index + 1; next < row.length; next += 1) {
+        const shown = fourDecimals(row[next] ?? "");
+        if (shown) return shown;
+      }
+    }
+  }
+  return fourDecimals(grid[6]?.[5] ?? "");
+}
+
+function rpmFourDecimals(grossCents: number, milesHundredths: number): string | null {
+  if (milesHundredths <= 0) return null;
+  const scaled = Number(roundHalfUpDivide(BigInt(grossCents) * BigInt(10000), BigInt(milesHundredths)));
+  const whole = Math.floor(scaled / 10000);
+  const frac = String(scaled % 10000).padStart(4, "0");
+  return `${whole}.${frac}`;
+}
+
+function fourDecimals(raw: string): string | null {
+  const cleaned = raw.replace(/[$,]/g, "").trim();
+  if (!/^\d+(\.\d+)?$/.test(cleaned)) return null;
+  const [whole = "0", frac = ""] = cleaned.split(".");
+  const digits = (frac + "00000").slice(0, 5);
+  let scaled = Number.parseInt(whole, 10) * 10000 + Number.parseInt(digits.slice(0, 4), 10);
+  if ((digits[4] ?? "0") >= "5") scaled += 1;
+  if (scaled <= 0) return null;
+  return `${Math.floor(scaled / 10000)}.${String(scaled % 10000).padStart(4, "0")}`;
 }
 
 function mpgLabel(raw: string): string | null {

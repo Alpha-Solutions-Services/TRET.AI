@@ -17,6 +17,10 @@ export type StatementTruck = {
   tolsonEffectiveFrom?: string | null;
   /** Basis points. Null means the 10 percent management fallback. */
   managementFeeBp?: number | null;
+  /** Legacy fee, basis points of gross. Null uses the truck seed. */
+  legacyFeeBp?: number | null;
+  /** Tolson lease fee, basis points of gross. Null uses the truck seed. */
+  tolsonLeaseFeeBp?: number | null;
   managementEffectiveFrom?: string | null;
   legacyRateBp?: number | null;
   legacyFixedCents?: number | null;

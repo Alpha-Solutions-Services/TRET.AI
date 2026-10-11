@@ -20,6 +20,9 @@ export type SnapshotRow = {
   truckClass: TruckClass | null;
   grossCents: number;
   feesCents: number;
+  legacyFeeCents: number;
+  tolsonLeaseFeeCents: number;
+  managementFeeCents: number;
   fuelCents: number;
   tollsCents: number;
   fixedCents: number;
@@ -59,6 +62,9 @@ export function buildSheetWeekSnapshot(rows: TruckWeekInsOuts[]): WeekSnapshot {
   for (const row of units) {
     fleet.grossCents += row.grossCents;
     fleet.feesCents += row.feesCents;
+    fleet.legacyFeeCents += row.legacyFeeCents;
+    fleet.tolsonLeaseFeeCents += row.tolsonLeaseFeeCents;
+    fleet.managementFeeCents += row.managementFeeCents;
     fleet.fuelCents += row.fuelCents;
     fleet.tollsCents += row.tollsCents;
     fleet.fixedCents += row.fixedCents;
@@ -95,6 +101,9 @@ function sheetSnapshotRow(row: TruckWeekInsOuts): SnapshotRow {
     truckClass: row.truckClass,
     grossCents: row.insCents,
     feesCents,
+    legacyFeeCents: row.legacyFeeCents ?? 0,
+    tolsonLeaseFeeCents: row.tolsonLeaseFeeCents ?? 0,
+    managementFeeCents: row.managementFeeCents ?? 0,
     fuelCents,
     tollsCents,
     fixedCents,
@@ -142,6 +151,9 @@ export function applyImportedFuelToll(
   for (const row of units) {
     fleet.grossCents += row.grossCents;
     fleet.feesCents += row.feesCents;
+    fleet.legacyFeeCents += row.legacyFeeCents;
+    fleet.tolsonLeaseFeeCents += row.tolsonLeaseFeeCents;
+    fleet.managementFeeCents += row.managementFeeCents;
     fleet.fuelCents += row.fuelCents;
     fleet.tollsCents += row.tollsCents;
     fleet.fixedCents += row.fixedCents;
@@ -158,6 +170,9 @@ export function buildWeekSnapshot(units: UnitStatement[]): WeekSnapshot {
   for (const row of rows) {
     fleet.grossCents += row.grossCents;
     fleet.feesCents += row.feesCents;
+    fleet.legacyFeeCents += row.legacyFeeCents;
+    fleet.tolsonLeaseFeeCents += row.tolsonLeaseFeeCents;
+    fleet.managementFeeCents += row.managementFeeCents;
     fleet.fuelCents += row.fuelCents;
     fleet.tollsCents += row.tollsCents;
     fleet.fixedCents += row.fixedCents;
@@ -185,6 +200,9 @@ function snapshotRow(unit: UnitStatement): SnapshotRow {
     truckClass: unit.truckClass,
     grossCents: unit.grossCents,
     feesCents,
+    legacyFeeCents: unit.legacyRetainedCents,
+    tolsonLeaseFeeCents: unit.tolsonPayableCents,
+    managementFeeCents: unit.truckClass === "third_party" ? unit.managementFeeCents : unit.legacyRetainedCents + unit.tolsonPayableCents,
     fuelCents: unit.fuelCents,
     tollsCents: unit.tollsCents,
     fixedCents: unit.fixedOwnerCents,
@@ -200,6 +218,9 @@ function emptyFleet(): SnapshotRow {
     truckClass: null,
     grossCents: 0,
     feesCents: 0,
+    legacyFeeCents: 0,
+    tolsonLeaseFeeCents: 0,
+    managementFeeCents: 0,
     fuelCents: 0,
     tollsCents: 0,
     fixedCents: 0,

@@ -1,4 +1,5 @@
 import { weekBoundsForDate, type TruckClass } from "@/lib/fee-engine";
+import type { FeeRatePair } from "@/lib/fees/two-lines";
 import { loadsInWeek } from "@/lib/loads/week-membership";
 import { buildOwnerTruckWeek, type OwnerPendingLoad } from "@/lib/reports/owner-week";
 import { mainTripMilesHundredths, tripMilesHundredths, tripRpmCents, truckMpg, type MetricLoad } from "@/lib/reports/trip-metrics";
@@ -69,6 +70,10 @@ export type TruckWeekInsOuts = {
   /** Diesel gallons already used for mpg. Thousandths. Omitted when the sheet was not read. */
   dieselGallonsMilli?: number;
   categories: ExpenseCategoryTotal[];
+  /** Sheet Management Fee cell, split into the two fee lines. */
+  legacyFeeCents?: number;
+  tolsonLeaseFeeCents?: number;
+  managementFeeCents?: number;
   /** True when Outs came from the Weekly Expenses tab. */
   outsFromWeekly: boolean;
   /** Easy-language cause when the sheet could not be read, a tab was missing, or a header did not parse. */
@@ -373,6 +378,7 @@ export function buildTruckWeekInsOuts(input: {
   weekReport?: SheetGrid | null;
   note: string | null;
   noteDetail?: string | null;
+  feeRates?: FeeRatePair;
 }): TruckWeekInsOuts {
   const noteDetail = input.noteDetail ?? null;
   const truckClass = input.truckClass ?? "legacy_owned";
@@ -437,6 +443,8 @@ export function buildTruckWeekInsOuts(input: {
     weekReport: input.weekReport ?? null,
     weekStart: input.weekStart,
     weekEnd: input.weekEnd,
+    unitNumber: input.unitNumber,
+    feeRates: input.feeRates,
     fallbackOutsCents: useWeekly ? 0 : (outs?.outsCents ?? 0),
     fallbackCategories: useWeekly ? [] : (outs?.categories ?? []),
   });
@@ -458,6 +466,9 @@ export function buildTruckWeekInsOuts(input: {
     mpg: owner.mpg ?? tripMiles.mpg,
     mpgFromSheet: owner.mpg != null,
     pending: owner.pending,
+    legacyFeeCents: owner.fees.legacyFeeCents,
+    tolsonLeaseFeeCents: owner.fees.tolsonLeaseFeeCents,
+    managementFeeCents: owner.fees.managementFeeCents,
     categories: owner.categories,
     outsFromWeekly: useWeekly,
     ledgerLoads: ins?.loads ?? [],

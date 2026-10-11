@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.0.34 — 2026-10-11
+
+- Every truck has two fee lines, both a percent of that truck's weekly gross: Legacy fee and Tolson lease fee. The management fee total is those two lines. Trucks 1 and 2 are Legacy 0 percent and Tolson lease 10 percent. Truck 3 is Legacy 10 percent and Tolson lease 0 percent. Trucks 4 to 8, and a new truck, are Legacy 10 percent and Tolson lease 8 percent (18 percent total).
+- The dollar amount is the sheet Management Fee cell (Load Ledger W, Weekly Expenses H, Week Report C25). The two lines split that cell and add up to it. Dispatch, factoring, and driver pay are the matching sheet cells (C22, C23, C24). They are not a second fee calculated beside the sheet.
+- Truck Edit, Fee settings, and the CSV template use `legacy_fee_pct`, `tolson_lease_fee_pct`, and `effective_from`. Statements, the Dashboard snapshot, and Ins and Outs show both lines and the total. Management income is the sum of Legacy fees. Tolson payable is the sum of Tolson lease fees and is not subtracted from that income. The owner PDF shows the management fee total, with the two lines under it.
+- Week 41 fixture matches the operator checklist. Truck 3 misc is $974.88 (tarp $309.94 restored, 7-Eleven $15.02 removed), expenses $7,036.60, net $1,513.40. Truck 6 revenue is $2,000 and miles are 698.80. Truck 8 revenue is $9,900, including the $2,000 TONU placeholder. The week has 20 loads. A TONU in the delivery week is counted and flagged TONU amount unconfirmed. Week 42 loads stay out. Trucks 4 to 8 use the 18 percent management total.
+- Migration `supabase/migrations/20261011230000_v34_fee_lines.sql` adds the three columns and seeds units 1 to 10 effective 2026-10-05. It is not applied from this branch. TONU rate-con reading and receipt photo reading are still not wired. The unconfirmed Truck 4 misc of $290.46 is not included.
+
 ## v0.0.0.33 — 2026-10-11
 
 - Dashboard, Ins and Outs, Statements, and the owner PDF use one calculation from the truck sheet: Load Ledger, Weekly Expenses, and Week Report. Import totals do not replace a sheet fuel, toll, or mile cell that already has a value.

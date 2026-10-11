@@ -3,7 +3,7 @@ import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { viewFromStored, type FeeSettingView } from "@/lib/fees/fee-settings";
 
 const COLUMNS =
-  "id, unit_number, truck_class, fee_model, management_fee_bp, management_fee_effective_from, tolson_payable_type, tolson_payable_value, tolson_payable_effective_from, legacy_retained_type, legacy_retained_value, legacy_retained_effective_from";
+  "id, unit_number, truck_class, legacy_fee_bp, tolson_lease_fee_bp, fee_lines_effective_from";
 
 export async function loadFeeSettings(): Promise<{ ready: boolean; rows: FeeSettingView[]; error: string | null }> {
   const supabase = await createClient();
@@ -11,7 +11,7 @@ export async function loadFeeSettings(): Promise<{ ready: boolean; rows: FeeSett
   if (full.error) {
     const missing =
       isMissingSchemaError(full.error) ||
-      /fee_model|management_fee_bp|legacy_retained|tolson_payable_effective/i.test(full.error.message);
+      /legacy_fee_bp|tolson_lease_fee_bp|fee_lines_effective_from/i.test(full.error.message);
     if (!missing) return { ready: false, rows: [], error: full.error.message };
     const base = await supabase
       .from("trucks")

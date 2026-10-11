@@ -31,22 +31,23 @@ export async function saveFeeSettingsAction(rows: FeeSaveRow[]): Promise<{ ok: t
     const updated = await auth.supabase
       .from("trucks")
       .update({
-        truck_class: value.truckClass,
-        fee_model: value.feeModel,
-        management_fee_bp: value.managementFeeBp,
-        management_fee_effective_from: value.managementEffectiveFrom,
-        tolson_payable_type: value.tolsonPayableType,
-        tolson_payable_value: value.tolsonPayableValue,
-        tolson_payable_effective_from: value.tolsonEffectiveFrom,
-        legacy_retained_type: value.legacyRetainedType,
-        legacy_retained_value: value.legacyRetainedValue,
-        legacy_retained_effective_from: value.legacyEffectiveFrom,
+        legacy_fee_bp: value.legacyFeeBp,
+        tolson_lease_fee_bp: value.tolsonLeaseFeeBp,
+        fee_lines_effective_from: value.effectiveFrom,
+        management_fee_bp: value.legacyFeeBp + value.tolsonLeaseFeeBp,
+        management_fee_effective_from: value.effectiveFrom,
+        tolson_payable_type: "percent_of_gross",
+        tolson_payable_value: value.tolsonLeaseFeeBp,
+        tolson_payable_effective_from: value.effectiveFrom,
+        legacy_retained_type: "percent_of_gross",
+        legacy_retained_value: value.legacyFeeBp,
+        legacy_retained_effective_from: value.effectiveFrom,
       })
       .eq("id", row.truckId);
     if (updated.error) {
       const missing =
         isMissingSchemaError(updated.error) ||
-        /fee_model|management_fee_bp|legacy_retained|tolson_payable_effective/i.test(updated.error.message);
+        /legacy_fee_bp|tolson_lease_fee_bp|fee_lines_effective_from|fee_model|management_fee_bp/i.test(updated.error.message);
       if (missing) return { ok: false, error: FEE_SETTINGS_MIGRATION };
       return { ok: false, error: updated.error.message };
     }

@@ -8,12 +8,12 @@ function money(cents: number): string {
 
 export function managementSummaryCopy(summary: ManagementCardSummary): string {
   const month = expenseMonthLabel(summary.expenseMonth);
-  return `Income is the management fee on this week's sheet loads. Expenses are Legacy company costs dated in ${month}. The card shows the whole month, because those costs are entered by month. Tolson payable is the sum of each truck setting for this week and counts as an expense. A blank setting is $0. Net is income minus portal expenses minus Tolson payable. Legacy kept is income minus Tolson payable.`;
+  return `Legacy income is the sum of Legacy fees for this week. Tolson payable is the sum of Tolson lease fees. Both are a percent of each truck's weekly gross. Expenses are Legacy company costs dated in ${month}. Net is Legacy income minus those portal expenses.`;
 }
 
 export function ManagementCards({ summary }: { summary: ManagementCardSummary }) {
   const cards = [
-    { label: "Income", cents: summary.incomeCents },
+    { label: "Legacy income", cents: summary.incomeCents },
     { label: "Expenses", cents: summary.expenseCents },
     { label: "Net", cents: summary.netCents },
     { label: "Tolson payable", cents: summary.tolsonPayableCents },
@@ -35,9 +35,9 @@ export function ManagementCards({ summary }: { summary: ManagementCardSummary })
 
 export function ManagementSummaryTable({ summary }: { summary: ManagementCardSummary }) {
   const lines: Array<{ label: string; cents: number; strong?: boolean }> = [
-    { label: "Income (management fees this week)", cents: summary.incomeCents, strong: true },
+    { label: "Legacy income", cents: summary.incomeCents, strong: true },
     { label: "Expenses (portal costs this month)", cents: summary.expenseCents, strong: true },
-    { label: "Tolson payable", cents: summary.tolsonPayableCents, strong: true },
+    { label: "Tolson lease fee", cents: summary.tolsonPayableCents, strong: true },
     { label: "Net", cents: summary.netCents, strong: true },
     { label: "Legacy kept", cents: summary.legacyKeptCents },
   ];

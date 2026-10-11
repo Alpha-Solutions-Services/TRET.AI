@@ -124,7 +124,7 @@ describe("weekly statement PDF", () => {
     expect(owned?.vin).toBe("Not stored");
     expect(owned?.dispatcher).toBe("Not stored");
     expect(owned?.net.value).toBe("$1,346.86");
-    expect(owned?.earnings.map((row) => row.label)).toContain("Tolson payable (10%)");
+    expect(owned?.earnings.map((row) => row.label)).toContain("Tolson lease fee (10%)");
     expect(owned?.earnings.map((row) => row.label)).not.toContain("Legacy retained (5%)");
     expect(managed?.earnings.map((row) => row.label).join(" ")).not.toMatch(/Tolson|Legacy retained/);
     expect(managed?.net.value).toBe("$3,056.30");
