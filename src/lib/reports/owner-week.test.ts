@@ -215,7 +215,36 @@ describe("week 41 owner sheet", () => {
     expect(SHEET_FEE_DIFFERS).toBe("sheet fee differs");
   });
 
-  it("leaves MPG blank when this week's load shares a trip that delivers next week", () => {
+  it("keeps Week Report MPG when this week's load shares a trip that delivers next week", () => {
+    const cells = header();
+    const delivered = Array.from({ length: 43 }, () => "");
+    delivered[0] = "10/06/2026";
+    delivered[1] = "TBH--1199";
+    delivered[2] = "$1,000.00";
+    delivered[4] = "M-1202";
+    delivered[5] = "Yes";
+    delivered[15] = "400.00";
+    const later = Array.from({ length: 43 }, () => "");
+    later[0] = "10/12/2026";
+    later[1] = "TBH--1200";
+    later[2] = "$1,000.00";
+    later[4] = "M-1202";
+    const report = weekReport(TRUCKS[6]!);
+    report[30]![2] = "7.42";
+    const week = buildOwnerTruckWeek({
+      ledger: [cells, delivered, later],
+      weekly: weeklyFor(TRUCKS[6]!),
+      weekReport: report,
+      unitNumber: "7",
+      ...WEEK,
+    });
+    expect(week.tripOpen).toBe(true);
+    expect(week.mpg).toBe("7.42");
+    expect(week.loadIds).toEqual(["TBH--1199"]);
+    expect(week.loads.find((row) => row.loadId === "TBH--1200")?.status).toBe("Pending");
+  });
+
+  it("leaves MPG blank when the Week Report cell is 0", () => {
     const cells = header();
     const delivered = Array.from({ length: 43 }, () => "");
     delivered[0] = "10/06/2026";
@@ -230,7 +259,7 @@ describe("week 41 owner sheet", () => {
     later[2] = "$1,000.00";
     later[4] = "M-1191";
     const report = weekReport(TRUCKS[5]!);
-    report[30]![2] = "3.50";
+    report[30]![2] = "0";
     const week = buildOwnerTruckWeek({
       ledger: [cells, delivered, later],
       weekly: weeklyFor(TRUCKS[5]!),
@@ -240,8 +269,30 @@ describe("week 41 owner sheet", () => {
     });
     expect(week.tripOpen).toBe(true);
     expect(week.mpg).toBeNull();
-    expect(week.loadIds).toEqual(["TBH--1180"]);
-    expect(week.loads.find((row) => row.loadId === "TBH--1181")?.status).toBe("Pending");
+  });
+
+  it("reads a TONU above the header, including Load Ledger row 11", () => {
+    const cells = header();
+    const grid: string[][] = Array.from({ length: 10 }, () => Array.from({ length: 4 }, () => ""));
+    grid[10] = ["TBH--1201", "TONU", "Oct 9, 2026", "$2,000.00"];
+    grid.push(cells);
+    const delivered = Array.from({ length: 43 }, () => "");
+    delivered[0] = "10/06/2026";
+    delivered[1] = "TBH--1178";
+    delivered[2] = "$1,000.00";
+    delivered[5] = "Yes";
+    delivered[15] = "100.00";
+    grid.push(delivered);
+    const week = buildOwnerTruckWeek({
+      ledger: grid,
+      weekly: weeklyFor(TRUCKS[7]!),
+      weekReport: weekReport(TRUCKS[7]!),
+      unitNumber: "8",
+      ...WEEK,
+    });
+    expect(week.pending).toEqual([{ loadId: "TBH--1201", reason: TONU_RATE_NOTE }]);
+    expect(week.loadIds).not.toContain("TBH--1201");
+    expect(week.loads.find((row) => row.loadId === "TBH--1201")?.status).toBe("TONU");
   });
 
   it("counts allocated miles once per trip", () => {

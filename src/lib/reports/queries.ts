@@ -1,5 +1,4 @@
 import { canonicalLoadId } from "@/lib/loads/load-id";
-import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
 import { loadActiveTruckInsOuts } from "@/lib/sheets/load-week";
 import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
@@ -7,6 +6,7 @@ import { assertMonday } from "@/lib/fee-engine";
 import { milesValueToHundredths } from "@/lib/statements/miles";
 import { loadStatements } from "@/lib/statements/queries";
 import { weeklyStatementPdf } from "./build";
+import { alignPdfDetails } from "./pdf-details";
 import { ReportBlockedError } from "./prepare";
 import type { ReportFuelRow, ReportLoadRow, ReportTollRow, ReportTruckHeader, WeeklyReportSource } from "./types";
 
@@ -32,38 +32,22 @@ export async function buildWeeklyStatementPdf(weekStart: string, unitNumber?: st
   });
 
   const sheets = await loadActiveTruckInsOuts(page.weekStart, page.weekEnd).catch(() => ({ rows: [], error: null }));
-  const known = new Set(details.loads.map((load) => canonicalLoadId(load.loadNumber ?? "")));
-  for (const row of sheets.rows) {
-    const unit = page.units.find((item) => unitNumberFromRaw(item.unitNumber) === unitNumberFromRaw(row.unitNumber));
-    if (!unit) continue;
-    for (const load of row.ledgerLoads) {
-      if (load.rateCents == null) continue;
-      const number = canonicalLoadId(load.loadId);
-      if (!number || known.has(number)) continue;
-      known.add(number);
-      details.loads.push({
-        truckId: unit.truckId,
-        loadNumber: number,
-        deliveryDate: load.deliveryDay,
-        brokerName: null,
-        origin: null,
-        destination: null,
-        loadedMilesHundredths: load.loadedMilesHundredths ?? 0,
-        deadheadMilesHundredths: load.deadheadMilesHundredths ?? 0,
-        rateCents: load.rateCents,
-      });
-    }
-  }
-  const source = {
-    weekStart: page.weekStart,
-    weekEnd: page.weekEnd,
-    locked: page.locked,
-    closedAt: page.closedAt,
-    units: page.units,
-    fleet: page.fleet,
-    ...details,
-  };
-  return weeklyStatementPdf(unitNumber ? onlyUnit(source, unitNumber) : source);
+  const aligned = alignPdfDetails(
+    {
+      weekStart: page.weekStart,
+      weekEnd: page.weekEnd,
+      locked: page.locked,
+      closedAt: page.closedAt,
+      units: page.units,
+      fleet: page.fleet,
+      ...details,
+    },
+    sheets.rows,
+  );
+  const warningsOnly = page.blockers.length === 0 && page.warnings.length > 0;
+  return weeklyStatementPdf(unitNumber ? onlyUnit(aligned, unitNumber) : aligned, {
+    allowDetailMismatch: warningsOnly,
+  });
 }
 
 function onlyUnit(source: WeeklyReportSource, unitNumber: string): WeeklyReportSource {

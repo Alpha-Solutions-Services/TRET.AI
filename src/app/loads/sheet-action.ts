@@ -6,17 +6,18 @@ import { loadActiveTruckInsOuts } from "@/lib/sheets/load-week";
 import type { LoadListRow } from "@/components/loads/loads-client";
 
 /** Delivery-week loads from the truck sheets, so the Loads page count matches the dashboard. */
-export async function sheetLoadsForWeek(weekStart: string): Promise<LoadListRow[]> {
+export async function sheetLoadsForWeek(weekStart: string): Promise<{ rows: LoadListRow[]; error: string | null }> {
   try {
     assertMonday(weekStart, "Week start");
   } catch {
-    return [];
+    return { rows: [], error: "Week start must be a Monday." };
   }
   const bounds = weekBoundsForDate(weekStart);
   const loaded = await loadActiveTruckInsOuts(bounds.start, bounds.end).catch(() => ({
     rows: [],
     error: "Sheets were not read.",
   }));
+  if (loaded.error) return { rows: [], error: loaded.error };
   const rows: LoadListRow[] = [];
   for (const truck of loaded.rows) {
     const weekLoads = truck.weekLoads ?? [];
@@ -43,7 +44,7 @@ export async function sheetLoadsForWeek(weekStart: string): Promise<LoadListRow[
       });
     }
   }
-  return rows;
+  return { rows, error: null };
 }
 
 function milesNumber(hundredths: number | null): number | null {

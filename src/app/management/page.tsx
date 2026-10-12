@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { ManagementClient } from "@/components/dashboard/management-client";
+import { PageLoadError } from "@/components/page-load-error";
+import { PageRecovery } from "@/components/page-recovery";
 import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { buildLegacyEarnings } from "@/lib/legacy/fees";
@@ -9,14 +11,37 @@ import { loadOverview } from "@/lib/overview/queries";
 
 export const dynamic = "force-dynamic";
 
+async function loadManagement(week: string | undefined) {
+  try {
+    return { ok: true as const, data: await loadOverview(week) };
+  } catch (err) {
+    try {
+      return { ok: true as const, data: await loadOverview(week) };
+    } catch (again) {
+      const message = again instanceof Error ? again.message : err instanceof Error ? err.message : "This page did not load.";
+      return { ok: false as const, message };
+    }
+  }
+}
+
 async function ManagementContent({ week }: { week: string | undefined }) {
-  const data = await loadOverview(week);
+  const loaded = await loadManagement(week);
+  if (!loaded.ok) return <PageLoadError message={loaded.message} />;
+  const data = loaded.data;
   const month = data.weekStart.slice(0, 7);
-  const [fees, cards, expenses] = await Promise.all([
-    loadLegacyFeeState(data.weekStart),
-    loadManagementCardSummary(data.weekStart, data.insOuts, data.operatingExpenses),
-    listOperatingExpenses(month),
-  ]);
+  let fees: Awaited<ReturnType<typeof loadLegacyFeeState>>;
+  let cards: Awaited<ReturnType<typeof loadManagementCardSummary>>;
+  let expenses: Awaited<ReturnType<typeof listOperatingExpenses>>;
+  try {
+    [fees, cards, expenses] = await Promise.all([
+      loadLegacyFeeState(data.weekStart),
+      loadManagementCardSummary(data.weekStart, data.insOuts, data.operatingExpenses),
+      listOperatingExpenses(month),
+    ]);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "This page did not load.";
+    return <PageLoadError message={message} />;
+  }
   const earnings = buildLegacyEarnings({
     trucks: data.insOuts,
     orgFeeBp: fees.orgFeeBp,
@@ -24,15 +49,17 @@ async function ManagementContent({ week }: { week: string | undefined }) {
     loadFees: fees.loadFees,
   });
   return (
-    <ManagementClient
-      data={data}
-      earnings={earnings}
-      feeReady={fees.ready}
-      feeError={fees.error}
-      orgFeeBp={fees.orgFeeBp}
-      cards={cards}
-      expenses={expenses}
-    />
+    <PageRecovery>
+      <ManagementClient
+        data={data}
+        earnings={earnings}
+        feeReady={fees.ready}
+        feeError={fees.error}
+        orgFeeBp={fees.orgFeeBp}
+        cards={cards}
+        expenses={expenses}
+      />
+    </PageRecovery>
   );
 }
 

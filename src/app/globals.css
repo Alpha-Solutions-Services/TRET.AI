@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  --app-footer-height: 4.75rem;
   --radius-card: 1.15rem;
   --radius-control: 0.8rem;
   --ease-spring: cubic-bezier(0.16, 1.08, 0.32, 1);

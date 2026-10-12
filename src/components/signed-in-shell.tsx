@@ -43,7 +43,9 @@ export async function SignedInShell({
         <aside className="w-52 shrink-0">
           <AppNav />
         </aside>
-        <main className="min-w-0 flex-1 pb-16">{children}</main>
+        <main className="min-w-0 flex-1" style={{ paddingBottom: "var(--app-footer-height, 4.75rem)" }}>
+          {children}
+        </main>
       </div>
       <AppFooter version={readAppVersion()} health={sheetsAccountHealth()} />
     </div>

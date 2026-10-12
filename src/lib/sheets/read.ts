@@ -47,6 +47,7 @@ type CachedTabs = {
 };
 
 const sheetCache = new Map<string, CachedTabs>();
+const sheetInflight = new Map<string, Promise<TabGrids>>();
 
 function freshCache(spreadsheetId: string): TabGrids | null {
   const hit = sheetCache.get(spreadsheetId);
@@ -62,8 +63,21 @@ function staleCache(spreadsheetId: string, note: string): TabGrids | null {
   return { ...hit.tabs, note: hit.tabs.note ? `${prefix} ${hit.tabs.note}` : `${prefix} ${note}` };
 }
 
+function gridHasCells(grid: SheetGrid | null | undefined): boolean {
+  return Boolean(grid?.some((row) => row.some((cell) => cell.trim() !== "")));
+}
+
+function tabsHaveCells(tabs: TabGrids): boolean {
+  return (
+    gridHasCells(tabs.loadLedger) ||
+    gridHasCells(tabs.weeklyExpenses) ||
+    gridHasCells(tabs.mgmtExpenses) ||
+    gridHasCells(tabs.weekReport)
+  );
+}
+
 function storeCache(spreadsheetId: string, tabs: TabGrids): void {
-  if (!tabs.loadLedger && !tabs.weeklyExpenses && !tabs.mgmtExpenses && !tabs.weekReport) return;
+  if (!tabsHaveCells(tabs)) return;
   sheetCache.set(spreadsheetId, { at: Date.now(), tabs });
 }
 
@@ -188,8 +202,35 @@ async function readWithToken(
   fetchImpl: FetchLike,
   useCache = true,
 ): Promise<TabGrids> {
-  const cached = useCache ? freshCache(spreadsheetId) : null;
-  if (cached) return cached;
+  if (useCache) {
+    const cached = freshCache(spreadsheetId);
+    if (cached && tabsHaveCells(cached)) return cached;
+    const pending = sheetInflight.get(spreadsheetId);
+    if (pending) return pending;
+  }
+  const run = (async () => {
+    const first = await readTabsOnce(spreadsheetId, unitNumber, accessToken, apiKey, fetchImpl);
+    const tabs = tabsHaveCells(first)
+      ? first
+      : await readTabsOnce(spreadsheetId, unitNumber, accessToken, apiKey, fetchImpl);
+    if (useCache) storeCache(spreadsheetId, tabs);
+    return tabs;
+  })();
+  if (!useCache) return run;
+  const shared = run.finally(() => {
+    sheetInflight.delete(spreadsheetId);
+  });
+  sheetInflight.set(spreadsheetId, shared);
+  return shared;
+}
+
+async function readTabsOnce(
+  spreadsheetId: string,
+  unitNumber: string,
+  accessToken: string,
+  apiKey: string,
+  fetchImpl: FetchLike,
+): Promise<TabGrids> {
   const metaUrl = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`);
   metaUrl.searchParams.set("fields", "sheets.properties.title");
   if (!accessToken && apiKey) metaUrl.searchParams.set("key", apiKey);
@@ -264,7 +305,6 @@ async function readWithToken(
     weekReport: weekTitle ? (grids.get(weekTitle) ?? null) : null,
     note: notes.length ? notes.join(" ") : null,
   };
-  if (useCache) storeCache(spreadsheetId, tabs);
   return tabs;
 }
 

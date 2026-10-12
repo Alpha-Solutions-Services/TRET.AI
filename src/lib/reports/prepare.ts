@@ -35,7 +35,10 @@ export class ReportBlockedError extends Error {
 const FLEET_NOTE =
   "Managed trucks deduct one management fee. The Legacy fee and the Tolson lease fee on those trucks are the two parts of that fee and are not deducted again. Fuel is the discounted amount.";
 
-export function prepareWeeklyReport(source: WeeklyReportSource): PreparedReport {
+export function prepareWeeklyReport(
+  source: WeeklyReportSource,
+  opts?: { allowDetailMismatch?: boolean },
+): PreparedReport {
   if (source.units.length === 0) {
     throw new ReportBlockedError("Nothing to show for this week.");
   }
@@ -53,7 +56,7 @@ export function prepareWeeklyReport(source: WeeklyReportSource): PreparedReport 
   }
   assertFleet(source.units, source.fleet);
 
-  const units = source.units.map((unit) => prepareUnit(unit, source));
+  const units = source.units.map((unit) => prepareUnit(unit, source, opts?.allowDetailMismatch === true));
   return {
     weekStart: source.weekStart,
     weekEnd: source.weekEnd,
@@ -162,20 +165,20 @@ function assertFleet(units: UnitStatement[], fleet: FleetStatement): void {
   }
 }
 
-function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedUnit {
+function prepareUnit(unit: UnitStatement, source: WeeklyReportSource, allowDetailMismatch: boolean): PreparedUnit {
   const header = source.trucks.find((truck) => truck.id === unit.truckId);
   const loads = source.loads.filter((load) => load.truckId === unit.truckId);
   const otherTruckLoads = source.loads.filter((load) => !source.units.some((row) => row.truckId === load.truckId));
-  if (otherTruckLoads.length > 0) {
+  if (otherTruckLoads.length > 0 && !allowDetailMismatch) {
     throw new ReportBlockedError("A load in this week is not on the statement.");
   }
-  assertLoads(unit, loads);
+  assertLoads(unit, loads, allowDetailMismatch);
 
   const fuel = source.fuel.filter((row) => row.unitNumber === unit.unitNumber);
   const tolls = source.tolls.filter((row) => row.unitNumber === unit.unitNumber);
-  assertFuel(unit, fuel);
-  assertTolls(unit, tolls);
-  assertNoStrayFuelOrTolls(source);
+  assertFuel(unit, fuel, allowDetailMismatch);
+  assertTolls(unit, tolls, allowDetailMismatch);
+  if (!allowDetailMismatch) assertNoStrayFuelOrTolls(source);
 
   const dieselMilli = sumGallons(fuel, "diesel");
   const defMilli = sumGallons(fuel, "def");
@@ -241,7 +244,7 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
   };
 }
 
-function assertLoads(unit: UnitStatement, loads: ReportLoadRow[]): void {
+function assertLoads(unit: UnitStatement, loads: ReportLoadRow[], allowDetailMismatch = false): void {
   let gross = 0;
   let loaded = 0;
   let deadhead = 0;
@@ -253,6 +256,7 @@ function assertLoads(unit: UnitStatement, loads: ReportLoadRow[]): void {
     loaded += load.loadedMilesHundredths;
     deadhead += load.deadheadMilesHundredths;
   }
+  if (allowDetailMismatch) return;
   if (loads.length !== unit.loadCount || gross !== unit.grossCents) {
     throw new ReportBlockedError(`Unit ${unit.unitNumber} load gross does not match the statement.`);
   }
@@ -261,7 +265,7 @@ function assertLoads(unit: UnitStatement, loads: ReportLoadRow[]): void {
   }
 }
 
-function assertFuel(unit: UnitStatement, rows: ReportFuelRow[]): void {
+function assertFuel(unit: UnitStatement, rows: ReportFuelRow[], allowDetailMismatch = false): void {
   let amount = 0;
   for (const row of rows) {
     assertNonNegativeInteger(row.amountCents, "fuel amount");
@@ -271,17 +275,19 @@ function assertFuel(unit: UnitStatement, rows: ReportFuelRow[]): void {
     }
     amount += row.amountCents;
   }
+  if (allowDetailMismatch) return;
   if (amount !== unit.fuelCents) {
     throw new ReportBlockedError(`Unit ${unit.unitNumber} discounted fuel does not match the statement.`);
   }
 }
 
-function assertTolls(unit: UnitStatement, rows: Array<{ amountCents: number }>): void {
+function assertTolls(unit: UnitStatement, rows: Array<{ amountCents: number }>, allowDetailMismatch = false): void {
   let amount = 0;
   for (const row of rows) {
     assertNonNegativeInteger(row.amountCents, "toll amount");
     amount += row.amountCents;
   }
+  if (allowDetailMismatch) return;
   if (amount !== unit.tollsCents) {
     throw new ReportBlockedError(`Unit ${unit.unitNumber} tolls do not match the statement.`);
   }

@@ -1,7 +1,9 @@
 import { Suspense } from "react";
+import { sheetLoadsForWeek } from "@/app/loads/sheet-action";
 import { LoadsClient } from "@/components/loads/loads-client";
 import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
+import { lastFinishedWeekStart } from "@/lib/reports/delivery";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -36,8 +38,12 @@ async function LoadsContent() {
     .order("unit_number");
 
   const truckUnits = [...new Set((trucks ?? []).map((t) => t.unit_number))];
+  const weekStart = lastFinishedWeekStart();
+  const sheet = await sheetLoadsForWeek(weekStart);
 
-  return <LoadsClient loads={loads ?? []} truckUnits={truckUnits} />;
+  return (
+    <LoadsClient loads={loads ?? []} truckUnits={truckUnits} initialWeek={weekStart} initialSheet={sheet} />
+  );
 }
 
 export default function LoadsPage() {

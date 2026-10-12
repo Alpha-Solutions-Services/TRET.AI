@@ -44,14 +44,30 @@ export function sheetDay(raw: string): string | null {
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
   if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
   const us = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(text);
-  if (us) {
-    const month = Number(us[1]);
-    const day = Number(us[2]);
-    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-    return `${us[3]}-${us[1]!.padStart(2, "0")}-${us[2]!.padStart(2, "0")}`;
+  if (us) return usDate(Number(us[1]), Number(us[2]), us[3]!);
+  const dashed = /^(\d{1,2})-(\d{1,2})-(\d{4})$/.exec(text);
+  if (dashed) return usDate(Number(dashed[1]), Number(dashed[2]), dashed[3]!);
+  const shortYear = /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/.exec(text);
+  if (shortYear) return usDate(Number(shortYear[1]), Number(shortYear[2]), String(2000 + Number(shortYear[3])));
+  const named = /^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/.exec(text);
+  if (named) {
+    const month = monthIndex(named[1]!);
+    if (month) return usDate(month, Number(named[2]), named[3]!);
   }
   if (/^\d+(\.\d+)?$/.test(text)) return sheetsSerialToIso(Number(text));
   return null;
+}
+
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+function monthIndex(name: string): number | null {
+  const index = MONTHS.findIndex((month) => name.toLowerCase().startsWith(month));
+  return index < 0 ? null : index + 1;
+}
+
+function usDate(month: number, day: number, year: string): string | null {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 /** Google Sheets serial: day 0 is 1899-12-30. The time fraction is ignored. */

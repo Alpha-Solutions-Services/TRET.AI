@@ -52,9 +52,9 @@ export type OwnerTruckWeek = {
   rpmCents: number | null;
   /** Week Report F7, four decimals. Null when truck miles are zero. */
   rpmLabel: string | null;
-  /** Week Report MPG. Null when that cell is blank or the trip is still open. */
+  /** Week Report MPG. Null only when that cell is blank or 0. */
   mpg: string | null;
-  /** True when a load on this truck delivers next week, so MPG stays blank. */
+  /** True when a counted load shares a trip with a row that delivers later. */
   tripOpen: boolean;
   miscCents: number;
   expenseCents: number;
@@ -178,7 +178,7 @@ export function buildOwnerTruckWeek(input: {
   const deadheadHundredths = report.deadheadHundredths ?? deadheadFromLedger ?? 0;
   const deadheadKnown = report.deadheadHundredths != null || deadheadFromLedger != null;
   const tripOpen = countedTripStillOpen(counted, loads);
-  const mpg = tripOpen ? null : (report.mpg ?? weekReportMpg(input.weekReport));
+  const mpg = report.mpg ?? weekReportMpg(input.weekReport);
   return {
     loadCount,
     grossCents,
@@ -202,7 +202,7 @@ export function buildOwnerTruckWeek(input: {
   };
 }
 
-/** A counted load whose trip also has a row that delivers later. MPG stays blank until that trip delivers. */
+/** A counted load whose trip also has a row that delivers later. The Week Report MPG is still used when that cell is filled. */
 function countedTripStillOpen(counted: readonly LedgerLoadRow[], loads: readonly OwnerWeekLoad[]): boolean {
   const openKeys = new Set<string>();
   for (const row of loads) {

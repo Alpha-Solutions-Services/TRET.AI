@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import { PageLoadError } from "@/components/page-load-error";
+import { PageRecovery } from "@/components/page-recovery";
 import { StatementsClient } from "@/components/statements/statements-client";
 import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,8 +20,26 @@ function PageSkeleton() {
 
 async function StatementsContent({ week }: { week: string | undefined }) {
   const weekStart = resolveWeekStart(week);
-  const data = await loadStatements(weekStart);
-  return <StatementsClient key={data.weekStart} data={data} />;
+  try {
+    const data = await loadStatements(weekStart);
+    return (
+      <PageRecovery>
+        <StatementsClient key={data.weekStart} data={data} />
+      </PageRecovery>
+    );
+  } catch {
+    try {
+      const data = await loadStatements(weekStart);
+      return (
+        <PageRecovery>
+          <StatementsClient key={data.weekStart} data={data} />
+        </PageRecovery>
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "This page did not load.";
+      return <PageLoadError message={message} />;
+    }
+  }
 }
 
 export default async function StatementsPage({
