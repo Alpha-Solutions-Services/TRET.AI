@@ -37,6 +37,12 @@ function dollars(cents: number): string {
   return `$${centsToDollarString(cents)}`;
 }
 
+export function loadRateLabel(row: Pick<LoadListRow, "rate_cents" | "status">): string {
+  const amount = dollars(row.rate_cents);
+  if (row.status === "TONU") return `${amount} unconfirmed`;
+  return amount;
+}
+
 function place(city: string | null, state: string | null): string {
   if (!city && !state) return "Blank";
   return [city, state].filter(Boolean).join(", ");
@@ -262,7 +268,7 @@ export function LoadsClient({
                     <td className="whitespace-nowrap px-3 py-2 num">
                       {row.deadhead_miles == null ? "Blank" : formatMilesHundredths(hundredths(row.deadhead_miles))}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2 num">{dollars(row.rate_cents)}</td>
+                    <td className="whitespace-nowrap px-3 py-2 num">{loadRateLabel(row)}</td>
                     <td className="whitespace-nowrap px-3 py-2">{row.status ?? "Delivered"}</td>
                   </tr>
                 </Fragment>

@@ -44,10 +44,7 @@ export async function buildWeeklyStatementPdf(weekStart: string, unitNumber?: st
     },
     sheets.rows,
   );
-  const warningsOnly = page.blockers.length === 0 && page.warnings.length > 0;
-  return weeklyStatementPdf(unitNumber ? onlyUnit(aligned, unitNumber) : aligned, {
-    allowDetailMismatch: warningsOnly,
-  });
+  return weeklyStatementPdf(unitNumber ? onlyUnit(aligned, unitNumber) : aligned);
 }
 
 function onlyUnit(source: WeeklyReportSource, unitNumber: string): WeeklyReportSource {

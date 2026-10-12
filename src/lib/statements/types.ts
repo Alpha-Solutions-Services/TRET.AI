@@ -169,7 +169,7 @@ export type WeekStatementInput = {
   fixedVersions: StatementFixedVersion[];
   fixedOverrides: StatementFixedOverride[];
   importRuns: CloseImportRun[];
-  /** Misc receipts for the week, in cents. Folded into owner fixed expenses. */
+  /** Misc receipts for the week, in cents. Charged as their own owner line. */
   misc?: readonly { unitNumber: string; amountCents: number }[];
   /** From import_settings. Not hardcoded in the close check. */
   rowCountDropPct: {

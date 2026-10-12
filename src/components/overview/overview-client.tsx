@@ -149,7 +149,7 @@ export function OverviewClient({
         <KpiCard
           label="Loads"
           value={formatGroupedInt(fleetLoads)}
-          detail={data.versionLabel}
+          detail="Delivered this week"
           color={categoryColor(3)}
           target={fleetLoads}
           format={formatGroupedInt}

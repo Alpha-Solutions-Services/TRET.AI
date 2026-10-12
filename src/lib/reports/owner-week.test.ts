@@ -271,6 +271,33 @@ describe("week 41 owner sheet", () => {
     expect(week.mpg).toBeNull();
   });
 
+  it("shows the TONU sheet placeholder when the rate column is smaller", () => {
+    const cells = header();
+    const delivered = Array.from({ length: 43 }, () => "");
+    delivered[0] = "10/06/2026";
+    delivered[1] = "TBH--1178";
+    delivered[2] = "$7,900.00";
+    delivered[5] = "Yes";
+    delivered[15] = "100.00";
+    const tonu = Array.from({ length: 43 }, () => "");
+    tonu[0] = "10/09/2026";
+    tonu[1] = "TBH--1201";
+    tonu[2] = "$426.33";
+    tonu[3] = "TONU";
+    tonu[8] = "$2,000.00";
+    const week = buildOwnerTruckWeek({
+      ledger: [cells, delivered, tonu],
+      weekly: weeklyFor(TRUCKS[7]!),
+      weekReport: weekReport(TRUCKS[7]!),
+      unitNumber: "8",
+      ...WEEK,
+    });
+    expect(week.loads.find((row) => row.loadId === "TBH--1201")?.rateCents).toBe(200_000);
+    expect(week.loads.find((row) => row.loadId === "TBH--1201")?.status).toBe("TONU");
+    expect(week.grossCents).toBe(790_000);
+    expect(week.loadIds).not.toContain("TBH--1201");
+  });
+
   it("reads a TONU above the header, including Load Ledger row 11", () => {
     const cells = header();
     const grid: string[][] = Array.from({ length: 10 }, () => Array.from({ length: 4 }, () => ""));

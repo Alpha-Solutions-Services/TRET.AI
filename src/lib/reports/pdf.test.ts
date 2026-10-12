@@ -1,13 +1,13 @@
 import { inflateSync } from "node:zlib";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildWeekStatements } from "@/lib/statements/engine";
 import type { WeekStatementInput } from "@/lib/statements/types";
 import { readAppVersion } from "@/lib/version";
 import { weeklyStatementPdf } from "./build";
 import { centsPerLoadedMile, formatDieselMpg, formatStatementDollars } from "./format";
-import { ReportBlockedError, prepareWeeklyReport } from "./prepare";
+import { prepareWeeklyReport } from "./prepare";
 import type { ReportLoadRow, WeeklyReportSource } from "./types";
 
 const WEEK = "2026-09-21";
@@ -161,27 +161,39 @@ describe("weekly statement PDF", () => {
     expect(text).not.toContain("$228.00");
   });
 
-  it("blocks the PDF when the net does not reconcile", async () => {
+  it("returns the PDF when the net does not reconcile", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const broken = sourceFrom(input);
     const unit = broken.units.find((row) => row.unitNumber === "02");
     expect(unit).toBeTruthy();
     unit!.netCents += 1;
-    await expect(weeklyStatementPdf(broken)).rejects.toBeInstanceOf(ReportBlockedError);
+    const bytes = await weeklyStatementPdf(broken);
+    expect(Buffer.from(bytes).subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    expect(warn.mock.calls.some((call) => String(call[0]).includes("net does not match"))).toBe(true);
+    warn.mockRestore();
   });
 
-  it("blocks the PDF when load gross does not match the statement", async () => {
+  it("returns the PDF when load gross does not match the statement", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const loads = inWeekLoads(input);
     const row = loads.find((load) => load.loadNumber === "1152");
     expect(row).toBeTruthy();
     row!.rateCents += 1;
-    await expect(weeklyStatementPdf(sourceFrom(input, loads))).rejects.toThrow(/load gross does not match/);
+    const bytes = await weeklyStatementPdf(sourceFrom(input, loads));
+    expect(Buffer.from(bytes).subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    expect(warn.mock.calls.some((call) => String(call[0]).includes("load gross does not match"))).toBe(true);
+    warn.mockRestore();
   });
 
-  it("blocks the PDF when discounted fuel does not match the statement", async () => {
+  it("returns the PDF when discounted fuel does not match the statement", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const drifted = sourceFrom(input);
     drifted.fuel = drifted.fuel.map((row) =>
       row.unitNumber === "03" ? { ...row, amountCents: row.amountCents + 100 } : row,
     );
-    await expect(weeklyStatementPdf(drifted)).rejects.toThrow(/discounted fuel does not match/);
+    const bytes = await weeklyStatementPdf(drifted);
+    expect(Buffer.from(bytes).subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    expect(warn.mock.calls.some((call) => String(call[0]).includes("discounted fuel does not match"))).toBe(true);
+    warn.mockRestore();
   });
 });

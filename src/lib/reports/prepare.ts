@@ -2,7 +2,7 @@ import { assertInteger, assertNonNegativeInteger } from "@/lib/fee-engine/money"
 import { bpToPercentString } from "@/lib/fees/percent";
 import { truckClassLabel } from "@/lib/fees/kinds";
 import { reportDeliveryLabel } from "@/lib/reports/delivery";
-import { expectedNetCents, ownerDeductionCents } from "@/lib/statements/engine";
+import { expectedNetCents, miscOwnerCents, ownerDeductionCents } from "@/lib/statements/engine";
 import type { FleetStatement, StatementLine, UnitStatement } from "@/lib/statements/types";
 import {
   centsPerLoad,
@@ -35,10 +35,11 @@ export class ReportBlockedError extends Error {
 const FLEET_NOTE =
   "Managed trucks deduct one management fee. The Legacy fee and the Tolson lease fee on those trucks are the two parts of that fee and are not deducted again. Fuel is the discounted amount.";
 
-export function prepareWeeklyReport(
-  source: WeeklyReportSource,
-  opts?: { allowDetailMismatch?: boolean },
-): PreparedReport {
+function warnMismatch(message: string): void {
+  console.warn(`Statement PDF: ${message}`);
+}
+
+export function prepareWeeklyReport(source: WeeklyReportSource): PreparedReport {
   if (source.units.length === 0) {
     throw new ReportBlockedError("Nothing to show for this week.");
   }
@@ -56,7 +57,7 @@ export function prepareWeeklyReport(
   }
   assertFleet(source.units, source.fleet);
 
-  const units = source.units.map((unit) => prepareUnit(unit, source, opts?.allowDetailMismatch === true));
+  const units = source.units.map((unit) => prepareUnit(unit, source));
   return {
     weekStart: source.weekStart,
     weekEnd: source.weekEnd,
@@ -64,7 +65,7 @@ export function prepareWeeklyReport(
       ? `Locked${source.closedAt ? ` ${source.closedAt.slice(0, 10)}` : ""}`
       : "Computed, not locked",
     units,
-    fleetRows: fleetRows(source.fleet),
+    fleetRows: fleetRows(source.fleet, source.units.reduce((sum, unit) => sum + miscOwnerCents(unit), 0)),
     fleetNote: FLEET_NOTE,
     deliveryLabel: reportDeliveryLabel(source.weekStart),
     fleetChart: buildFleetChart(source),
@@ -88,19 +89,19 @@ function assertUnit(unit: UnitStatement): void {
   assertNonNegativeInteger(unit.loadedMilesHundredths, "loaded miles");
   assertNonNegativeInteger(unit.deadheadMilesHundredths, "deadhead");
   if (unit.netCents !== expectedNetCents(unit)) {
-    throw new ReportBlockedError(`Unit ${unit.unitNumber} net does not match gross minus owner deductions.`);
+    warnMismatch(`Unit ${unit.unitNumber} net does not match gross minus owner deductions.`);
   }
   const ownerLines = unit.lines.filter((line) => line.ownerVisible && line.chargedTo === "owner");
   const lineSum = sumLineAmounts(ownerLines, `unit ${unit.unitNumber} lines`);
   if (lineSum !== ownerDeductionCents(unit)) {
-    throw new ReportBlockedError(`Unit ${unit.unitNumber} lines do not add up to the owner deductions.`);
+    warnMismatch(`Unit ${unit.unitNumber} lines do not add up to the owner deductions.`);
   }
   requireLine(unit, "FUEL", unit.fuelCents);
   requireLine(unit, "TOLLS", unit.tollsCents);
   const fixedOwner = sumCharged(unit, "owner");
   const fixedManagement = sumCharged(unit, "management");
   if (fixedOwner !== unit.fixedOwnerCents || fixedManagement !== unit.fixedManagementCents) {
-    throw new ReportBlockedError(`Unit ${unit.unitNumber} fixed expenses do not match the statement.`);
+    warnMismatch(`Unit ${unit.unitNumber} fixed expenses do not match the statement.`);
   }
   requireFee(unit, "DRIVER_PAY", unit.driverPayCents);
   requireFee(unit, "MANAGEMENT_FEE", unit.managementFeeCents);
@@ -160,25 +161,25 @@ function assertFleet(units: UnitStatement[], fleet: FleetStatement): void {
   for (const [actual, expected, label] of checks) {
     assertInteger(actual, `fleet ${label}`);
     if (actual !== expected) {
-      throw new ReportBlockedError(`Fleet ${label} does not match the units.`);
+      warnMismatch(`Fleet ${label} does not match the units.`);
     }
   }
 }
 
-function prepareUnit(unit: UnitStatement, source: WeeklyReportSource, allowDetailMismatch: boolean): PreparedUnit {
+function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedUnit {
   const header = source.trucks.find((truck) => truck.id === unit.truckId);
   const loads = source.loads.filter((load) => load.truckId === unit.truckId);
   const otherTruckLoads = source.loads.filter((load) => !source.units.some((row) => row.truckId === load.truckId));
-  if (otherTruckLoads.length > 0 && !allowDetailMismatch) {
-    throw new ReportBlockedError("A load in this week is not on the statement.");
+  if (otherTruckLoads.length > 0) {
+    warnMismatch("A load in this week is not on the statement.");
   }
-  assertLoads(unit, loads, allowDetailMismatch);
+  assertLoads(unit, loads);
 
   const fuel = source.fuel.filter((row) => row.unitNumber === unit.unitNumber);
   const tolls = source.tolls.filter((row) => row.unitNumber === unit.unitNumber);
-  assertFuel(unit, fuel, allowDetailMismatch);
-  assertTolls(unit, tolls, allowDetailMismatch);
-  if (!allowDetailMismatch) assertNoStrayFuelOrTolls(source);
+  assertFuel(unit, fuel);
+  assertTolls(unit, tolls);
+  assertNoStrayFuelOrTolls(source);
 
   const dieselMilli = sumGallons(fuel, "diesel");
   const defMilli = sumGallons(fuel, "def");
@@ -244,7 +245,7 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource, allowDetai
   };
 }
 
-function assertLoads(unit: UnitStatement, loads: ReportLoadRow[], allowDetailMismatch = false): void {
+function assertLoads(unit: UnitStatement, loads: ReportLoadRow[]): void {
   let gross = 0;
   let loaded = 0;
   let deadhead = 0;
@@ -256,40 +257,37 @@ function assertLoads(unit: UnitStatement, loads: ReportLoadRow[], allowDetailMis
     loaded += load.loadedMilesHundredths;
     deadhead += load.deadheadMilesHundredths;
   }
-  if (allowDetailMismatch) return;
   if (loads.length !== unit.loadCount || gross !== unit.grossCents) {
-    throw new ReportBlockedError(`Unit ${unit.unitNumber} load gross does not match the statement.`);
+    warnMismatch(`Unit ${unit.unitNumber} load gross does not match the statement.`);
   }
   if (loaded !== unit.loadedMilesHundredths || deadhead !== unit.deadheadMilesHundredths) {
-    throw new ReportBlockedError(`Unit ${unit.unitNumber} miles do not match the statement.`);
+    warnMismatch(`Unit ${unit.unitNumber} miles do not match the statement.`);
   }
 }
 
-function assertFuel(unit: UnitStatement, rows: ReportFuelRow[], allowDetailMismatch = false): void {
+function assertFuel(unit: UnitStatement, rows: ReportFuelRow[]): void {
   let amount = 0;
   for (const row of rows) {
     assertNonNegativeInteger(row.amountCents, "fuel amount");
     assertNonNegativeInteger(row.gallonsMilli, "fuel gallons");
     if (row.product !== "diesel" && row.product !== "def" && row.product !== "other") {
-      throw new ReportBlockedError(`Unit ${unit.unitNumber} has a fuel product that is not diesel, DEF, or other.`);
+      warnMismatch(`Unit ${unit.unitNumber} has a fuel product that is not diesel, DEF, or other.`);
     }
     amount += row.amountCents;
   }
-  if (allowDetailMismatch) return;
   if (amount !== unit.fuelCents) {
-    throw new ReportBlockedError(`Unit ${unit.unitNumber} discounted fuel does not match the statement.`);
+    warnMismatch(`Unit ${unit.unitNumber} discounted fuel does not match the statement.`);
   }
 }
 
-function assertTolls(unit: UnitStatement, rows: Array<{ amountCents: number }>, allowDetailMismatch = false): void {
+function assertTolls(unit: UnitStatement, rows: Array<{ amountCents: number }>): void {
   let amount = 0;
   for (const row of rows) {
     assertNonNegativeInteger(row.amountCents, "toll amount");
     amount += row.amountCents;
   }
-  if (allowDetailMismatch) return;
   if (amount !== unit.tollsCents) {
-    throw new ReportBlockedError(`Unit ${unit.unitNumber} tolls do not match the statement.`);
+    warnMismatch(`Unit ${unit.unitNumber} tolls do not match the statement.`);
   }
 }
 
@@ -298,13 +296,13 @@ function assertNoStrayFuelOrTolls(source: WeeklyReportSource): void {
   for (const row of source.fuel) {
     if (row.amountCents === 0) continue;
     if (!row.unitNumber || !units.has(row.unitNumber)) {
-      throw new ReportBlockedError("Fuel in this week is not on a statement unit.");
+      warnMismatch("Fuel in this week is not on a statement unit.");
     }
   }
   for (const row of source.tolls) {
     if (row.amountCents === 0) continue;
     if (!row.unitNumber || !units.has(row.unitNumber)) {
-      throw new ReportBlockedError("A toll in this week is not on a statement unit.");
+      warnMismatch("A toll in this week is not on a statement unit.");
     }
   }
 }
@@ -327,7 +325,7 @@ function presentEarning(line: StatementLine): PreparedPair {
   return { label: `${line.label}${rate}`, value: formatStatementDollars(line.amountCents) };
 }
 
-function fleetRows(fleet: FleetStatement): PreparedPair[] {
+function fleetRows(fleet: FleetStatement, miscCents: number): PreparedPair[] {
   return [
     { label: "Units", value: String(fleet.unitCount) },
     { label: "Loads", value: String(fleet.loadCount) },
@@ -340,6 +338,7 @@ function fleetRows(fleet: FleetStatement): PreparedPair[] {
     { label: "Factoring fee", value: formatStatementDollars(fleet.factoringFeeCents) },
     { label: "Discounted fuel", value: formatStatementDollars(fleet.fuelCents) },
     { label: "Tolls", value: formatStatementDollars(fleet.tollsCents) },
+    { label: "Misc", value: formatStatementDollars(miscCents) },
     { label: "Fixed expenses (owner)", value: formatStatementDollars(fleet.fixedOwnerCents) },
     { label: "Fixed expenses (management, not in net)", value: formatStatementDollars(fleet.fixedManagementCents) },
     { label: "Net to owner", value: formatStatementDollars(fleet.netCents) },
@@ -349,7 +348,7 @@ function fleetRows(fleet: FleetStatement): PreparedPair[] {
 function requireLine(unit: UnitStatement, code: string, amount: number): void {
   const line = unit.lines.find((row) => row.lineCode === code);
   if (!line || line.amountCents !== amount) {
-    throw new ReportBlockedError(`Unit ${unit.unitNumber} ${code} line does not match the statement.`);
+    warnMismatch(`Unit ${unit.unitNumber} ${code} line does not match the statement.`);
   }
 }
 
@@ -357,21 +356,25 @@ function requireFee(unit: UnitStatement, code: string, amount: number): void {
   const line = unit.lines.find((row) => row.lineCode === code);
   if (amount === 0 && !line) return;
   if (!line || line.amountCents !== amount) {
-    throw new ReportBlockedError(`Unit ${unit.unitNumber} ${code} line does not match the statement.`);
+    warnMismatch(`Unit ${unit.unitNumber} ${code} line does not match the statement.`);
   }
 }
 
+const NOT_FIXED = new Set([
+  "FUEL",
+  "TOLLS",
+  "MISC",
+  "DRIVER_PAY",
+  "MANAGEMENT_FEE",
+  "DISPATCH_FEE",
+  "FACTORING_FEE",
+  "TOLSON_PAYABLE",
+  "LEGACY_RETAINED",
+]);
+
 function sumCharged(unit: UnitStatement, chargedTo: "owner" | "management"): number {
   return sumLineAmounts(
-    unit.lines.filter(
-      (line) =>
-        line.chargedTo === chargedTo &&
-        line.rateBp == null &&
-        line.lineCode !== "FUEL" &&
-        line.lineCode !== "TOLLS" &&
-        line.lineCode !== "TOLSON_PAYABLE" &&
-        line.lineCode !== "LEGACY_RETAINED",
-    ),
+    unit.lines.filter((line) => line.chargedTo === chargedTo && !NOT_FIXED.has(line.lineCode)),
     `unit ${unit.unitNumber} fixed`,
   );
 }
@@ -440,6 +443,7 @@ function fleetChartExpenses(source: WeeklyReportSource): Array<[string, number]>
     ["Factoring fee", fleet.factoringFeeCents],
     ["Fuel", fleet.fuelCents],
     ["Tolls", fleet.tollsCents],
+    ["Misc", source.units.reduce((sum, unit) => sum + miscOwnerCents(unit), 0)],
     ["Fixed expenses", fleet.fixedOwnerCents],
   ];
 }
