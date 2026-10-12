@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { weekLoadRows, type LoadListRow } from "@/components/loads/loads-client";
+import { loadRateLabel, weekLoadRows, type LoadListRow } from "@/components/loads/loads-client";
 
 function row(partial: Partial<LoadListRow> & Pick<LoadListRow, "id" | "load_id" | "delivery_date">): LoadListRow {
   return {
@@ -62,6 +62,23 @@ describe("loads week list", () => {
     });
     expect(shown.find((item) => item.load_id === "TBH--1191")?.status).toBe("Pending");
     expect(shown.find((item) => item.load_id === "TBH--1201")?.status).toBe("TONU");
+    const tonu = row({
+      id: "sheet:8:TBH--1201",
+      load_id: "TBH--1201",
+      delivery_date: "2026-10-09",
+      status: "TONU",
+      rate_cents: 200_000,
+    });
+    const storedRate = row({
+      id: "db-1201",
+      load_id: "TBH--1201",
+      delivery_date: "2026-10-09",
+      status: "Delivered",
+      rate_cents: 42_633,
+    });
+    const kept = weekLoadRows([tonu], [storedRate]);
+    expect(kept[0]?.rate_cents).toBe(200_000);
+    expect(loadRateLabel(kept[0]!)).toBe("$2000.00 unconfirmed");
     expect(shown.some((item) => item.load_id === "TBH--9999")).toBe(false);
     expect(shown.filter((item) => item.status === "Delivered")).toHaveLength(5);
   });

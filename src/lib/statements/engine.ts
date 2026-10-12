@@ -49,8 +49,18 @@ const FEE_SORT: Record<FeeRuleKind, number> = {
  * Owner net uses one half-up fee line on the week's gross.
  * Managed trucks deduct Management fee only. Tolson and Legacy retained are stored
  * and are not deducted again. Legacy-owned trucks deduct Tolson payable.
+ * Misc is its own owner line. Fixed is the remaining fixed amount.
  * Fixed expenses charged to management are stored and are not deducted.
  */
+export function miscOwnerCents(unit: Pick<UnitStatement, "lines">): number {
+  let total = 0;
+  for (const line of unit.lines) {
+    if (line.lineCode !== "MISC" || line.chargedTo !== "owner") continue;
+    total += line.amountCents;
+  }
+  return total;
+}
+
 export function ownerDeductionCents(unit: UnitStatement): number {
   const managementOrTolson = ownerPaysManagementTotal(unit.truckClass)
     ? unit.managementFeeCents
@@ -62,6 +72,7 @@ export function ownerDeductionCents(unit: UnitStatement): number {
     unit.factoringFeeCents +
     unit.fuelCents +
     unit.tollsCents +
+    miscOwnerCents(unit) +
     unit.fixedOwnerCents
   );
 }
@@ -342,7 +353,6 @@ function buildUnit(
     .filter((row) => row.unitNumber === truck.unitNumber)
     .reduce((sum, row) => sum + row.amountCents, 0);
   if (miscCents > 0) {
-    fixedOwnerCents += miscCents;
     fixedLines.push({
       lineCode: "MISC",
       label: "Misc",
@@ -356,7 +366,12 @@ function buildUnit(
   }
 
   const hasActivity =
-    loads.length > 0 || fuelCents > 0 || tollsCents > 0 || fixedOwnerCents > 0 || fixedManagementCents > 0;
+    loads.length > 0 ||
+    fuelCents > 0 ||
+    tollsCents > 0 ||
+    fixedOwnerCents > 0 ||
+    fixedManagementCents > 0 ||
+    miscCents > 0;
   if (!hasActivity) {
     if (!truck.active) return null;
     const lines: StatementLine[] = [expenseLine("FUEL", "Fuel", 0, 50), expenseLine("TOLLS", "Tolls", 0, 60)];

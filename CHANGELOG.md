@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.0.37 — 2026-10-12
+
+- Download PDF, Prepare report, and Prepare Monday reports use the statement already on the page. A mismatch with imported loads, fuel, tolls, or fixed lines is logged and the PDF is still returned. A blocker, a missing truck, or a failed read still returns an error, and that error shows in a toast.
+- Misc stays its own line on the statement and on the PDF. Fixed is the sheet fixed amount. Unit 3 week 41 fixed is $670.41 and misc is $974.88. Truck 4 fixed is $677.26 and misc is $2,275.02. Net still deducts both.
+- The Loads card on the Dashboard no longer prints the app version. The version stays in the footer.
+- TONU TBH--1201 on Loads shows the sheet placeholder, $2000.00, marked unconfirmed. A smaller rate cell does not replace it. The amount stays out of this week's gross and the delivered total.
+- Statements and Management show a loading skeleton in the main area as soon as the page opens.
+- No migration. TONU rate-con reading and receipt photo reading are still not wired. Trucks 1, 2, 9, and 10 still need sheet links.
+
 ## v0.0.0.36 — 2026-10-12
 
 - Download PDF, Prepare report, and Prepare Monday reports return the file when the week only has warnings. A real blocker still refuses the file. The PDF uses the sheet week loads, and fuel and toll lines that add up to the statement, so an import that does not match the sheet does not return HTTP 409.

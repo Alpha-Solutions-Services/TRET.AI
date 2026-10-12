@@ -1,25 +1,20 @@
 import { Suspense } from "react";
 import { PageLoadError } from "@/components/page-load-error";
 import { PageRecovery } from "@/components/page-recovery";
+import { PageSkeleton } from "@/components/page-skeleton";
 import { StatementsClient } from "@/components/statements/statements-client";
 import { SignedInShell } from "@/components/signed-in-shell";
-import { Skeleton } from "@/components/ui/skeleton";
 import { loadStatements, resolveWeekStart } from "@/lib/statements/queries";
 
 export const dynamic = "force-dynamic";
 
-function PageSkeleton() {
-  return (
-    <div className="space-y-4" aria-busy="true">
-      <Skeleton className="h-8 w-64" />
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="h-64 w-full" />
-    </div>
-  );
-}
-
-async function StatementsContent({ week }: { week: string | undefined }) {
-  const weekStart = resolveWeekStart(week);
+async function StatementsContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string }>;
+}) {
+  const params = await searchParams;
+  const weekStart = resolveWeekStart(params.week);
   try {
     const data = await loadStatements(weekStart);
     return (
@@ -47,11 +42,10 @@ export default async function StatementsPage({
 }: {
   searchParams: Promise<{ week?: string }>;
 }) {
-  const params = await searchParams;
   return (
     <SignedInShell title="Statements">
-      <Suspense fallback={<PageSkeleton />}>
-        <StatementsContent week={params.week} />
+      <Suspense fallback={<PageSkeleton label="Loading statements." />}>
+        <StatementsContent searchParams={searchParams} />
       </Suspense>
     </SignedInShell>
   );

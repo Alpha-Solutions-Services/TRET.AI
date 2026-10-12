@@ -17,7 +17,6 @@ import {
 import { buildManagementPnl, type PnlOperatingExpense } from "@/lib/overview/pnl";
 import { buildWeekSnapshot } from "@/lib/overview/snapshot";
 import { weeklyStatementPdf } from "@/lib/reports/build";
-import { ReportBlockedError } from "@/lib/reports/prepare";
 import type { ReportFuelRow, ReportLoadRow, WeeklyReportSource } from "@/lib/reports/types";
 import { buildWeekStatements, lockPayload } from "@/lib/statements/engine";
 import { milesValueToHundredths } from "@/lib/statements/miles";
@@ -415,7 +414,7 @@ describe("week 2026-09-21 fixture close", () => {
     expect(payload.fleet.netCents).toBe(440_316);
   });
 
-  it("renders the reference PDF and refuses the stand-in fuel file", async () => {
+  it("renders the reference PDF and still blocks close on the stand-in fuel file", async () => {
     expect(sampleA).toBeTruthy();
     const input = referenceInput(weekLoadsFromImport(sampleA!.mapped));
     const result = buildWeekStatements(input);
@@ -466,14 +465,13 @@ describe("week 2026-09-21 fixture close", () => {
       gallonsMilli: row.draft.gallonsMilli ?? 0,
       product: row.draft.product,
     }));
-    await expect(
-      weeklyStatementPdf({
-        ...reportSource(input, sampleA!.mapped),
-        units: blocked.units,
-        fleet: blocked.fleet,
-        fuel: strayFuel,
-      }),
-    ).rejects.toBeInstanceOf(ReportBlockedError);
+    const strayPdf = await weeklyStatementPdf({
+      ...reportSource(input, sampleA!.mapped),
+      units: blocked.units,
+      fleet: blocked.fleet,
+      fuel: strayFuel,
+    });
+    expect(Buffer.from(strayPdf).subarray(0, 5).toString("latin1")).toBe("%PDF-");
   });
 
   it("smokes the overview snapshot and the management P&L", () => {

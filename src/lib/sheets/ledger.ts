@@ -199,7 +199,7 @@ export function parseLoadLedger(
       loadId,
       deliveryDay,
       pickupDay: sheetDay(cell(row, pickupCol)),
-      rateCents: sheetAmountToCents(cell(row, rateCol)) ?? (tonu ? dollarCents(row) : null),
+      rateCents: tonu ? tonuRateCents(row, cell(row, rateCol)) : sheetAmountToCents(cell(row, rateCol)),
       loadedMilesHundredths: milesToHundredths(cell(row, loadedCol)),
       deadheadMilesHundredths: milesToHundredths(cell(row, deadheadCol)),
       broker: textOrNull(cell(row, brokerCol)),
@@ -288,13 +288,24 @@ function firstDay(row: readonly string[]): string {
   return "";
 }
 
-function dollarCents(row: readonly string[]): number | null {
+function dollarAmounts(row: readonly string[]): number[] {
+  const found: number[] = [];
   for (const value of row) {
     if (!(value ?? "").includes("$")) continue;
     const cents = sheetAmountToCents(value ?? "");
-    if (cents != null) return cents;
+    if (cents != null) found.push(cents);
   }
-  return null;
+  return found;
+}
+
+/** The sheet placeholder is the largest positive dollar amount on a TONU row. */
+function tonuRateCents(row: readonly string[], rateCell: string): number | null {
+  const amounts = dollarAmounts(row);
+  const named = sheetAmountToCents(rateCell);
+  if (named != null) amounts.push(named);
+  const positive = amounts.filter((cents) => cents > 0);
+  if (positive.length === 0) return named;
+  return Math.max(...positive);
 }
 
 /**
@@ -313,7 +324,7 @@ function recoverTonuRows(grid: SheetGrid, existing: readonly LedgerLoadRow[]): L
       loadId,
       deliveryDay: firstDay(row),
       pickupDay: null,
-      rateCents: dollarCents(row),
+      rateCents: tonuRateCents(row, ""),
       loadedMilesHundredths: null,
       deadheadMilesHundredths: null,
       broker: null,

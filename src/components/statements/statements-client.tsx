@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { acknowledgeRowCountAction, closeWeekAction } from "@/app/statements/actions";
@@ -14,7 +14,8 @@ import type { StatementsPageData } from "@/lib/statements/queries";
 import type { UnitStatement } from "@/lib/statements/types";
 import { ownerPaysManagementTotal, statementClassLabel } from "@/lib/fees/kinds";
 import { compareUnitNumbers } from "@/lib/fees/two-lines";
-import { PrepareReportButtons, ReportWeekLabel } from "@/components/reports/report-week";
+import { miscOwnerCents } from "@/lib/statements/engine";
+import { pdfRouteError, PrepareReportButtons, ReportWeekLabel } from "@/components/reports/report-week";
 
 function rateCell(line: { lineCode: string; rateBp: number | null }): string {
   if (line.rateBp == null) return "";
@@ -48,6 +49,11 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
   const units = [...data.units].sort((a, b) => compareUnitNumbers(a.unitNumber, b.unitNumber));
   const selected = units.find((unit) => unit.unitNumber === unitNumber) ?? units[0];
   const pdfAllowed = !data.error && units.length > 0 && (data.locked || data.blockers.length === 0);
+  const fleetMisc = units.reduce((sum, unit) => sum + miscOwnerCents(unit), 0);
+
+  useEffect(() => {
+    if (data.error) toast(data.error, "error");
+  }, [data.error, toast]);
 
   function openWeek(next: string) {
     router.push(`/statements?week=${next}`);
@@ -57,10 +63,9 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
     setDownloading(true);
     try {
       const response = await fetch(`/api/statements/pdf?week=${encodeURIComponent(data.weekStart)}`);
-      const contentType = response.headers.get("content-type") ?? "";
-      if (!response.ok || !contentType.includes("application/pdf")) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        toast(body?.error ?? "Could not build the PDF.", "error");
+      const failed = await pdfRouteError(response);
+      if (failed) {
+        toast(failed, "error");
         return;
       }
       const blob = await response.blob();
@@ -177,7 +182,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
 
       {data.liveDiffers ? (
         <p className="text-sm text-[var(--color-danger)]" role="status">
-          Live loads, fuel, or tolls no longer match this locked snapshot. Download is refused when those totals do not match it.
+          Live loads, fuel, or tolls no longer match this locked snapshot. The PDF still uses this snapshot.
         </p>
       ) : null}
 
@@ -238,6 +243,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                   <th className="px-3 py-3 font-medium">Factoring</th>
                   <th className="px-3 py-3 font-medium">Fuel</th>
                   <th className="px-3 py-3 font-medium">Tolls</th>
+                  <th className="px-3 py-3 font-medium">Misc</th>
                   <th className="px-3 py-3 font-medium">Fixed</th>
                   <th className="px-3 py-3 font-medium">Net</th>
                 </tr>
@@ -265,6 +271,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                     <td className="px-3 py-2">{money(unit.factoringFeeCents)}</td>
                     <td className="px-3 py-2">{money(unit.fuelCents)}</td>
                     <td className="px-3 py-2">{money(unit.tollsCents)}</td>
+                    <td className="px-3 py-2">{money(miscOwnerCents(unit))}</td>
                     <td className="px-3 py-2">{money(unit.fixedOwnerCents)}</td>
                     <td className="px-3 py-2">{money(unit.netCents)}</td>
                   </tr>
@@ -282,6 +289,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                   <td className="px-3 py-2">{money(data.fleet.factoringFeeCents)}</td>
                   <td className="px-3 py-2">{money(data.fleet.fuelCents)}</td>
                   <td className="px-3 py-2">{money(data.fleet.tollsCents)}</td>
+                  <td className="px-3 py-2">{money(fleetMisc)}</td>
                   <td className="px-3 py-2">{money(data.fleet.fixedOwnerCents)}</td>
                   <td className="px-3 py-2">{money(data.fleet.netCents)}</td>
                 </tr>

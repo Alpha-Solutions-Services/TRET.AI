@@ -359,7 +359,8 @@ describe("close blockers", () => {
     const withMisc = buildWeekStatements(inputFrom(fixture, { misc: [{ unitNumber: "03", amountCents: 4_200 }] }));
     const managed = withMisc.units.find((unit) => unit.unitNumber === "03");
     expect(managed?.lines.find((line) => line.lineCode === "MISC")?.amountCents).toBe(4_200);
-    expect(managed?.fixedOwnerCents).toBe(1_500 + 4_200);
+    expect(managed?.lines.find((line) => line.lineCode === "MISC")?.chargedTo).toBe("owner");
+    expect(managed?.fixedOwnerCents).toBe(1_500);
     expect(managed?.netCents).toBe(expectedNetCents(managed!));
   });
 

@@ -36,7 +36,7 @@ export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): Unit
     factoringFeeCents: factoring,
     fuelCents: fuel,
     tollsCents: tolls,
-    fixedOwnerCents: fixedCents + miscCents,
+    fixedOwnerCents: fixedCents,
     fixedManagementCents: 0,
     loadCount: row.loadCount,
     loadedMilesHundredths:

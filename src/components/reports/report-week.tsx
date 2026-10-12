@@ -9,6 +9,21 @@ export function ReportWeekLabel({ weekStart }: { weekStart: string }) {
   return <p className="text-sm font-medium">{reportDeliveryLabel(weekStart)}</p>;
 }
 
+/** Message from a statement PDF response that is not a PDF. Null when the file is ready. */
+export async function pdfRouteError(response: Response): Promise<string | null> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (response.ok && contentType.includes("application/pdf")) return null;
+  const text = await response.text().catch(() => "");
+  if (!text.trim()) return "Could not build the PDF.";
+  try {
+    const body = JSON.parse(text) as { error?: unknown };
+    if (typeof body.error === "string" && body.error.trim()) return body.error.trim();
+  } catch {
+    return text.trim().slice(0, 280);
+  }
+  return "Could not build the PDF.";
+}
+
 export function PrepareReportButtons({
   weekStart,
   unitNumber,
@@ -27,10 +42,9 @@ export function PrepareReportButtons({
       const params = new URLSearchParams({ week: weekStart });
       if (unit) params.set("unit", unit);
       const response = await fetch(`/api/statements/pdf?${params.toString()}`);
-      const contentType = response.headers.get("content-type") ?? "";
-      if (!response.ok || !contentType.includes("application/pdf")) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        toast(body?.error ?? "Could not build the PDF.", "error");
+      const failed = await pdfRouteError(response);
+      if (failed) {
+        toast(failed, "error");
         return;
       }
       const blob = await response.blob();

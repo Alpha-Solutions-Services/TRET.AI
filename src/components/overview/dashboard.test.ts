@@ -160,6 +160,8 @@ describe("dashboard display", () => {
     expect(html).toContain("Truck miles");
     expect(html).toContain("Deadhead");
     expect(html).toContain("Open issues");
+    expect(html).toContain("Delivered this week");
+    expect(html).not.toContain("TRET.AI v");
     expect(html).not.toContain("—");
   });
 });
@@ -208,7 +210,6 @@ function pageData(): OverviewPageData {
     sheetEnvMissing: [],
     mismatchCount: 0,
     mismatchError: null,
-    versionLabel: "TRET.AI v0.0.0.31",
     sheetHealth: "Sheet account is set.",
     operatingExpenses: [],
   };
