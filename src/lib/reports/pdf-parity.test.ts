@@ -27,8 +27,8 @@ type Spec = {
   fixedCents: number;
   netCents: number;
   gallonsMilli: number;
-  /** Week report cells before a pending TONU is kept. */
-  short?: { milesHundredths: number; deadheadHundredths: number; tollCents: number };
+  /** Sheet cells that still include a held TONU. Week 41 leaves those miles and that toll out. */
+  heldInSheet?: { milesHundredths: number; deadheadHundredths: number; tollCents: number };
   tripOpen?: boolean;
 };
 
@@ -44,20 +44,20 @@ const TRUCKS: Spec[] = [
     unit: "8",
     truckClass: "third_party",
     grossCents: 790_000,
-    milesHundredths: 266_000,
-    deadheadHundredths: 25_100,
+    milesHundredths: 265_000,
+    deadheadHundredths: 24_100,
     mpg: "7.04",
     driverCents: 211_325,
     dispatchCents: 0,
     factoringCents: 0,
     managementCents: 142_200,
     fuelCents: 158_816,
-    tollCents: 4_861,
+    tollCents: 3_661,
     miscCents: 33_420,
     fixedCents: 80_462,
-    netCents: 158_916,
+    netCents: 160_116,
     gallonsMilli: 254_757,
-    short: { milesHundredths: 265_000, deadheadHundredths: 24_100, tollCents: 3_661 },
+    heldInSheet: { milesHundredths: 266_000, deadheadHundredths: 25_100, tollCents: 4_861 },
   },
 ];
 
@@ -84,25 +84,25 @@ function header(): string[] {
 }
 
 function ledger(spec: Spec): string[][] {
-  const shown = spec.short ?? spec;
+  const sheet = spec.heldInSheet ?? spec;
   const row = Array.from({ length: 48 }, () => "");
   row[0] = "10/06/2026";
   row[1] = `TBH--11${spec.unit}0`;
   row[2] = dollars(spec.grossCents);
   row[4] = `M-${spec.unit}`;
-  row[15] = spec.milesHundredths === 0 ? "" : miles(shown.milesHundredths);
-  row[44] = shown.tollCents === 0 ? "" : dollars(shown.tollCents);
-  row[47] = shown.deadheadHundredths === 0 ? "" : miles(shown.deadheadHundredths);
+  row[15] = spec.milesHundredths === 0 ? "" : miles(spec.milesHundredths);
+  row[44] = spec.tollCents === 0 ? "" : dollars(spec.tollCents);
+  row[47] = spec.deadheadHundredths === 0 ? "" : miles(spec.deadheadHundredths);
   const rows = [header(), row];
-  if (spec.short) {
+  if (spec.heldInSheet) {
     const tonu = Array.from({ length: 48 }, () => "");
     tonu[0] = "10/09/2026";
     tonu[1] = "TBH--1201";
     tonu[2] = "$2,000.00";
     tonu[3] = "TONU";
-    tonu[15] = miles(spec.milesHundredths - spec.short.milesHundredths);
-    tonu[44] = dollars(spec.tollCents - spec.short.tollCents);
-    tonu[47] = miles(spec.deadheadHundredths - spec.short.deadheadHundredths);
+    tonu[15] = miles(sheet.milesHundredths - spec.milesHundredths);
+    tonu[44] = dollars(sheet.tollCents - spec.tollCents);
+    tonu[47] = miles(sheet.deadheadHundredths - spec.deadheadHundredths);
     rows.push(tonu);
   }
   if (spec.tripOpen) {
@@ -117,7 +117,7 @@ function ledger(spec: Spec): string[][] {
 }
 
 function weekly(spec: Spec): string[][] {
-  const toll = spec.short?.tollCents ?? spec.tollCents;
+  const toll = spec.heldInSheet?.tollCents ?? spec.tollCents;
   return [
     ["Week Start Date", "Driver Compensation", "Management Fee", "Dispatch Fee", "Factoring Fee", "Fuel", "Toll Fees", "Insurance", "Misc"],
     [
@@ -135,7 +135,7 @@ function weekly(spec: Spec): string[][] {
 }
 
 function weekReport(spec: Spec): string[][] {
-  const shown = spec.short ?? spec;
+  const shown = spec.heldInSheet ?? spec;
   const grid = Array.from({ length: 32 }, () => Array.from({ length: 15 }, () => ""));
   grid[3]![1] = "Total Revenue";
   grid[3]![2] = dollars(spec.grossCents);
@@ -314,11 +314,11 @@ describe("owner PDF and dashboard parity", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const report = prepareWeeklyReport(sourceFor(rows, TRUCKS, false));
     const fleet = statementsFor(rows, TRUCKS).fleet;
-    expect(fleet.tollsCents).toBe(72_721);
-    expect(fleet.netCents).toBe(-107_814);
-    expect(rows.reduce((sum, row) => sum + (row.deadheadMilesHundredths ?? 0), 0)).toBe(89_860);
-    expect(rows.reduce((sum, row) => sum + (row.truckMilesHundredths ?? 0), 0)).toBe(1_160_695);
-    expect(rows.reduce((sum, row) => sum + row.outsCents, 0)).toBe(3_392_814);
+    expect(fleet.tollsCents).toBe(71_521);
+    expect(fleet.netCents).toBe(-106_614);
+    expect(rows.reduce((sum, row) => sum + (row.deadheadMilesHundredths ?? 0), 0)).toBe(88_860);
+    expect(rows.reduce((sum, row) => sum + (row.truckMilesHundredths ?? 0), 0)).toBe(1_159_695);
+    expect(rows.reduce((sum, row) => sum + row.outsCents, 0)).toBe(3_391_614);
     expect(report.totalsHeading).toBe("Fleet totals");
     expect(report.fleetChart.summary).toContain("the fleet earned");
     const figures = fleetFromTrucks(
@@ -341,6 +341,33 @@ describe("owner PDF and dashboard parity", () => {
       ),
     );
     warn.mockRestore();
+  });
+
+  it("counts the held TONU deadhead and toll in week 42, on the dashboard and the statement", () => {
+    const spec = TRUCKS.find((item) => item.unit === "8")!;
+    const week = { weekStart: "2026-10-12", weekEnd: "2026-10-18" };
+    const row = buildTruckWeekInsOuts({
+      unitNumber: spec.unit,
+      truckName: "Truck 8",
+      truckClass: spec.truckClass,
+      ...week,
+      loadLedger: ledger(spec),
+      mgmtExpenses: null,
+      weeklyExpenses: [["Week Start Date", "Driver Compensation", "Toll Fees"], ["10/12/2026", "$0.00", "$0.00"]],
+      weekReport: null,
+      fuelLog: null,
+      note: null,
+    });
+    const statement = statementsFor([row], [spec]).units[0]!;
+    expect(row.insCents).toBe(0);
+    expect(statement.grossCents).toBe(0);
+    expect(row.deadheadMilesHundredths).toBe(1_000);
+    expect(statement.deadheadMilesHundredths).toBe(1_000);
+    expect(row.truckMilesHundredths).toBe(1_000);
+    expect(tollCents(row)).toBe(1_200);
+    expect(statement.tollsCents).toBe(1_200);
+    expect(row.netCents).toBe(-1_200);
+    expect(statement.netCents).toBe(-1_200);
   });
 
   it("uses truck miles over diesel gallons for fleet MPG", () => {
