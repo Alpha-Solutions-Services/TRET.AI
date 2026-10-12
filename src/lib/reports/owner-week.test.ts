@@ -373,6 +373,129 @@ describe("week 41 owner sheet", () => {
       ),
     ).toEqual({ dieselMilli: 100_000, defMilli: 4_250 });
   });
+
+  it("leaves a held TONU deadhead and toll out of week 41 and counts them in week 42", () => {
+    const cells = Array.from({ length: 48 }, () => "");
+    cells[0] = "Delivery Date";
+    cells[1] = "Load ID";
+    cells[2] = "Rate";
+    cells[3] = "Status";
+    cells[15] = "Allocated Miles";
+    cells[44] = "Toll Expense";
+    cells[47] = "Alloc Deadhead";
+    const delivered = Array.from({ length: 48 }, () => "");
+    delivered[0] = "10/06/2026";
+    delivered[1] = "TBH--1178";
+    delivered[2] = "$7,900.00";
+    delivered[5] = "Yes";
+    delivered[15] = "2650.00";
+    delivered[44] = "$36.61";
+    delivered[47] = "241.00";
+    const tonu = Array.from({ length: 48 }, () => "");
+    tonu[0] = "10/09/2026";
+    tonu[1] = "TBH--1201";
+    tonu[2] = "$2,000.00";
+    tonu[3] = "TONU";
+    tonu[15] = "10.00";
+    tonu[44] = "$12.00";
+    tonu[47] = "10.00";
+    const report = weekReport(TRUCKS[7]!);
+    report[3]![2] = "$7,900.00";
+    report[17]![2] = "241.00";
+    report[18]![2] = "2650.00";
+    report[29]![14] = "$36.61";
+    const weekly = weeklyFor(TRUCKS[7]!);
+    weekly[1]![6] = "$36.61";
+    const week = buildOwnerTruckWeek({
+      ledger: [cells, delivered, tonu],
+      weekly,
+      weekReport: report,
+      unitNumber: "8",
+      ...WEEK,
+    });
+    expect(week.loadIds).not.toContain("TBH--1201");
+    expect(week.grossCents).toBe(790_000);
+    expect(week.deadheadHundredths).toBe(24_100);
+    expect(week.milesHundredths).toBe(265_000);
+    expect(week.categories.find((row) => row.category === "Toll fees")?.cents).toBe(3_661);
+    expect(week.expenseCents).toBe(TRUCKS[7]!.expenseCents - TRUCKS[7]!.tollCents + 3_661);
+    expect(week.netCents).toBe(790_000 - week.expenseCents);
+    const week42 = buildOwnerTruckWeek({
+      ledger: [cells, delivered, tonu],
+      weekly,
+      weekReport: null,
+      unitNumber: "8",
+      weekStart: "2026-10-12",
+      weekEnd: "2026-10-18",
+    });
+    expect(week42.loadIds).not.toContain("TBH--1201");
+    expect(week42.grossCents).toBe(0);
+    expect(week42.pending).toEqual([{ loadId: "TBH--1201", reason: TONU_RATE_NOTE }]);
+    expect(week42.deadheadHundredths).toBe(1_000);
+    expect(week42.milesHundredths).toBe(1_000);
+    expect(week42.categories.find((row) => row.category === "Toll fees")?.cents).toBe(1_200);
+    expect(week42.netCents).toBe(-1_200);
+  });
+
+  it("does not count the TONU miles twice when the count week already includes them", () => {
+    const cells = Array.from({ length: 48 }, () => "");
+    cells[0] = "Delivery Date";
+    cells[1] = "Load ID";
+    cells[2] = "Rate";
+    cells[3] = "Status";
+    cells[15] = "Allocated Miles";
+    cells[44] = "Toll Expense";
+    cells[47] = "Alloc Deadhead";
+    const delivered = Array.from({ length: 48 }, () => "");
+    delivered[0] = "10/06/2026";
+    delivered[1] = "TBH--1178";
+    delivered[2] = "$7,900.00";
+    delivered[15] = "2650.00";
+    delivered[44] = "$36.61";
+    delivered[47] = "241.00";
+    const tonu = Array.from({ length: 48 }, () => "");
+    tonu[0] = "10/09/2026";
+    tonu[1] = "TBH--1201";
+    tonu[2] = "$2,000.00";
+    tonu[3] = "TONU";
+    tonu[15] = "10.00";
+    tonu[44] = "$12.00";
+    tonu[47] = "10.00";
+    const week = buildOwnerTruckWeek({
+      ledger: [cells, delivered, tonu],
+      weekly: weeklyFor(TRUCKS[7]!),
+      weekReport: weekReport(TRUCKS[7]!),
+      unitNumber: "8",
+      ...WEEK,
+    });
+    expect(week.grossCents).toBe(790_000);
+    expect(week.loadIds).not.toContain("TBH--1201");
+    expect(week.deadheadHundredths).toBe(24_100);
+    expect(week.milesHundredths).toBe(265_000);
+    expect(week.categories.find((row) => row.category === "Toll fees")?.cents).toBe(3_661);
+    expect(week.expenseCents).toBe(TRUCKS[7]!.expenseCents - 1_200);
+    expect(week.netCents).toBe(790_000 - week.expenseCents);
+    const countedWeek = Array.from({ length: 32 }, () => Array.from({ length: 15 }, () => ""));
+    countedWeek[17]![1] = "Deadhead Miles";
+    countedWeek[17]![2] = "10.00";
+    countedWeek[18]![1] = "Total Miles";
+    countedWeek[18]![2] = "10.00";
+    countedWeek[29]![13] = "Toll Fees";
+    countedWeek[29]![14] = "$12.00";
+    const week42 = buildOwnerTruckWeek({
+      ledger: [cells, delivered, tonu],
+      weekly: [["Week Start Date", "Driver Compensation", "Toll Fees"], ["10/12/2026", "$0.00", "$12.00"]],
+      weekReport: countedWeek,
+      unitNumber: "8",
+      weekStart: "2026-10-12",
+      weekEnd: "2026-10-18",
+    });
+    expect(week42.grossCents).toBe(0);
+    expect(week42.deadheadHundredths).toBe(1_000);
+    expect(week42.milesHundredths).toBe(1_000);
+    expect(week42.categories.find((row) => row.category === "Toll fees")?.cents).toBe(1_200);
+    expect(week42.netCents).toBe(-1_200);
+  });
 });
 
 describe("fuel log headers", () => {

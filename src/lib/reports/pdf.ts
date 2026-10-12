@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { categoryColor, percentOf } from "@/lib/charts/palette";
 import { formatMilesHundredths, formatStatementDollars } from "@/lib/reports/format";
 import { readAppVersion } from "@/lib/version";
@@ -146,42 +146,31 @@ class Writer {
   }
 }
 
-/** One PDF after another. Each part keeps its own pages. */
-export async function mergePdfDocuments(parts: readonly Uint8Array[]): Promise<Uint8Array> {
-  if (parts.length === 0) {
-    const empty = await PDFDocument.create();
-    return empty.save({ useObjectStreams: false });
-  }
-  if (parts.length === 1) return parts[0]!;
-  const merged = await PDFDocument.create();
-  merged.setTitle("Monday reports");
-  merged.setAuthor("TRET.AI");
-  merged.setCreator("TRET.AI");
-  for (const part of parts) {
-    const doc = await PDFDocument.load(part);
-    const copied = await merged.copyPages(doc, doc.getPageIndices());
-    for (const page of copied) merged.addPage(page);
-  }
-  return merged.save({ useObjectStreams: false });
-}
-
 /** Draw a prepared report. Money is already formatted. This function does not calculate it. */
 export async function renderWeeklyStatementPdf(report: PreparedReport): Promise<Uint8Array> {
+  return renderWeeklyStatementPdfs([report]);
+}
+
+/** Draw several prepared reports into one PDF so the truck photo is embedded once. */
+export async function renderWeeklyStatementPdfs(reports: readonly PreparedReport[]): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  doc.setTitle(`Weekly statement ${report.weekStart}`);
+  const first = reports[0];
+  doc.setTitle(reports.length > 1 ? "Monday reports" : `Weekly statement ${first?.weekStart ?? ""}`);
   doc.setAuthor("TRET.AI");
   doc.setCreator("TRET.AI");
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const writer = new Writer(doc, font, bold, readAppVersion());
-  await drawCover(doc, font, bold, report);
-
-  for (const unit of report.units) {
+  const art = await embedCoverArt(doc);
+  for (const report of reports) {
+    drawCover(doc, font, bold, report, art);
+    for (const unit of report.units) {
+      writer.newPage();
+      drawUnit(writer, report, unit);
+    }
     writer.newPage();
-    drawUnit(writer, report, unit);
+    drawFleet(writer, report);
   }
-  writer.newPage();
-  drawFleet(writer, report);
   return doc.save({ useObjectStreams: false });
 }
 
@@ -269,7 +258,7 @@ function drawLoadTable(writer: Writer, unit: PreparedUnit): void {
 }
 
 function drawFleet(writer: Writer, report: PreparedReport): void {
-  writer.heading("Fleet totals");
+  writer.heading(report.totalsHeading);
   writer.text(report.deliveryLabel);
   writer.text(`${report.weekStart} through ${report.weekEnd}`);
   writer.text(report.statusLabel);
@@ -283,27 +272,48 @@ function drawFleet(writer: Writer, report: PreparedReport): void {
   writer.paragraph(report.fleetNote);
 }
 
-async function drawCover(
+let coverArtBytes: Uint8Array | null | undefined;
+
+function readCoverArt(): Uint8Array | null {
+  if (coverArtBytes !== undefined) return coverArtBytes;
+  try {
+    coverArtBytes = readFileSync(resolve("src/lib/asset-report/assets/legacy-cover-truck.jpg"));
+  } catch {
+    coverArtBytes = null;
+  }
+  return coverArtBytes;
+}
+
+async function embedCoverArt(doc: PDFDocument): Promise<PDFImage | null> {
+  const bytes = readCoverArt();
+  if (!bytes) return null;
+  try {
+    return await doc.embedJpg(bytes);
+  } catch {
+    return null;
+  }
+}
+
+function drawCover(
   doc: PDFDocument,
   font: PDFFont,
   bold: PDFFont,
   report: PreparedReport,
-): Promise<void> {
+  art: PDFImage | null,
+): void {
   const page = doc.addPage([960, 540]);
   page.drawRectangle({ x: 0, y: 0, width: 960, height: 540, color: NAVY });
   page.drawText("Legacy Inc Global", { x: 48, y: 470, size: 28, font: bold, color: WHITE });
   page.drawText("Weekly statement", { x: 48, y: 436, size: 16, font: font, color: WHITE });
   page.drawText(fit(font, report.deliveryLabel, 14, 420), { x: 48, y: 400, size: 14, font: font, color: WHITE });
   page.drawText(`${report.weekStart} through ${report.weekEnd}`, { x: 48, y: 376, size: 12, font: font, color: WHITE });
-  try {
-    const bytes = readFileSync(resolve("src/lib/asset-report/assets/legacy-cover-art.png"));
-    const image = await doc.embedPng(bytes);
-    const height = 420;
-    const width = Math.round((image.width / image.height) * height);
-    page.drawImage(image, { x: 960 - width - 36, y: 60, width, height });
-  } catch {
+  if (!art) {
     page.drawText("Truck photo was not stored.", { x: 520, y: 260, size: 12, font: font, color: WHITE });
+    return;
   }
+  const height = 420;
+  const width = Math.round((art.width / art.height) * height);
+  page.drawImage(art, { x: 960 - width - 36, y: 60, width, height });
 }
 
 function paint(hex: string) {

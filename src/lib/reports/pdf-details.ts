@@ -1,4 +1,5 @@
 import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
+import { manifestGroupKey } from "@/lib/loads/manifest-miles";
 import type { OwnerWeekLoad } from "@/lib/reports/owner-week";
 import type { UnitStatement } from "@/lib/statements/types";
 import type { ReportFuelRow, ReportLoadRow, ReportTollRow, WeeklyReportSource } from "./types";
@@ -8,6 +9,7 @@ export type SheetPdfTruck = {
   weekLoads?: readonly OwnerWeekLoad[];
   mpg?: string | null;
   mpgFromSheet?: boolean;
+  tripOpen?: boolean;
   readable?: boolean;
   reportDieselGallonsMilli?: number;
   reportDefGallonsMilli?: number;
@@ -39,7 +41,9 @@ export function alignPdfDetails(
     sheetUnits: sheets.map((row) => ({
       unitNumber: row.unitNumber,
       mpg: row.mpg?.trim() ? row.mpg.trim() : null,
-      mpgKnown: Boolean(row.readable || row.mpgFromSheet || (row.mpg != null && row.mpg.trim() !== "")),
+      mpgKnown: Boolean(row.readable || row.mpgFromSheet || row.tripOpen || (row.mpg != null && row.mpg.trim() !== "")),
+      mpgFromSheet: row.mpgFromSheet === true,
+      tripOpen: row.tripOpen === true,
     })),
   };
 }
@@ -52,23 +56,34 @@ function loadsForUnit(
   const delivered = weekLoads.filter((row) => row.status === "Delivered" && row.rateCents != null);
   const sheetGross = delivered.reduce((sum, row) => sum + (row.rateCents ?? 0), 0);
   const useSheet = delivered.length === unit.loadCount && sheetGross === unit.grossCents;
+  const tripCounts = new Map<string, number>();
+  for (const row of weekLoads) {
+    const key = manifestGroupKey(row.tripGroup || row.manifestId);
+    if (!key) continue;
+    tripCounts.set(key, (tripCounts.get(key) ?? 0) + 1);
+  }
   const base: ReportLoadRow[] = useSheet
-    ? delivered.map((row) => ({
-        truckId: unit.truckId,
-        loadNumber: row.loadId,
-        deliveryDate: row.deliveryDay,
-        brokerName: null,
-        origin: row.origin,
-        destination: row.destination,
-        loadedMilesHundredths: Math.max(0, row.loadedMilesHundredths ?? 0),
-        deadheadMilesHundredths: Math.max(0, row.deadheadMilesHundredths ?? 0),
-        rateCents: row.rateCents ?? 0,
-        tableLoadedMilesHundredths:
-          row.ledgerMilesHundredths != null
-            ? Math.max(0, row.ledgerMilesHundredths)
-            : Math.max(0, row.loadedMilesHundredths ?? 0),
-        tripKey: (row.tripGroup || row.manifestId || "").trim() || null,
-      }))
+    ? delivered.map((row) => {
+        const tripKey = (row.tripGroup || row.manifestId || "").trim() || null;
+        const group = manifestGroupKey(tripKey);
+        return {
+          truckId: unit.truckId,
+          loadNumber: row.loadId,
+          deliveryDate: row.deliveryDay,
+          brokerName: null,
+          origin: row.origin,
+          destination: row.destination,
+          loadedMilesHundredths: Math.max(0, row.loadedMilesHundredths ?? 0),
+          deadheadMilesHundredths: Math.max(0, row.deadheadMilesHundredths ?? 0),
+          rateCents: row.rateCents ?? 0,
+          tableLoadedMilesHundredths:
+            row.ledgerMilesHundredths != null
+              ? Math.max(0, row.ledgerMilesHundredths)
+              : Math.max(0, row.loadedMilesHundredths ?? 0),
+          tripKey,
+          inSharedTrip: row.sheetPrimary === false || (group != null && (tripCounts.get(group) ?? 0) > 1),
+        };
+      })
     : dbLoads.filter((row) => row.truckId === unit.truckId).map((row) => ({ ...row }));
   return fitMiles(base, unit);
 }

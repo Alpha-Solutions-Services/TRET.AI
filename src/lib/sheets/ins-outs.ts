@@ -8,7 +8,14 @@ import {
   type OwnerPendingLoad,
   type OwnerWeekLoad,
 } from "@/lib/reports/owner-week";
-import { mainTripMilesHundredths, tripMilesHundredths, tripRpmCents, truckMpg, type MetricLoad } from "@/lib/reports/trip-metrics";
+import {
+  displayedTruckMpg,
+  mainTripMilesHundredths,
+  tripMilesHundredths,
+  tripRpmCents,
+  truckMpg,
+  type MetricLoad,
+} from "@/lib/reports/trip-metrics";
 import { inWeek, sheetAmountToCents, sheetDay, columnIndex as sheetColumnIndex, findHeaderRow } from "@/lib/sheets/cell";
 import { gallonsStringToMilli } from "@/lib/fuel-tolls/quantity";
 import { parseLoadLedger } from "@/lib/sheets/ledger";
@@ -69,6 +76,8 @@ export type TruckWeekInsOuts = {
   mpg?: string | null;
   /** True when mpg came from the Week Report cell, not from miles divided by gallons. */
   mpgFromSheet?: boolean;
+  /** True when a counted load shares a trip that has not delivered. */
+  tripOpen?: boolean;
   /** Week Report F7 when that cell is filled. Four decimals. */
   rpmLabel?: string | null;
   /** Sheet Management Fee cell is not the percent-of-gross total. */
@@ -485,8 +494,14 @@ export function buildTruckWeekInsOuts(input: {
           rpmCents: owner.rpmCents,
         }
       : {}),
-    mpg: owner.mpg ?? (owner.tripOpen ? null : tripMiles.mpg),
+    mpg: displayedTruckMpg({
+      sheetMpg: owner.mpg,
+      mpgFromSheet: owner.mpg != null,
+      tripOpen: owner.tripOpen,
+      computedMpg: tripMiles.mpg,
+    }),
     mpgFromSheet: owner.mpg != null,
+    tripOpen: owner.tripOpen,
     reportDieselGallonsMilli: reportGallons.dieselMilli ?? logGallons.dieselMilli,
     reportDefGallonsMilli: reportGallons.defMilli ?? logGallons.defMilli,
     rpmLabel: owner.rpmLabel,

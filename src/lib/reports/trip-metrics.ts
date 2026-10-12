@@ -109,6 +109,28 @@ export function truckMpg(
   return formatDieselMpg(mainTripMilesHundredths(counted), dieselGallonsMilli);
 }
 
+/** Week Report C31, or blank. A 0 cell is blank. */
+export function sheetMpgText(mpg: string | null | undefined): string | null {
+  const text = mpg?.trim() ?? "";
+  if (!text || text === "0" || text === "0.00") return null;
+  return text;
+}
+
+/**
+ * MPG shown on the dashboard and the owner PDF.
+ * Week Report C31 wins. A blank cell stays blank while the trip is open.
+ */
+export function displayedTruckMpg(input: {
+  sheetMpg: string | null | undefined;
+  mpgFromSheet: boolean;
+  tripOpen: boolean;
+  computedMpg: string | null;
+}): string | null {
+  if (input.mpgFromSheet) return sheetMpgText(input.sheetMpg);
+  if (input.tripOpen) return null;
+  return input.computedMpg;
+}
+
 export function fleetFromTrucks(
   trucks: readonly {
     grossCents: number;
@@ -120,20 +142,37 @@ export function fleetFromTrucks(
 ): { rpmCents: number | null; mpg: string | null } {
   let gross = 0;
   let miles = 0;
-  let main = 0;
-  let gallons = 0;
   for (const truck of trucks) {
     gross += truck.grossCents;
     miles += truck.totalMilesHundredths;
-    if (truck.mpg == null) continue;
-    const mainMiles = truck.mainMilesHundredths > 0 ? truck.mainMilesHundredths : truck.totalMilesHundredths;
-    main += mainMiles;
-    gallons += truck.gallonsMilli > 0 ? truck.gallonsMilli : gallonsFromMpg(mainMiles, truck.mpg);
   }
   return {
     rpmCents: centsPerLoadedMile(gross, miles),
-    mpg: formatDieselMpg(main, gallons),
+    mpg: fleetMpgFromTrucks(
+      trucks.map((truck) => ({
+        truckMilesHundredths: truck.totalMilesHundredths,
+        gallonsMilli: truck.gallonsMilli,
+        mpg: truck.mpg,
+      })),
+    ),
   };
+}
+
+/**
+ * Fleet MPG for the dashboard and the owner PDF.
+ * Truck miles divided by diesel gallons, using trucks whose trip has delivered.
+ */
+export function fleetMpgFromTrucks(
+  trucks: readonly { truckMilesHundredths: number; gallonsMilli: number; mpg: string | null }[],
+): string | null {
+  let miles = 0;
+  let gallons = 0;
+  for (const truck of trucks) {
+    if (truck.mpg == null) continue;
+    miles += truck.truckMilesHundredths;
+    gallons += truck.gallonsMilli > 0 ? truck.gallonsMilli : gallonsFromMpg(truck.truckMilesHundredths, truck.mpg);
+  }
+  return formatDieselMpg(miles, gallons);
 }
 
 /** Gallons thousandths implied by a sheet MPG label, so fleet MPG can weight trucks that have no gallon row. */

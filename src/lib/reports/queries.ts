@@ -5,9 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { assertMonday } from "@/lib/fee-engine";
 import { milesValueToHundredths } from "@/lib/statements/miles";
 import { loadStatements } from "@/lib/statements/queries";
+import { overlaySheetStatements } from "@/lib/statements/sheet-week";
 import { weeklyStatementPdf } from "./build";
-import { mergePdfDocuments } from "./pdf";
+import { renderWeeklyStatementPdfs } from "./pdf";
 import { alignPdfDetails } from "./pdf-details";
+import { prepareWeeklyReport } from "./prepare";
 import { ReportBlockedError } from "./prepare";
 import type { ReportFuelRow, ReportLoadRow, ReportTollRow, ReportTruckHeader, WeeklyReportSource } from "./types";
 
@@ -19,11 +21,8 @@ export async function buildWeeklyStatementPdf(weekStart: string, unitNumber?: st
 /** One Prepare report per truck on the week, combined into a single PDF. */
 export async function buildMondayReportsPdf(weekStart: string): Promise<Uint8Array> {
   const aligned = await loadAlignedWeeklySource(weekStart);
-  const parts: Uint8Array[] = [];
-  for (const unit of aligned.units) {
-    parts.push(await weeklyStatementPdf(onlyUnit(aligned, unit.unitNumber)));
-  }
-  return mergePdfDocuments(parts);
+  const reports = aligned.units.map((unit) => prepareWeeklyReport(onlyUnit(aligned, unit.unitNumber)));
+  return renderWeeklyStatementPdfs(reports);
 }
 
 async function loadAlignedWeeklySource(weekStart: string): Promise<WeeklyReportSource> {
@@ -48,14 +47,26 @@ async function loadAlignedWeeklySource(weekStart: string): Promise<WeeklyReportS
   });
 
   const sheets = await loadActiveTruckInsOuts(page.weekStart, page.weekEnd).catch(() => ({ rows: [], error: null }));
+  const overlaid = overlaySheetStatements(
+    {
+      weekStart: page.weekStart,
+      weekEnd: page.weekEnd,
+      units: page.units,
+      fleet: page.fleet,
+      blockers: [],
+      warnings: [],
+      closeAllowed: true,
+    },
+    sheets.rows,
+  );
   return alignPdfDetails(
     {
       weekStart: page.weekStart,
       weekEnd: page.weekEnd,
       locked: page.locked,
       closedAt: page.closedAt,
-      units: page.units,
-      fleet: page.fleet,
+      units: overlaid.units,
+      fleet: overlaid.fleet,
       ...details,
     },
     sheets.rows,
@@ -86,6 +97,7 @@ function onlyUnit(source: WeeklyReportSource, unitNumber: string): WeeklyReportS
   };
   return {
     ...source,
+    perTruck: true,
     units,
     fleet,
     loads: source.loads.filter((load) => load.truckId === unit.truckId),
