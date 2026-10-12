@@ -51,6 +51,9 @@ const ALLOCATED = ["allocated miles", "allocated mile", "trip miles"];
 const ALLOC_DEADHEAD = ["alloc deadhead", "allocated deadhead", "allocated deadhead miles"];
 /** Load Ledger column AV. A=0, so AV is 47. */
 const ALLOC_DEADHEAD_INDEX = 47;
+/** Load Ledger column AS. Toll expense written for a load, including a pending TONU. */
+const TOLL_EXPENSE = ["toll expense", "toll fees", "toll charges"];
+const TOLL_EXPENSE_INDEX = 44;
 /** Load Ledger column M. A=0. */
 const LEDGER_M_INDEX = 12;
 const STATUS = ["status", "load status", "order status", "trip status"];
@@ -85,6 +88,8 @@ export type LedgerLoadRow = {
   allocatedDeadheadHundredths: number | null;
   /** Columns AM through AQ, in cents. Zero when those cells are blank. */
   miscCents: number;
+  /** Toll expense for this load, in cents. Zero when that cell is blank. */
+  tollCents: number;
   status: string | null;
   /** order: the delivery column. fallback: Destination Datetime. */
   deliverySource: "column" | "fallback" | null;
@@ -188,6 +193,7 @@ export function parseLoadLedger(
   const truckMilesCol = columnIndex(header, TRUCK_MILES);
   const allocatedCol = allocatedColumnIndex(header);
   const deadheadAllocCol = allocatedDeadheadColumnIndex(header);
+  const tollCol = tollExpenseColumnIndex(header);
   const statusCols = columnIndexes(header, STATUS);
   const rows: LedgerLoadRow[] = [];
   for (const row of grid.slice(headerIndex + 1)) {
@@ -219,6 +225,7 @@ export function parseLoadLedger(
       ledgerMilesHundredths: milesToHundredths(cell(row, LEDGER_M_INDEX)),
       allocatedDeadheadHundredths: deadheadAllocCol >= 0 ? milesToHundredths(cell(row, deadheadAllocCol)) : null,
       miscCents: miscColumnsCents(row),
+      tollCents: tollCol >= 0 ? (sheetAmountToCents(cell(row, tollCol)) ?? 0) : 0,
       status: tonu ? "TONU" : textOrNull(statusCols.map((index) => cell(row, index)).join(" ")),
       deliverySource: primaryDay ? "column" : fallbackDay ? "fallback" : deliveryDay ? "fallback" : null,
     });
@@ -236,6 +243,15 @@ export function parseLoadLedger(
 }
 
 /** Column P when its header is a miles column, otherwise a header named Allocated Miles. */
+function tollExpenseColumnIndex(header: string[]): number {
+  const named = columnIndex(header, TOLL_EXPENSE);
+  if (named >= 0) return named;
+  if (header.length <= TOLL_EXPENSE_INDEX) return -1;
+  const label = cleanCell(header[TOLL_EXPENSE_INDEX] ?? "").toLowerCase();
+  if (!label || label.includes("toll")) return TOLL_EXPENSE_INDEX;
+  return -1;
+}
+
 function allocatedDeadheadColumnIndex(header: string[]): number {
   const named = columnIndex(header, ALLOC_DEADHEAD);
   if (named >= 0) return named;
@@ -345,6 +361,7 @@ function recoverTonuRows(grid: SheetGrid, existing: readonly LedgerLoadRow[]): L
       ledgerMilesHundredths: null,
       allocatedDeadheadHundredths: null,
       miscCents: 0,
+      tollCents: 0,
       status: "TONU",
       deliverySource: firstDay(row) ? "fallback" : null,
     });

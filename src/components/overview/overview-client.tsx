@@ -95,7 +95,7 @@ export function OverviewClient({
       totalMilesHundredths:
         row.truckMilesHundredths ?? (row.loadedMilesHundredths ?? 0) + (row.deadheadMilesHundredths ?? 0),
       mainMilesHundredths: row.loadedMilesHundredths ?? row.truckMilesHundredths ?? 0,
-      gallonsMilli: row.dieselGallonsMilli ?? 0,
+      gallonsMilli: row.reportDieselGallonsMilli ?? row.dieselGallonsMilli ?? 0,
       mpg: row.mpg ?? null,
     })),
   );

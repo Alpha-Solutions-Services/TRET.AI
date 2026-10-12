@@ -98,6 +98,7 @@ export function buildOwnerTruckWeek(input: {
 }): OwnerTruckWeek {
   const parsed = input.ledger ? parseLoadLedger(input.ledger) : null;
   const counted: LedgerLoadRow[] = [];
+  const tonuInWeek: LedgerLoadRow[] = [];
   const pending: OwnerPendingLoad[] = [];
   const loads: OwnerWeekLoad[] = [];
   let heldTonuCents = 0;
@@ -108,7 +109,10 @@ export function buildOwnerTruckWeek(input: {
     const inNext = Boolean(row.deliveryDay) && row.deliveryDay > input.weekEnd && row.deliveryDay <= nextEnd;
     const inTransit = !row.deliveryDay && row.pickupDay != null && row.pickupDay <= input.weekEnd;
     if (tonu && (inThis || inNext || inTransit)) {
-      if (inThis) heldTonuCents += row.rateCents ?? 0;
+      if (inThis) {
+        heldTonuCents += row.rateCents ?? 0;
+        tonuInWeek.push(row);
+      }
       pending.push({ loadId: row.loadId, reason: TONU_RATE_NOTE });
       loads.push(weekLoad(row, "TONU", TONU_RATE_NOTE));
       continue;
@@ -169,7 +173,13 @@ export function buildOwnerTruckWeek(input: {
   if (report.factoringCents != null) replaceCategory(categories, "Factoring fee", report.factoringCents);
   if (report.managementCents != null) replaceCategory(categories, "Management fee", report.managementCents);
   if (report.fuelCents != null) replaceCategory(categories, "Fuel", report.fuelCents);
+  const weeklyTollCents = categories.find((row) => row.category === "Toll fees")?.cents ?? 0;
   if (report.tollCents != null) replaceCategory(categories, "Toll fees", report.tollCents);
+  const countedTollCents = counted.reduce((sum, row) => sum + row.tollCents, 0);
+  const tonuTollCents = tonuInWeek.reduce((sum, row) => sum + row.tollCents, 0);
+  const chosenTollCents = categories.find((row) => row.category === "Toll fees")?.cents ?? 0;
+  const tollCents = tollKeepingTonu(chosenTollCents, weeklyTollCents, countedTollCents, tonuTollCents);
+  if (tollCents !== chosenTollCents) replaceCategory(categories, "Toll fees", tollCents);
   miscCents = categories.find((row) => row.category === "Misc")?.cents ?? 0;
   const rates = input.feeRates ?? seededFeeRates(input.unitNumber ?? "");
   const fees = managementFeeSplit(grossCents, rates);
@@ -177,9 +187,17 @@ export function buildOwnerTruckWeek(input: {
   const sheetFeeDiffers = sheetManagement != null && sheetManagement !== fees.managementFeeCents;
   if (sheetManagement != null) replaceCategory(categories, "Management fee", fees.managementFeeCents);
   expenseCents = categories.reduce((sum, row) => sum + row.cents, 0);
-  const deadheadFromLedger = parsed?.allocatedDeadheadColumn ? allocatedMilesOnce(counted, "deadhead") : null;
-  const deadheadHundredths = report.deadheadHundredths ?? deadheadFromLedger ?? 0;
-  const deadheadKnown = report.deadheadHundredths != null || deadheadFromLedger != null;
+  const countedDeadhead = parsed?.allocatedDeadheadColumn ? allocatedMilesOnce(counted, "deadhead") : 0;
+  const tonuDeadhead = deadheadOf(tonuInWeek, parsed);
+  const deadheadBase = report.deadheadHundredths ?? countedDeadhead;
+  const deadheadHundredths = keepTonuAmount(deadheadBase, countedDeadhead, tonuDeadhead);
+  const deadheadKnown = report.deadheadHundredths != null || parsed?.allocatedDeadheadColumn === true || tonuDeadhead > 0;
+  const countedMiles = parsed?.allocatedColumn ? allocatedMilesOnce(counted, "allocated") : 0;
+  const tonuMiles = tonuTruckMiles(tonuInWeek, parsed);
+  if (tonuMiles > 0 && milesHundredths < countedMiles + tonuMiles) {
+    milesHundredths = countedMiles + tonuMiles;
+    milesFromAllocated = true;
+  }
   const tripOpen = countedTripStillOpen(counted, loads);
   const mpg = report.mpg ?? weekReportMpg(input.weekReport);
   return {
@@ -203,6 +221,41 @@ export function buildOwnerTruckWeek(input: {
     fees,
     sheetFeeDiffers,
   };
+}
+
+/** Keep a pending in-week TONU amount when the week total is still the counted-only figure. */
+function keepTonuAmount(base: number, counted: number, tonu: number): number {
+  if (tonu <= 0) return base;
+  const withTonu = counted + tonu;
+  return base < withTonu ? withTonu : base;
+}
+
+/**
+ * Toll on a pending in-week TONU stays in the week.
+ * A Week Report toll that is already higher than the weekly cell is left as it is.
+ */
+function tollKeepingTonu(chosen: number, weekly: number, countedToll: number, tonuToll: number): number {
+  if (tonuToll <= 0) return chosen;
+  const ledger = countedToll + tonuToll;
+  if (countedToll > 0) return Math.max(chosen, ledger);
+  if (chosen >= weekly + tonuToll) return chosen;
+  return chosen + tonuToll;
+}
+
+function deadheadOf(rows: readonly LedgerLoadRow[], parsed: { allocatedDeadheadColumn: boolean } | null): number {
+  if (rows.length === 0) return 0;
+  const allocated = parsed?.allocatedDeadheadColumn ? allocatedMilesOnce(rows, "deadhead") : 0;
+  if (allocated > 0) return allocated;
+  return rows.reduce((sum, row) => sum + (row.deadheadMilesHundredths ?? 0), 0);
+}
+
+function tonuTruckMiles(rows: readonly LedgerLoadRow[], parsed: { allocatedColumn: boolean } | null): number {
+  if (rows.length === 0) return 0;
+  if (parsed?.allocatedColumn) {
+    const allocated = allocatedMilesOnce(rows, "allocated");
+    if (allocated > 0) return allocated;
+  }
+  return rows.reduce((sum, row) => sum + (row.allocatedDeadheadHundredths ?? row.deadheadMilesHundredths ?? 0), 0);
 }
 
 /** A counted load whose trip also has a row that delivers later. The Week Report MPG is still used when that cell is filled. */

@@ -7,6 +7,7 @@ import type { WeekStatementInput } from "@/lib/statements/types";
 import { readAppVersion } from "@/lib/version";
 import type { OwnerWeekLoad } from "@/lib/reports/owner-week";
 import { weeklyStatementPdf } from "./build";
+import { renderWeeklyStatementPdfs } from "./pdf";
 import { centsPerLoadedMile, formatDieselMpg, formatStatementDollars } from "./format";
 import { alignPdfDetails } from "./pdf-details";
 import { prepareWeeklyReport } from "./prepare";
@@ -189,6 +190,8 @@ describe("weekly statement PDF", () => {
     expect(text).toContain("Fuel cost per truck mile");
     expect(text).not.toContain("Rate per loaded mile");
     expect(text).not.toContain("Fuel cost per loaded mile");
+    expect(text).toContain("Fleet totals");
+    expect(text).toContain("the fleet earned");
     expect(text).toContain("earned");
     expect(text).toContain("Where the money went");
     expect(text.replace(/\s+/g, " ")).toContain("not deducted again");
@@ -282,5 +285,71 @@ describe("weekly statement PDF", () => {
     expect(Buffer.from(bytes).subarray(0, 5).toString("latin1")).toBe("%PDF-");
     expect(warn.mock.calls.some((call) => String(call[0]).includes("discounted fuel does not match"))).toBe(true);
     warn.mockRestore();
+  });
+
+  it("titles a one-truck report as that truck", async () => {
+    const unit = source.units[0]!;
+    const one: WeeklyReportSource = {
+      ...source,
+      perTruck: true,
+      units: [unit],
+      fleet: {
+        grossCents: unit.grossCents,
+        driverPayCents: unit.driverPayCents,
+        managementFeeCents: unit.managementFeeCents,
+        tolsonPayableCents: unit.tolsonPayableCents,
+        legacyRetainedCents: unit.legacyRetainedCents,
+        dispatchFeeCents: unit.dispatchFeeCents,
+        factoringFeeCents: unit.factoringFeeCents,
+        fuelCents: unit.fuelCents,
+        tollsCents: unit.tollsCents,
+        fixedOwnerCents: unit.fixedOwnerCents,
+        fixedManagementCents: unit.fixedManagementCents,
+        netCents: unit.netCents,
+        loadCount: unit.loadCount,
+        unitCount: 1,
+      },
+      loads: source.loads.filter((load) => load.truckId === unit.truckId),
+      fuel: source.fuel.filter((row) => row.unitNumber === unit.unitNumber),
+      tolls: source.tolls.filter((row) => row.unitNumber === unit.unitNumber),
+    };
+    const report = prepareWeeklyReport(one);
+    expect(report.totalsHeading).toBe("Truck 02 totals");
+    expect(report.fleetChart.summary).toContain("Truck 02 earned");
+    expect(report.fleetChart.summary).not.toContain("the fleet");
+    const text = pdfText(await weeklyStatementPdf(one));
+    expect(text).toContain("Truck 02 totals");
+    expect(text).toContain("Truck 02 earned");
+    expect(text).not.toContain("Fleet totals");
+  });
+
+  it("notes a shared trip when the row miles do not add up to the total", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const aligned = alignPdfDetails(source, [
+      {
+        unitNumber: "02",
+        weekLoads: [
+          { ...sheetLoad("TBH--1152", 220_000, 90_000, true), tripGroup: "M-7" },
+          { ...sheetLoad("TBH--1153", 100_000, 72_200, true), tripGroup: "M-8" },
+        ],
+      },
+    ]);
+    const report = prepareWeeklyReport(aligned);
+    const owned = report.units.find((unit) => unit.unitNumber === "02");
+    expect(owned?.loadNote).toBe(
+      "Shared trip. Each row shows its own loaded miles. The total counts the trip once.",
+    );
+    warn.mockRestore();
+  });
+
+  it("embeds the truck photo once when several reports share a PDF", async () => {
+    const first = await weeklyStatementPdf(source);
+    const second = await weeklyStatementPdf(source);
+    const combined = await renderWeeklyStatementPdfs([
+      prepareWeeklyReport(source),
+      prepareWeeklyReport(source),
+    ]);
+    expect(combined.byteLength).toBeLessThan(first.byteLength + second.byteLength - 40_000);
+    expect(readFileSync(resolve("src/lib/asset-report/assets/legacy-cover-truck.jpg")).byteLength).toBeLessThan(200_000);
   });
 });

@@ -246,7 +246,12 @@ describe("GET /api/statements/pdf", () => {
     const mondayDoc = await PDFDocument.load(mondayBytes);
     expect(mondayDoc.getPageCount()).toBeGreaterThan(statementDoc.getPageCount());
     const text = pdfText(mondayBytes);
-    expect(text.split("Fleet totals").length - 1).toBeGreaterThan(1);
+    expect(text).not.toContain("Fleet totals");
+    expect(text).not.toContain("the fleet earned");
+    expect(text).toContain("Truck 02 totals");
+    expect(text).toContain("Truck 03 totals");
+    expect(text).toContain("Truck 02 earned");
+    expect(text).toContain("Truck 03 earned");
     expect(text).toContain("Unit 02");
     expect(text).toContain("Unit 03");
   });

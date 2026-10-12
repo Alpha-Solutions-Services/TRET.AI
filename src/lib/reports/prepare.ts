@@ -5,6 +5,7 @@ import { truckClassLabel } from "@/lib/fees/kinds";
 import { reportDeliveryLabel } from "@/lib/reports/delivery";
 import { expectedNetCents, miscOwnerCents, ownerDeductionCents } from "@/lib/statements/engine";
 import type { FleetStatement, StatementLine, UnitStatement } from "@/lib/statements/types";
+import { displayedTruckMpg, fleetMpgFromTrucks } from "@/lib/reports/trip-metrics";
 import {
   centsPerLoad,
   centsPerLoadedMile,
@@ -61,7 +62,9 @@ export function prepareWeeklyReport(source: WeeklyReportSource): PreparedReport 
   }
   assertFleet(source.units, source.fleet);
 
+  const perTruck = source.perTruck === true && source.units.length === 1;
   const units = source.units.map((unit) => prepareUnit(unit, source));
+  const truckLabel = perTruck ? `Truck ${source.units[0]!.unitNumber}` : null;
   return {
     weekStart: source.weekStart,
     weekEnd: source.weekEnd,
@@ -72,7 +75,8 @@ export function prepareWeeklyReport(source: WeeklyReportSource): PreparedReport 
     fleetRows: fleetRows(source.fleet, source.units.reduce((sum, unit) => sum + miscOwnerCents(unit), 0)),
     fleetNote: FLEET_NOTE,
     deliveryLabel: reportDeliveryLabel(source.weekStart),
-    fleetChart: buildFleetChart(source),
+    fleetChart: buildFleetChart(source, perTruck),
+    totalsHeading: truckLabel ? `${truckLabel} totals` : "Fleet totals",
   };
 }
 
@@ -192,8 +196,7 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
   const ratePerMile = centsPerLoadedMile(unit.grossCents, totalMiles);
   const fuelPerMile = centsPerLoadedMile(unit.fuelCents, totalMiles);
   const perLoad = centsPerLoad(unit.grossCents, unit.loadCount);
-  const sheetMpg = sheetMpgFor(unit, source);
-  const mpg = sheetMpg === undefined ? formatDieselMpg(unit.loadedMilesHundredths, dieselMilli) : sheetMpg;
+  const mpg = unitMpg(unit, source, dieselMilli);
 
   const ownerLines = unit.lines
     .filter((line) => line.ownerVisible && line.chargedTo === "owner" && line.amountCents !== 0)
@@ -219,7 +222,7 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
             deadhead: formatMilesHundredths(unit.deadheadMilesHundredths),
             rate: formatStatementDollars(unit.grossCents),
           },
-    loadNote: sharedTripNote(loads),
+    loadNote: sharedTripNote(loads, unit.loadedMilesHundredths),
     performance: [
       { label: "Loads", value: String(unit.loadCount) },
       { label: "Loaded miles", value: formatMilesHundredths(unit.loadedMilesHundredths) },
@@ -251,19 +254,26 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
   };
 }
 
-function sheetMpgFor(unit: UnitStatement, source: WeeklyReportSource): string | null | undefined {
+function unitMpg(unit: UnitStatement, source: WeeklyReportSource, dieselMilli: number): string | null {
   const sheet = source.sheetUnits?.find(
     (row) => unitNumberFromRaw(row.unitNumber) === unitNumberFromRaw(unit.unitNumber) && row.mpgKnown,
   );
-  if (!sheet) return undefined;
-  const mpg = sheet.mpg?.trim() ?? "";
-  if (!mpg || mpg === "0" || mpg === "0.00") return null;
-  return mpg;
+  const computed = formatDieselMpg(unit.loadedMilesHundredths, dieselMilli);
+  if (!sheet) return computed;
+  return displayedTruckMpg({
+    sheetMpg: sheet.mpgFromSheet ? sheet.mpg : null,
+    mpgFromSheet: sheet.mpgFromSheet === true,
+    tripOpen: sheet.tripOpen === true || sheet.mpg == null,
+    computedMpg: sheet.mpg ?? computed,
+  });
 }
 
-function sharedTripNote(loads: readonly ReportLoadRow[]): string | null {
+function sharedTripNote(loads: readonly ReportLoadRow[], loadedMilesHundredths: number): string | null {
+  if (loads.some((load) => load.inSharedTrip)) return SHARED_TRIP_NOTE;
   const counts = new Map<string, number>();
+  let tableMiles = 0;
   for (const load of loads) {
+    tableMiles += load.tableLoadedMilesHundredths ?? load.loadedMilesHundredths;
     const key = load.tripKey?.trim() ?? "";
     if (!key) continue;
     counts.set(key, (counts.get(key) ?? 0) + 1);
@@ -271,6 +281,7 @@ function sharedTripNote(loads: readonly ReportLoadRow[]): string | null {
   for (const count of counts.values()) {
     if (count > 1) return SHARED_TRIP_NOTE;
   }
+  if (loads.length > 0 && tableMiles !== loadedMilesHundredths) return SHARED_TRIP_NOTE;
   return null;
 }
 
@@ -477,22 +488,30 @@ function fleetChartExpenses(source: WeeklyReportSource): Array<[string, number]>
   ];
 }
 
-function buildFleetChart(source: WeeklyReportSource): PreparedChart {
+function buildFleetChart(source: WeeklyReportSource, perTruck: boolean): PreparedChart {
   const fleet = source.fleet;
   let loaded = 0;
   let deadhead = 0;
-  let diesel = 0;
   for (const unit of source.units) {
     loaded += unit.loadedMilesHundredths;
     deadhead += unit.deadheadMilesHundredths;
   }
-  for (const row of source.fuel) {
-    if (row.product === "diesel") diesel += row.gallonsMilli;
-  }
-  const only = source.units.length === 1 ? source.units[0] : undefined;
-  const sheetMpg = only ? sheetMpgFor(only, source) : undefined;
+  const only = perTruck ? source.units[0] : undefined;
+  const mpg = only
+    ? unitMpg(only, source, sumGallons(source.fuel.filter((row) => row.unitNumber === only.unitNumber), "diesel"))
+    : fleetMpgFromTrucks(
+        source.units.map((unit) => ({
+          truckMilesHundredths: unit.loadedMilesHundredths + unit.deadheadMilesHundredths,
+          gallonsMilli: sumGallons(
+            source.fuel.filter((row) => row.unitNumber === unit.unitNumber),
+            "diesel",
+          ),
+          mpg: unitMpg(unit, source, sumGallons(source.fuel.filter((row) => row.unitNumber === unit.unitNumber), "diesel")),
+        })),
+      );
+  const who = only ? `Truck ${only.unitNumber}` : "the fleet";
   return {
-    summary: summaryFor("the fleet", fleet.grossCents, fleet.netCents),
+    summary: summaryFor(who, fleet.grossCents, fleet.netCents),
     earnedCents: fleet.grossCents,
     spentCents: fleet.grossCents - fleet.netCents,
     keepsCents: fleet.netCents,
@@ -500,7 +519,7 @@ function buildFleetChart(source: WeeklyReportSource): PreparedChart {
     loads: source.units.map((unit) => ({ label: `Truck ${unit.unitNumber}`, cents: unit.grossCents })),
     loadedHundredths: loaded,
     deadheadHundredths: deadhead,
-    mpg: sheetMpg === undefined ? formatDieselMpg(loaded, diesel) : sheetMpg,
+    mpg,
     rpmCents: centsPerLoadedMile(fleet.grossCents, loaded + deadhead),
   };
 }

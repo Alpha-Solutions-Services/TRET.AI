@@ -14,6 +14,8 @@ export type ReportLoadRow = {
   tableLoadedMilesHundredths?: number;
   /** Trip group or manifest, when the sheet has one. */
   tripKey?: string | null;
+  /** True when this row shares a trip, including a trip that also has a pending row. */
+  inSharedTrip?: boolean;
 };
 
 export type ReportFuelRow = {
@@ -45,11 +47,15 @@ export type WeeklyReportSource = {
   loads: ReportLoadRow[];
   fuel: ReportFuelRow[];
   tolls: ReportTollRow[];
+  /** True for a Prepare report of one truck. The fleet download leaves this unset. */
+  perTruck?: boolean;
   /** Sheet MPG for trucks whose Week Report was read. A blank cell stays blank. */
   sheetUnits?: ReadonlyArray<{
     unitNumber: string;
     mpg: string | null;
     mpgKnown: boolean;
+    mpgFromSheet?: boolean;
+    tripOpen?: boolean;
   }>;
 };
 
@@ -112,4 +118,6 @@ export type PreparedReport = {
   fleetNote: string;
   deliveryLabel: string;
   fleetChart: PreparedChart;
+  /** "Fleet totals" on the fleet statement. "Truck N totals" on a per-truck report. */
+  totalsHeading: string;
 };
