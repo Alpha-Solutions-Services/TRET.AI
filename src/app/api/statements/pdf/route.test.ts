@@ -286,7 +286,7 @@ describe("GET /api/statements/pdf", () => {
           reportDieselGallonsMilli: 398_320,
           reportDefGallonsMilli: 12_500,
         },
-        { unitNumber: "6", readable: true, mpg: null, reportDieselGallonsMilli: 40_000 },
+        { unitNumber: "6", readable: true, mpg: null, tripOpen: true, reportDieselGallonsMilli: 40_000 },
       ],
       error: null,
     });

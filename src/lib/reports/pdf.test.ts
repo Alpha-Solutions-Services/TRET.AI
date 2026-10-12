@@ -156,7 +156,7 @@ describe("weekly statement PDF", () => {
     expect(report.fleetRows.find((row) => row.label === "Discounted fuel")?.value).toBe("$750.00");
     const ownedUnit = source.units.find((unit) => unit.unitNumber === "02");
     const truckMiles = (ownedUnit?.loadedMilesHundredths ?? 0) + (ownedUnit?.deadheadMilesHundredths ?? 0);
-    expect(owned?.performance.find((row) => row.label === "MPG")?.value).toBe("4.32");
+    expect(owned?.performance.find((row) => row.label === "MPG")?.value).toBe(formatDieselMpg(truckMiles, 100_000));
     expect(owned?.performance.find((row) => row.label === "Rate per truck mile")?.value).toBe(
       formatStatementDollars(centsPerLoadedMile(ownedUnit?.grossCents ?? 0, truckMiles) ?? 0),
     );
@@ -244,6 +244,7 @@ describe("weekly statement PDF", () => {
         unitNumber: "02",
         mpg: "7.16",
         mpgFromSheet: true,
+        tripOpen: true,
         reportDieselGallonsMilli: 398_320,
         reportDefGallonsMilli: 12_500,
         weekLoads: [
@@ -267,7 +268,7 @@ describe("weekly statement PDF", () => {
 
   it("leaves MPG blank when the sheet cell is blank", () => {
     const aligned = alignPdfDetails(source, [
-      { unitNumber: "02", readable: true, mpg: null, reportDieselGallonsMilli: 100_000 },
+      { unitNumber: "02", readable: true, mpg: null, tripOpen: true, reportDieselGallonsMilli: 100_000 },
     ]);
     const report = prepareWeeklyReport(aligned);
     const owned = report.units.find((unit) => unit.unitNumber === "02");
@@ -323,22 +324,20 @@ describe("weekly statement PDF", () => {
     expect(text).not.toContain("Fleet totals");
   });
 
-  it("notes a shared trip when the row miles do not add up to the total", () => {
+  it("does not note a shared trip when the loads are on different trips", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const aligned = alignPdfDetails(source, [
       {
         unitNumber: "02",
         weekLoads: [
-          { ...sheetLoad("TBH--1152", 220_000, 90_000, true), tripGroup: "M-7" },
+          { ...sheetLoad("TBH--1152", 220_000, 90_000, false), tripGroup: "M-7" },
           { ...sheetLoad("TBH--1153", 100_000, 72_200, true), tripGroup: "M-8" },
         ],
       },
     ]);
     const report = prepareWeeklyReport(aligned);
     const owned = report.units.find((unit) => unit.unitNumber === "02");
-    expect(owned?.loadNote).toBe(
-      "Shared trip. Each row shows its own loaded miles. The total counts the trip once.",
-    );
+    expect(owned?.loadNote).toBeNull();
     warn.mockRestore();
   });
 

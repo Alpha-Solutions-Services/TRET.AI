@@ -14,7 +14,7 @@ export type ReportLoadRow = {
   tableLoadedMilesHundredths?: number;
   /** Trip group or manifest, when the sheet has one. */
   tripKey?: string | null;
-  /** True when this row shares a trip, including a trip that also has a pending row. */
+  /** True when this row's trip also has another load, including one that is still pending. */
   inSharedTrip?: boolean;
 };
 
