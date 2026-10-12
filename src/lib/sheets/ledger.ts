@@ -51,6 +51,8 @@ const ALLOCATED = ["allocated miles", "allocated mile", "trip miles"];
 const ALLOC_DEADHEAD = ["alloc deadhead", "allocated deadhead", "allocated deadhead miles"];
 /** Load Ledger column AV. A=0, so AV is 47. */
 const ALLOC_DEADHEAD_INDEX = 47;
+/** Load Ledger column M. A=0. */
+const LEDGER_M_INDEX = 12;
 const STATUS = ["status", "load status", "order status", "trip status"];
 /** Load Ledger columns AM through AQ. Misc receipts live here. */
 const MISC_START = 38;
@@ -77,6 +79,8 @@ export type LedgerLoadRow = {
   truckMilesHundredths: number | null;
   /** Column P, or a header named Allocated Miles. The trip total. Null when that column is absent. */
   allocatedMilesHundredths: number | null;
+  /** Excel column M. Each row's own loaded miles. Null when that cell is blank. */
+  ledgerMilesHundredths: number | null;
   /** Ledger AV, Alloc Deadhead. Null when that column is absent. */
   allocatedDeadheadHundredths: number | null;
   /** Columns AM through AQ, in cents. Zero when those cells are blank. */
@@ -212,6 +216,7 @@ export function parseLoadLedger(
       sheetPrimary: primaryFlag(cell(row, primaryCol), primaryCol >= 0),
       truckMilesHundredths: truckMilesCol >= 0 ? milesToHundredths(cell(row, truckMilesCol)) : null,
       allocatedMilesHundredths: allocatedCol >= 0 ? milesToHundredths(cell(row, allocatedCol)) : null,
+      ledgerMilesHundredths: milesToHundredths(cell(row, LEDGER_M_INDEX)),
       allocatedDeadheadHundredths: deadheadAllocCol >= 0 ? milesToHundredths(cell(row, deadheadAllocCol)) : null,
       miscCents: miscColumnsCents(row),
       status: tonu ? "TONU" : textOrNull(statusCols.map((index) => cell(row, index)).join(" ")),
@@ -337,6 +342,7 @@ function recoverTonuRows(grid: SheetGrid, existing: readonly LedgerLoadRow[]): L
       sheetPrimary: null,
       truckMilesHundredths: null,
       allocatedMilesHundredths: null,
+      ledgerMilesHundredths: null,
       allocatedDeadheadHundredths: null,
       miscCents: 0,
       status: "TONU",

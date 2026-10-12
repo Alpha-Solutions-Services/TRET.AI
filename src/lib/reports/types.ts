@@ -10,6 +10,10 @@ export type ReportLoadRow = {
   loadedMilesHundredths: number;
   deadheadMilesHundredths: number;
   rateCents: number;
+  /** Ledger column M for the load table. Totals still use the statement miles. */
+  tableLoadedMilesHundredths?: number;
+  /** Trip group or manifest, when the sheet has one. */
+  tripKey?: string | null;
 };
 
 export type ReportFuelRow = {
@@ -41,6 +45,12 @@ export type WeeklyReportSource = {
   loads: ReportLoadRow[];
   fuel: ReportFuelRow[];
   tolls: ReportTollRow[];
+  /** Sheet MPG for trucks whose Week Report was read. A blank cell stays blank. */
+  sheetUnits?: ReadonlyArray<{
+    unitNumber: string;
+    mpg: string | null;
+    mpgKnown: boolean;
+  }>;
 };
 
 export type PreparedPair = {
@@ -82,6 +92,7 @@ export type PreparedUnit = {
   dispatcher: string;
   loads: PreparedLoad[];
   loadTotals: { loaded: string; deadhead: string; rate: string } | null;
+  loadNote: string | null;
   performance: PreparedPair[];
   earnings: PreparedPair[];
   net: PreparedPair;

@@ -1,4 +1,5 @@
 import { assertInteger, assertNonNegativeInteger } from "@/lib/fee-engine/money";
+import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
 import { bpToPercentString } from "@/lib/fees/percent";
 import { truckClassLabel } from "@/lib/fees/kinds";
 import { reportDeliveryLabel } from "@/lib/reports/delivery";
@@ -34,6 +35,9 @@ export class ReportBlockedError extends Error {
 
 const FLEET_NOTE =
   "Managed trucks deduct one management fee. The Legacy fee and the Tolson lease fee on those trucks are the two parts of that fee and are not deducted again. Fuel is the discounted amount.";
+
+const SHARED_TRIP_NOTE =
+  "Shared trip. Each row shows its own loaded miles. The total counts the trip once.";
 
 function warnMismatch(message: string): void {
   console.warn(`Statement PDF: ${message}`);
@@ -188,7 +192,8 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
   const ratePerMile = centsPerLoadedMile(unit.grossCents, totalMiles);
   const fuelPerMile = centsPerLoadedMile(unit.fuelCents, totalMiles);
   const perLoad = centsPerLoad(unit.grossCents, unit.loadCount);
-  const mpg = formatDieselMpg(unit.loadedMilesHundredths, dieselMilli);
+  const sheetMpg = sheetMpgFor(unit, source);
+  const mpg = sheetMpg === undefined ? formatDieselMpg(unit.loadedMilesHundredths, dieselMilli) : sheetMpg;
 
   const ownerLines = unit.lines
     .filter((line) => line.ownerVisible && line.chargedTo === "owner" && line.amountCents !== 0)
@@ -214,6 +219,7 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
             deadhead: formatMilesHundredths(unit.deadheadMilesHundredths),
             rate: formatStatementDollars(unit.grossCents),
           },
+    loadNote: sharedTripNote(loads),
     performance: [
       { label: "Loads", value: String(unit.loadCount) },
       { label: "Loaded miles", value: formatMilesHundredths(unit.loadedMilesHundredths) },
@@ -223,12 +229,12 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
         value: formatMilesHundredths(unit.loadedMilesHundredths + unit.deadheadMilesHundredths),
       },
       { label: "Revenue per load", value: perLoad == null ? NOT_STORED : formatStatementDollars(perLoad) },
-      { label: "Rate per loaded mile", value: ratePerMile == null ? NOT_STORED : formatStatementDollars(ratePerMile) },
+      { label: "Rate per truck mile", value: ratePerMile == null ? NOT_STORED : formatStatementDollars(ratePerMile) },
       {
-        label: "Fuel cost per loaded mile",
+        label: "Fuel cost per truck mile",
         value: fuelPerMile == null ? NOT_STORED : formatStatementDollars(fuelPerMile),
       },
-      { label: "MPG (diesel, loaded miles)", value: mpg ?? NOT_STORED },
+      { label: "MPG", value: mpg ?? NOT_STORED },
     ],
     earnings: [{ label: "Gross", value: formatStatementDollars(unit.grossCents) }, ...ownerLines.map(presentEarning)],
     net: { label: "Net to owner", value: formatStatementDollars(unit.netCents) },
@@ -243,6 +249,29 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
     operationsNote: NOT_STORED,
     chart: buildUnitChart(unit, loads, mpg, ratePerMile),
   };
+}
+
+function sheetMpgFor(unit: UnitStatement, source: WeeklyReportSource): string | null | undefined {
+  const sheet = source.sheetUnits?.find(
+    (row) => unitNumberFromRaw(row.unitNumber) === unitNumberFromRaw(unit.unitNumber) && row.mpgKnown,
+  );
+  if (!sheet) return undefined;
+  const mpg = sheet.mpg?.trim() ?? "";
+  if (!mpg || mpg === "0" || mpg === "0.00") return null;
+  return mpg;
+}
+
+function sharedTripNote(loads: readonly ReportLoadRow[]): string | null {
+  const counts = new Map<string, number>();
+  for (const load of loads) {
+    const key = load.tripKey?.trim() ?? "";
+    if (!key) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  for (const count of counts.values()) {
+    if (count > 1) return SHARED_TRIP_NOTE;
+  }
+  return null;
 }
 
 function assertLoads(unit: UnitStatement, loads: ReportLoadRow[]): void {
@@ -314,7 +343,7 @@ function presentLoad(load: ReportLoadRow): PreparedLoad {
     broker: load.brokerName?.trim() ? load.brokerName.trim() : NOT_STORED,
     origin: load.origin?.trim() ? load.origin.trim() : NOT_STORED,
     destination: load.destination?.trim() ? load.destination.trim() : NOT_STORED,
-    loaded: formatMilesHundredths(load.loadedMilesHundredths),
+    loaded: formatMilesHundredths(load.tableLoadedMilesHundredths ?? load.loadedMilesHundredths),
     deadhead: formatMilesHundredths(load.deadheadMilesHundredths),
     rate: formatStatementDollars(load.rateCents),
   };
@@ -460,6 +489,8 @@ function buildFleetChart(source: WeeklyReportSource): PreparedChart {
   for (const row of source.fuel) {
     if (row.product === "diesel") diesel += row.gallonsMilli;
   }
+  const only = source.units.length === 1 ? source.units[0] : undefined;
+  const sheetMpg = only ? sheetMpgFor(only, source) : undefined;
   return {
     summary: summaryFor("the fleet", fleet.grossCents, fleet.netCents),
     earnedCents: fleet.grossCents,
@@ -469,7 +500,7 @@ function buildFleetChart(source: WeeklyReportSource): PreparedChart {
     loads: source.units.map((unit) => ({ label: `Truck ${unit.unitNumber}`, cents: unit.grossCents })),
     loadedHundredths: loaded,
     deadheadHundredths: deadhead,
-    mpg: formatDieselMpg(loaded, diesel),
+    mpg: sheetMpg === undefined ? formatDieselMpg(loaded, diesel) : sheetMpg,
     rpmCents: centsPerLoadedMile(fleet.grossCents, loaded + deadhead),
   };
 }

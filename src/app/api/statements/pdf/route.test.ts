@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { inflateSync } from "node:zlib";
+import { PDFDocument } from "pdf-lib";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TruckClass } from "@/lib/fee-engine";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
@@ -231,6 +232,71 @@ describe("GET /api/statements/pdf", () => {
     expect(text).toContain("$974.88");
     expect(text).toContain("$670.41");
     expect(text).not.toContain("$1,645.29");
+  });
+
+  it("builds Monday reports as one owner report per truck", async () => {
+    loadStatementsMock.mockResolvedValue(pageFrom(input, {}));
+    const statement = await GET(new Request(`http://localhost/api/statements/pdf?week=${WEEK}`));
+    const monday = await GET(new Request(`http://localhost/api/statements/pdf?week=${WEEK}&monday=1`));
+    expect(monday.status).toBe(200);
+    expect(monday.headers.get("content-disposition")).toContain(`tret-monday-reports-${WEEK}.pdf`);
+    const statementBytes = new Uint8Array(await statement.arrayBuffer());
+    const mondayBytes = new Uint8Array(await monday.arrayBuffer());
+    const statementDoc = await PDFDocument.load(statementBytes);
+    const mondayDoc = await PDFDocument.load(mondayBytes);
+    expect(mondayDoc.getPageCount()).toBeGreaterThan(statementDoc.getPageCount());
+    const text = pdfText(mondayBytes);
+    expect(text.split("Fleet totals").length - 1).toBeGreaterThan(1);
+    expect(text).toContain("Unit 02");
+    expect(text).toContain("Unit 03");
+  });
+
+  it("prints sheet MPG and gallons on the owner PDF", async () => {
+    const statements = week41Statements();
+    loadStatementsMock.mockResolvedValue({
+      ready: true,
+      lockReady: true,
+      error: null,
+      weekStart: WEEK,
+      weekEnd: "2026-10-11",
+      locked: false,
+      closedAt: null,
+      closedBy: null,
+      liveDiffers: false,
+      units: statements.units,
+      fleet: statements.fleet,
+      blockers: [],
+      liveBlockers: [],
+      warnings: [],
+      closeAllowed: true,
+      pending: [],
+    });
+    sheetsMock.mockResolvedValue({
+      rows: [
+        {
+          unitNumber: "3",
+          readable: true,
+          mpg: "7.16",
+          mpgFromSheet: true,
+          reportDieselGallonsMilli: 398_320,
+          reportDefGallonsMilli: 12_500,
+        },
+        { unitNumber: "6", readable: true, mpg: null, reportDieselGallonsMilli: 40_000 },
+      ],
+      error: null,
+    });
+    const response = await GET(new Request(`http://localhost/api/statements/pdf?week=${WEEK}&unit=3`));
+    expect(response.status).toBe(200);
+    const text = pdfText(new Uint8Array(await response.arrayBuffer()));
+    expect(text).toContain("7.16");
+    expect(text).toContain("398.320");
+    expect(text).toContain("12.500");
+    const open = await GET(new Request(`http://localhost/api/statements/pdf?week=${WEEK}&unit=6`));
+    expect(open.status).toBe(200);
+    const openText = pdfText(new Uint8Array(await open.arrayBuffer()));
+    expect(openText).toContain("Not stored");
+    expect(openText).not.toContain("16.72");
+    expect(openText).not.toContain("7.16");
   });
 });
 

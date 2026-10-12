@@ -5,8 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import { buildWeekStatements } from "@/lib/statements/engine";
 import type { WeekStatementInput } from "@/lib/statements/types";
 import { readAppVersion } from "@/lib/version";
+import type { OwnerWeekLoad } from "@/lib/reports/owner-week";
 import { weeklyStatementPdf } from "./build";
 import { centsPerLoadedMile, formatDieselMpg, formatStatementDollars } from "./format";
+import { alignPdfDetails } from "./pdf-details";
 import { prepareWeeklyReport } from "./prepare";
 import type { ReportLoadRow, WeeklyReportSource } from "./types";
 
@@ -39,6 +41,26 @@ function inWeekLoads(input: WeekStatementInput): ReportLoadRow[] {
       deadheadMilesHundredths: load.deadheadMilesHundredths,
       rateCents: load.grossCents,
     }));
+}
+
+function sheetLoad(loadId: string, rateCents: number, ledgerMilesHundredths: number, primary: boolean): OwnerWeekLoad {
+  return {
+    loadId,
+    status: "Delivered",
+    deliveryDay: "2026-09-26",
+    pickupDay: null,
+    rateCents,
+    reason: null,
+    manifestId: null,
+    tripGroup: "M-9",
+    sheetPrimary: primary,
+    driver: null,
+    origin: "Dallas",
+    destination: "Atlanta",
+    loadedMilesHundredths: 0,
+    deadheadMilesHundredths: 0,
+    ledgerMilesHundredths,
+  };
 }
 
 function sourceFrom(input: WeekStatementInput, loads = inWeekLoads(input)): WeeklyReportSource {
@@ -131,7 +153,15 @@ describe("weekly statement PDF", () => {
     expect(managed?.fuelSummary[0]).toEqual({ label: "Discounted fuel (booked)", value: "$250.00" });
     expect(report.fleetRows.find((row) => row.label === "Net to owner")?.value).toBe("$4,403.16");
     expect(report.fleetRows.find((row) => row.label === "Discounted fuel")?.value).toBe("$750.00");
-    expect(owned?.performance.find((row) => row.label === "MPG (diesel, loaded miles)")?.value).toBe("4.32");
+    const ownedUnit = source.units.find((unit) => unit.unitNumber === "02");
+    const truckMiles = (ownedUnit?.loadedMilesHundredths ?? 0) + (ownedUnit?.deadheadMilesHundredths ?? 0);
+    expect(owned?.performance.find((row) => row.label === "MPG")?.value).toBe("4.32");
+    expect(owned?.performance.find((row) => row.label === "Rate per truck mile")?.value).toBe(
+      formatStatementDollars(centsPerLoadedMile(ownedUnit?.grossCents ?? 0, truckMiles) ?? 0),
+    );
+    expect(owned?.performance.find((row) => row.label === "Fuel cost per truck mile")?.value).toBe(
+      formatStatementDollars(centsPerLoadedMile(ownedUnit?.fuelCents ?? 0, truckMiles) ?? 0),
+    );
     expect(owned?.loads[0]?.loadNumber).toBe("1152");
   });
 
@@ -155,6 +185,10 @@ describe("weekly statement PDF", () => {
     expect(text).toContain("Not stored");
     expect(text).toContain(`TRET.AI v${readAppVersion()}`);
     expect(text).toContain("The owner keeps");
+    expect(text).toContain("Rate per truck mile");
+    expect(text).toContain("Fuel cost per truck mile");
+    expect(text).not.toContain("Rate per loaded mile");
+    expect(text).not.toContain("Fuel cost per loaded mile");
     expect(text).toContain("earned");
     expect(text).toContain("Where the money went");
     expect(text.replace(/\s+/g, " ")).toContain("not deducted again");
@@ -183,6 +217,59 @@ describe("weekly statement PDF", () => {
     expect(Buffer.from(bytes).subarray(0, 5).toString("latin1")).toBe("%PDF-");
     expect(warn.mock.calls.some((call) => String(call[0]).includes("load gross does not match"))).toBe(true);
     warn.mockRestore();
+  });
+
+  it("shows a negative owner keeps amount", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const negative = sourceFrom(input);
+    const unit = negative.units.find((row) => row.unitNumber === "02");
+    expect(unit).toBeTruthy();
+    unit!.netCents = -264_909;
+    const bytes = await weeklyStatementPdf(negative);
+    const text = pdfText(bytes);
+    const at = text.indexOf("Owner keeps");
+    expect(at).toBeGreaterThan(-1);
+    expect(text.slice(at, at + 80)).toContain("-$2,649.09");
+    expect(text).toContain("Net to owner");
+    warn.mockRestore();
+  });
+
+  it("uses sheet MPG and gallons, and each shared-trip row's own miles", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const aligned = alignPdfDetails(source, [
+      {
+        unitNumber: "02",
+        mpg: "7.16",
+        mpgFromSheet: true,
+        reportDieselGallonsMilli: 398_320,
+        reportDefGallonsMilli: 12_500,
+        weekLoads: [
+          sheetLoad("TBH--1152", 220_000, 33_200, true),
+          sheetLoad("TBH--1153", 100_000, 18_000, false),
+        ],
+      },
+    ]);
+    const report = prepareWeeklyReport(aligned);
+    const owned = report.units.find((unit) => unit.unitNumber === "02");
+    expect(owned?.performance.find((row) => row.label === "MPG")?.value).toBe("7.16");
+    expect(owned?.fuelSummary.find((row) => row.label === "Diesel gallons")?.value).toBe("398.320");
+    expect(owned?.fuelSummary.find((row) => row.label === "DEF gallons")?.value).toBe("12.500");
+    expect(owned?.loads.map((load) => load.loaded)).toEqual(["332.00", "180.00"]);
+    expect(owned?.loadTotals?.loaded).toBe("432.00");
+    expect(owned?.loadNote).toBe(
+      "Shared trip. Each row shows its own loaded miles. The total counts the trip once.",
+    );
+    warn.mockRestore();
+  });
+
+  it("leaves MPG blank when the sheet cell is blank", () => {
+    const aligned = alignPdfDetails(source, [
+      { unitNumber: "02", readable: true, mpg: null, reportDieselGallonsMilli: 100_000 },
+    ]);
+    const report = prepareWeeklyReport(aligned);
+    const owned = report.units.find((unit) => unit.unitNumber === "02");
+    expect(owned?.performance.find((row) => row.label === "MPG")?.value).toBe("Not stored");
+    expect(owned?.fuelSummary.find((row) => row.label === "Diesel gallons")?.value).toBe("100.000");
   });
 
   it("returns the PDF when discounted fuel does not match the statement", async () => {

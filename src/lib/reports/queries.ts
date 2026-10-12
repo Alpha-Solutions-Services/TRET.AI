@@ -6,11 +6,27 @@ import { assertMonday } from "@/lib/fee-engine";
 import { milesValueToHundredths } from "@/lib/statements/miles";
 import { loadStatements } from "@/lib/statements/queries";
 import { weeklyStatementPdf } from "./build";
+import { mergePdfDocuments } from "./pdf";
 import { alignPdfDetails } from "./pdf-details";
 import { ReportBlockedError } from "./prepare";
 import type { ReportFuelRow, ReportLoadRow, ReportTollRow, ReportTruckHeader, WeeklyReportSource } from "./types";
 
 export async function buildWeeklyStatementPdf(weekStart: string, unitNumber?: string): Promise<Uint8Array> {
+  const aligned = await loadAlignedWeeklySource(weekStart);
+  return weeklyStatementPdf(unitNumber ? onlyUnit(aligned, unitNumber) : aligned);
+}
+
+/** One Prepare report per truck on the week, combined into a single PDF. */
+export async function buildMondayReportsPdf(weekStart: string): Promise<Uint8Array> {
+  const aligned = await loadAlignedWeeklySource(weekStart);
+  const parts: Uint8Array[] = [];
+  for (const unit of aligned.units) {
+    parts.push(await weeklyStatementPdf(onlyUnit(aligned, unit.unitNumber)));
+  }
+  return mergePdfDocuments(parts);
+}
+
+async function loadAlignedWeeklySource(weekStart: string): Promise<WeeklyReportSource> {
   assertMonday(weekStart, "Week start");
   const page = await loadStatements(weekStart);
   if (page.error) throw new ReportBlockedError(page.error);
@@ -32,7 +48,7 @@ export async function buildWeeklyStatementPdf(weekStart: string, unitNumber?: st
   });
 
   const sheets = await loadActiveTruckInsOuts(page.weekStart, page.weekEnd).catch(() => ({ rows: [], error: null }));
-  const aligned = alignPdfDetails(
+  return alignPdfDetails(
     {
       weekStart: page.weekStart,
       weekEnd: page.weekEnd,
@@ -44,7 +60,6 @@ export async function buildWeeklyStatementPdf(weekStart: string, unitNumber?: st
     },
     sheets.rows,
   );
-  return weeklyStatementPdf(unitNumber ? onlyUnit(aligned, unitNumber) : aligned);
 }
 
 function onlyUnit(source: WeeklyReportSource, unitNumber: string): WeeklyReportSource {

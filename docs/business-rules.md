@@ -42,7 +42,7 @@
 - Dispatch is deducted from the owner. It is also Legacy income on the management P&L, on its own line.
 - Owner net = gross − driver − (management fee, or Tolson on a Legacy-owned truck) − dispatch − factoring − discounted fuel − tolls − misc − fixed expenses charged to the owner. Misc is its own line. Fixed is the sheet fixed amount, not misc added in.
 - A fixed expense charged to management is stored and left out of owner net. A kind with no row is zero. Overlapping versions block the close.
-- Close is blocked by unlinked fuel, a missing or mid-week contract, a load whose stored week disagrees with its delivery date, or a net that does not reconcile. A row-count drop is a warning. It is compared only with a full Monday–Sunday import of the same kind. A short daily file does not warn, and the warning does not block Close week or the PDF.
+- Close is blocked by unlinked fuel, a missing or mid-week contract, a load whose stored week disagrees with its delivery date, or a net that does not reconcile. A row-count drop is a warning. It is compared only with a full Monday–Sunday import of the same kind. A short daily file does not warn. A later run whose date range is narrower than the previous run does not warn. The warning does not block Close week or the PDF.
 - Displayed statement dollars for a truck with a Weekly Expenses sheet come from that sheet plus Load Ledger misc, not from a second fee pass. Truck miles are Load Ledger column P, once per trip. MPG is Week Report C31 when that cell is filled. A 0 or a blank cell leaves MPG empty. A trip that continues next week does not clear a filled cell.
 
 ## Weekly PDF
@@ -50,7 +50,7 @@
 - The file is one week: each unit, then fleet totals. Money on the page is dollars formatted from integer cents.
 - A locked week uses the snapshot. An unlocked week can be downloaded when that week has no blockers. The PDF is that same statement. A mismatch between the statement and imported loads, fuel, or tolls is logged and the file is still returned. A real blocker, a missing week, or a truck that is not on the week still returns an error, and that error is shown in a toast.
 - Owner earnings on a managed unit show one management fee. Tolson payable and Legacy retained stay off that unit. The fleet page shows them as internal totals.
-- Fuel on the PDF is the discounted amount. Diesel gallons are used for MPG. DEF gallons are listed and are not part of MPG.
+- Fuel on the PDF is the discounted amount. MPG is Week Report C31, the same figure as the dashboard. A blank or 0 cell stays Not stored, including a truck whose trip is still open. Diesel gallons are Week Report C28 when that cell is a gallon figure, otherwise the Fuel Log. DEF gallons are listed when the sheet or the log splits them, and they are not part of MPG. Owner keeps is the net, including a negative net. Rate per truck mile and fuel cost per truck mile divide by total truck miles. A shared trip shows each row's Ledger column M miles. The loaded miles total still counts that trip once. Prepare Monday reports is one per-truck report for each truck on the week, in one PDF. Download PDF stays the fleet statement.
 - The unlabeled $228 line is not printed.
 
 ## Dashboard and Management cards

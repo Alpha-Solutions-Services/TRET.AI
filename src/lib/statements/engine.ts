@@ -230,7 +230,14 @@ function coversFullWeek(rangeFrom: string, rangeTo: string, weekStart: string, w
   return rangeFrom <= weekStart && rangeTo >= weekEnd;
 }
 
-/** A short daily file is normal. Only a full Monday–Sunday import of the same kind can warn, and it does not block close or the PDF. */
+function rangeSpanDays(from: string, to: string): number {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return 0;
+  return Math.round((end - start) / 86_400_000) + 1;
+}
+
+/** A short daily file is normal. A full Monday–Sunday import can warn. A later run with a narrower date range than the previous run does not. The warning does not block close or the PDF. */
 function rowCountWarnings(input: WeekStatementInput): StatementBlocker[] {
   const weekEnd = weekBoundsForDate(input.weekStart).end;
   const warnings: StatementBlocker[] = [];
@@ -247,14 +254,21 @@ function rowCountWarnings(input: WeekStatementInput): StatementBlocker[] {
       .sort((a, b) => (a.finishedAt ?? "").localeCompare(b.finishedAt ?? ""));
     if (overlapping.length === 0) continue;
     const latest = overlapping[overlapping.length - 1]!;
-    let previous: number | null = null;
+    let previousRun: (typeof overlapping)[number] | null = null;
     for (let i = overlapping.length - 2; i >= 0; i -= 1) {
       const run = overlapping[i]!;
       if (run.status === "success") {
-        previous = run.rowsFetched;
+        previousRun = run;
         break;
       }
     }
+    if (
+      previousRun &&
+      rangeSpanDays(latest.rangeFrom, latest.rangeTo) < rangeSpanDays(previousRun.rangeFrom, previousRun.rangeTo)
+    ) {
+      continue;
+    }
+    const previous = previousRun?.rowsFetched ?? null;
     const pct =
       kind === "loads"
         ? input.rowCountDropPct.loads

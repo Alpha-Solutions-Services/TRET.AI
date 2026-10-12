@@ -146,6 +146,25 @@ class Writer {
   }
 }
 
+/** One PDF after another. Each part keeps its own pages. */
+export async function mergePdfDocuments(parts: readonly Uint8Array[]): Promise<Uint8Array> {
+  if (parts.length === 0) {
+    const empty = await PDFDocument.create();
+    return empty.save({ useObjectStreams: false });
+  }
+  if (parts.length === 1) return parts[0]!;
+  const merged = await PDFDocument.create();
+  merged.setTitle("Monday reports");
+  merged.setAuthor("TRET.AI");
+  merged.setCreator("TRET.AI");
+  for (const part of parts) {
+    const doc = await PDFDocument.load(part);
+    const copied = await merged.copyPages(doc, doc.getPageIndices());
+    for (const page of copied) merged.addPage(page);
+  }
+  return merged.save({ useObjectStreams: false });
+}
+
 /** Draw a prepared report. Money is already formatted. This function does not calculate it. */
 export async function renderWeeklyStatementPdf(report: PreparedReport): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -246,6 +265,7 @@ function drawLoadTable(writer: Writer, unit: PreparedUnit): void {
     writer.pair("Deadhead total", unit.loadTotals.deadhead);
     writer.pair("Rate total", unit.loadTotals.rate);
   }
+  if (unit.loadNote) writer.paragraph(unit.loadNote, 8);
 }
 
 function drawFleet(writer: Writer, report: PreparedReport): void {
@@ -302,7 +322,7 @@ function drawCharts(writer: Writer, chart: PreparedChart): void {
   drawMoneyBars(writer, "Money in, money out, owner keeps", [
     { label: "Money in", cents: chart.earnedCents, color: categoryColor(0) },
     { label: "Money out", cents: Math.max(0, chart.spentCents), color: categoryColor(1) },
-    { label: "Owner keeps", cents: Math.max(0, chart.keepsCents), color: categoryColor(2) },
+    { label: "Owner keeps", cents: chart.keepsCents, color: categoryColor(2) },
   ]);
   drawMoneyBars(
     writer,
@@ -313,7 +333,7 @@ function drawCharts(writer: Writer, chart: PreparedChart): void {
   drawGauge(writer, "Miles per gallon", chart.mpg ?? "Not stored", chart.mpg == null ? 0 : Number(chart.mpg), 10);
   drawGauge(
     writer,
-    "Rate per loaded mile",
+    "Rate per truck mile",
     chart.rpmCents == null ? "Not stored" : formatStatementDollars(chart.rpmCents),
     chart.rpmCents ?? 0,
     1000,

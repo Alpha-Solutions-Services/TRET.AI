@@ -6,6 +6,7 @@ import {
 } from "@/lib/fees/two-lines";
 import { roundHalfUpDivide } from "@/lib/fee-engine/money";
 import { centsPerLoadedMile } from "@/lib/reports/format";
+import { gallonsStringToMilli } from "@/lib/fuel-tolls/quantity";
 import { inWeek, normalizeHeader, sheetAmountToCents } from "@/lib/sheets/cell";
 import { parseLoadLedger, type LedgerLoadRow } from "@/lib/sheets/ledger";
 import { outsFromWeeklyExpenses } from "@/lib/sheets/weekly-expenses";
@@ -35,6 +36,8 @@ export type OwnerWeekLoad = {
   destination: string | null;
   loadedMilesHundredths: number | null;
   deadheadMilesHundredths: number | null;
+  /** Ledger column M. Null when that cell is blank. */
+  ledgerMilesHundredths: number | null;
 };
 
 export type OwnerCategory = {
@@ -232,6 +235,7 @@ function weekLoad(row: LedgerLoadRow, status: OwnerLoadStatus, reason: string | 
     destination: row.destination,
     loadedMilesHundredths: row.loadedMilesHundredths,
     deadheadMilesHundredths: row.allocatedDeadheadHundredths ?? row.deadheadMilesHundredths,
+    ledgerMilesHundredths: row.ledgerMilesHundredths,
   };
 }
 
@@ -308,6 +312,51 @@ function moneyByLabel(grid: SheetGrid, labels: readonly string[]): number | null
     }
   }
   return null;
+}
+
+export type WeekReportGallons = {
+  dieselMilli: number | null;
+  defMilli: number | null;
+};
+
+/**
+ * Week Report gallons. A labeled gallons cell wins.
+ * Otherwise cell C28 when it is a gallon figure. A dollar amount is not gallons.
+ */
+export function weekReportGallons(grid: SheetGrid | null | undefined): WeekReportGallons {
+  if (!grid) return { dieselMilli: null, defMilli: null };
+  return {
+    dieselMilli:
+      gallonsByLabel(grid, ["diesel gallons", "fuel gallons", "total gallons", "gallons"]) ??
+      gallonsCell(grid[27]?.[2] ?? ""),
+    defMilli: gallonsByLabel(grid, ["def gallons", "def"]),
+  };
+}
+
+function gallonsByLabel(grid: SheetGrid, labels: readonly string[]): number | null {
+  const wanted = new Set(labels);
+  for (const row of grid) {
+    for (let index = 0; index < row.length; index += 1) {
+      const label = normalizeHeader(row[index] ?? "");
+      if (!wanted.has(label)) continue;
+      for (let next = index + 1; next < row.length; next += 1) {
+        const gallons = gallonsCell(row[next] ?? "");
+        if (gallons != null) return gallons;
+      }
+    }
+  }
+  return null;
+}
+
+function gallonsCell(raw: string): number | null {
+  const cleaned = raw.trim().replace(/[$,]/g, "");
+  if (!cleaned || raw.includes("$")) return null;
+  try {
+    const milli = gallonsStringToMilli(cleaned);
+    return milli > 0 ? milli : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Week Report MPG. A labeled MPG cell wins. Otherwise cell C31. */
