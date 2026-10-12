@@ -36,11 +36,12 @@ export function PrepareReportButtons({
   const { toast } = useToast();
   const [pending, setPending] = useState<"one" | "all" | null>(null);
 
-  async function download(unit?: string) {
-    setPending(unit ? "one" : "all");
+  async function download(kind: "one" | "monday") {
+    setPending(kind === "one" ? "one" : "all");
     try {
       const params = new URLSearchParams({ week: weekStart });
-      if (unit) params.set("unit", unit);
+      if (kind === "one" && unitNumber) params.set("unit", unitNumber);
+      if (kind === "monday") params.set("monday", "1");
       const response = await fetch(`/api/statements/pdf?${params.toString()}`);
       const failed = await pdfRouteError(response);
       if (failed) {
@@ -51,12 +52,15 @@ export function PrepareReportButtons({
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = unit ? `tret-truck-${unit}-${weekStart}.pdf` : `tret-monday-reports-${weekStart}.pdf`;
+      anchor.download =
+        kind === "one" && unitNumber
+          ? `tret-truck-${unitNumber}-${weekStart}.pdf`
+          : `tret-monday-reports-${weekStart}.pdf`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
-      toast(unit ? `Report ready for truck ${unit}` : "Monday reports ready", "success");
+      toast(kind === "one" && unitNumber ? `Report ready for truck ${unitNumber}` : "Monday reports ready", "success");
     } catch {
       toast("Could not build the PDF.", "error");
     } finally {
@@ -67,12 +71,12 @@ export function PrepareReportButtons({
   return (
     <div className="flex flex-wrap gap-2">
       {unitNumber ? (
-        <Button type="button" variant="vivid" disabled={pending !== null} onClick={() => download(unitNumber)}>
+        <Button type="button" variant="vivid" disabled={pending !== null} onClick={() => download("one")}>
           {pending === "one" ? "Preparing report..." : "Prepare report"}
         </Button>
       ) : null}
       {showAll ? (
-        <Button type="button" variant="vividAlt" disabled={pending !== null} onClick={() => download()}>
+        <Button type="button" variant="vividAlt" disabled={pending !== null} onClick={() => download("monday")}>
           {pending === "all" ? "Preparing reports..." : "Prepare Monday reports"}
         </Button>
       ) : null}

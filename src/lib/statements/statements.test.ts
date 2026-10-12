@@ -243,6 +243,49 @@ describe("close blockers", () => {
     expect(result.closeAllowed).toBe(true);
   });
 
+  it("ignores a full-week file whose date range is narrower than the previous run", () => {
+    const result = buildWeekStatements(
+      inputFrom(fixture, {
+        importRuns: [
+          {
+            kind: "fuel",
+            status: "success",
+            rangeFrom: "2026-09-01",
+            rangeTo: "2026-09-27",
+            rowsFetched: 54,
+            finishedAt: "2026-09-28T00:00:00Z",
+          },
+          {
+            kind: "fuel",
+            status: "success",
+            rangeFrom: "2026-09-21",
+            rangeTo: "2026-09-27",
+            rowsFetched: 5,
+            finishedAt: "2026-09-29T00:00:00Z",
+          },
+          {
+            kind: "tolls",
+            status: "success",
+            rangeFrom: "2026-09-01",
+            rangeTo: "2026-09-27",
+            rowsFetched: 64,
+            finishedAt: "2026-09-28T00:00:00Z",
+          },
+          {
+            kind: "tolls",
+            status: "success",
+            rangeFrom: "2026-09-21",
+            rangeTo: "2026-09-27",
+            rowsFetched: 0,
+            finishedAt: "2026-09-29T00:00:00Z",
+          },
+        ],
+      }),
+    );
+    expect(result.warnings.map((row) => row.rule)).not.toContain("row_count_drop");
+    expect(result.closeAllowed).toBe(true);
+  });
+
   it("ignores a row-count drop whose dates do not overlap the week", () => {
     const result = buildWeekStatements(
       inputFrom(fixture, {

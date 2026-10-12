@@ -1,7 +1,13 @@
 import { weekBoundsForDate, type TruckClass } from "@/lib/fee-engine";
 import type { FeeRatePair } from "@/lib/fees/two-lines";
 import { loadsInWeek } from "@/lib/loads/week-membership";
-import { buildOwnerTruckWeek, SHEET_FEE_DIFFERS, type OwnerPendingLoad, type OwnerWeekLoad } from "@/lib/reports/owner-week";
+import {
+  buildOwnerTruckWeek,
+  SHEET_FEE_DIFFERS,
+  weekReportGallons,
+  type OwnerPendingLoad,
+  type OwnerWeekLoad,
+} from "@/lib/reports/owner-week";
 import { mainTripMilesHundredths, tripMilesHundredths, tripRpmCents, truckMpg, type MetricLoad } from "@/lib/reports/trip-metrics";
 import { inWeek, sheetAmountToCents, sheetDay, columnIndex as sheetColumnIndex, findHeaderRow } from "@/lib/sheets/cell";
 import { gallonsStringToMilli } from "@/lib/fuel-tolls/quantity";
@@ -77,6 +83,10 @@ export type TruckWeekInsOuts = {
   pending?: OwnerPendingLoad[];
   /** Diesel gallons already used for mpg. Thousandths. Omitted when the sheet was not read. */
   dieselGallonsMilli?: number;
+  /** Owner PDF diesel gallons. Week Report C28 when that cell is gallons, otherwise the Fuel Log. */
+  reportDieselGallonsMilli?: number;
+  /** Owner PDF DEF gallons when the Week Report or Fuel Log splits them. */
+  reportDefGallonsMilli?: number;
   categories: ExpenseCategoryTotal[];
   /** Sheet Management Fee cell, split into the two fee lines. */
   legacyFeeCents?: number;
@@ -440,9 +450,11 @@ export function buildTruckWeekInsOuts(input: {
       readable: false,
     };
   }
+  const logGallons = fuelLogGallons(input.fuelLog ?? null, input.weekStart, input.weekEnd);
+  const reportGallons = weekReportGallons(input.weekReport ?? null);
   const tripMiles = milesForLoads(
     ins?.loads ?? [],
-    dieselGallonsFromFuelLog(input.fuelLog ?? null, input.weekStart, input.weekEnd),
+    logGallons.dieselMilli,
     input.loadLedger ? parseLoadLedger(input.loadLedger).rows : ins?.loads ?? [],
   );
   const owner = buildOwnerTruckWeek({
@@ -475,6 +487,8 @@ export function buildTruckWeekInsOuts(input: {
       : {}),
     mpg: owner.mpg ?? (owner.tripOpen ? null : tripMiles.mpg),
     mpgFromSheet: owner.mpg != null,
+    reportDieselGallonsMilli: reportGallons.dieselMilli ?? logGallons.dieselMilli,
+    reportDefGallonsMilli: reportGallons.defMilli ?? logGallons.defMilli,
     rpmLabel: owner.rpmLabel,
     sheetFeeDiffers: owner.sheetFeeDiffers,
     miscCents: owner.miscCents,
@@ -533,26 +547,34 @@ function milesForLoads(
   };
 }
 
-function dieselGallonsFromFuelLog(grid: SheetGrid | null, weekStart: string, weekEnd: string): number {
-  if (!grid) return 0;
+/** Fuel Log gallons in the week. DEF and DEFD are split out of diesel. */
+export function fuelLogGallons(
+  grid: SheetGrid | null,
+  weekStart: string,
+  weekEnd: string,
+): { dieselMilli: number; defMilli: number } {
+  if (!grid) return { dieselMilli: 0, defMilli: 0 };
   const headerIndex = findHeaderRow(grid, [["date"], ["gallons"]]);
-  if (headerIndex < 0) return 0;
+  if (headerIndex < 0) return { dieselMilli: 0, defMilli: 0 };
   const header = grid[headerIndex] ?? [];
   const dateCol = sheetColumnIndex(header, ["date"]);
   const gallonsCol = sheetColumnIndex(header, ["gallons"]);
   const itemCol = sheetColumnIndex(header, ["item", "product", "fuel type"]);
-  let total = 0;
+  let dieselMilli = 0;
+  let defMilli = 0;
   for (const row of grid.slice(headerIndex + 1)) {
     const day = sheetDay(row[dateCol] ?? "");
     if (!inWeek(day, weekStart, weekEnd)) continue;
-    const item = (row[itemCol] ?? "").trim().toUpperCase();
-    if (item === "DEF" || item === "DEFD") continue;
+    let gallons = 0;
     try {
-      const gallons = gallonsStringToMilli((row[gallonsCol] ?? "").trim());
-      if (gallons > 0) total += gallons;
+      gallons = gallonsStringToMilli((row[gallonsCol] ?? "").trim());
     } catch {
       continue;
     }
+    if (gallons <= 0) continue;
+    const item = (row[itemCol] ?? "").trim().toUpperCase();
+    if (item === "DEF" || item === "DEFD") defMilli += gallons;
+    else dieselMilli += gallons;
   }
-  return total;
+  return { dieselMilli, defMilli };
 }

@@ -6,6 +6,11 @@ import type { ReportFuelRow, ReportLoadRow, ReportTollRow, WeeklyReportSource } 
 export type SheetPdfTruck = {
   unitNumber: string;
   weekLoads?: readonly OwnerWeekLoad[];
+  mpg?: string | null;
+  mpgFromSheet?: boolean;
+  readable?: boolean;
+  reportDieselGallonsMilli?: number;
+  reportDefGallonsMilli?: number;
 };
 
 /**
@@ -23,10 +28,20 @@ export function alignPdfDetails(
   for (const unit of source.units) {
     const sheet = sheets.find((row) => unitNumberFromRaw(row.unitNumber) === unitNumberFromRaw(unit.unitNumber));
     loads.push(...loadsForUnit(unit, sheet?.weekLoads ?? [], source.loads));
-    fuel.push(...fuelForUnit(unit, source.fuel));
+    fuel.push(...fuelForUnit(unit, source.fuel, sheet));
     tolls.push(...tollsForUnit(unit, source.tolls));
   }
-  return { ...source, loads, fuel, tolls };
+  return {
+    ...source,
+    loads,
+    fuel,
+    tolls,
+    sheetUnits: sheets.map((row) => ({
+      unitNumber: row.unitNumber,
+      mpg: row.mpg?.trim() ? row.mpg.trim() : null,
+      mpgKnown: Boolean(row.readable || row.mpgFromSheet || (row.mpg != null && row.mpg.trim() !== "")),
+    })),
+  };
 }
 
 function loadsForUnit(
@@ -48,6 +63,11 @@ function loadsForUnit(
         loadedMilesHundredths: Math.max(0, row.loadedMilesHundredths ?? 0),
         deadheadMilesHundredths: Math.max(0, row.deadheadMilesHundredths ?? 0),
         rateCents: row.rateCents ?? 0,
+        tableLoadedMilesHundredths:
+          row.ledgerMilesHundredths != null
+            ? Math.max(0, row.ledgerMilesHundredths)
+            : Math.max(0, row.loadedMilesHundredths ?? 0),
+        tripKey: (row.tripGroup || row.manifestId || "").trim() || null,
       }))
     : dbLoads.filter((row) => row.truckId === unit.truckId).map((row) => ({ ...row }));
   return fitMiles(base, unit);
@@ -92,7 +112,14 @@ function applyDelta(
   write(last, target);
 }
 
-function fuelForUnit(unit: UnitStatement, rows: readonly ReportFuelRow[]): ReportFuelRow[] {
+function fuelForUnit(
+  unit: UnitStatement,
+  rows: readonly ReportFuelRow[],
+  sheet: SheetPdfTruck | undefined,
+): ReportFuelRow[] {
+  const diesel = sheetGallons(sheet?.reportDieselGallonsMilli);
+  const def = sheetGallons(sheet?.reportDefGallonsMilli);
+  if (diesel > 0 || def > 0) return sheetFuelRows(unit, diesel, def);
   const own = rows.filter((row) => row.unitNumber === unit.unitNumber);
   const amount = own.reduce((sum, row) => sum + row.amountCents, 0);
   const productsOk = own.every((row) => row.product === "diesel" || row.product === "def" || row.product === "other");
@@ -100,6 +127,28 @@ function fuelForUnit(unit: UnitStatement, rows: readonly ReportFuelRow[]): Repor
   if (unit.fuelCents === 0) return [];
   const gallons = own.filter((row) => row.product === "diesel").reduce((sum, row) => sum + row.gallonsMilli, 0);
   return [{ unitNumber: unit.unitNumber, amountCents: unit.fuelCents, gallonsMilli: gallons, product: "diesel" }];
+}
+
+function sheetGallons(value: number | undefined): number {
+  if (value == null || !Number.isInteger(value) || value <= 0) return 0;
+  return value;
+}
+
+/** Sheet gallons, with the statement fuel dollars on the diesel row so the total still matches. */
+function sheetFuelRows(unit: UnitStatement, dieselMilli: number, defMilli: number): ReportFuelRow[] {
+  const rows: ReportFuelRow[] = [];
+  if (dieselMilli > 0 || unit.fuelCents > 0) {
+    rows.push({
+      unitNumber: unit.unitNumber,
+      amountCents: unit.fuelCents,
+      gallonsMilli: dieselMilli,
+      product: "diesel",
+    });
+  }
+  if (defMilli > 0) {
+    rows.push({ unitNumber: unit.unitNumber, amountCents: 0, gallonsMilli: defMilli, product: "def" });
+  }
+  return rows;
 }
 
 function tollsForUnit(unit: UnitStatement, rows: readonly ReportTollRow[]): ReportTollRow[] {

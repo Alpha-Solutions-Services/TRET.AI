@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.0.0.38 — 2026-10-12
+
+- Owner PDFs use Week Report C31 for MPG, the same figure as the dashboard. Truck 6 stays blank because that cell is empty and the trip is open. Diesel gallons come from Week Report C28 when that cell is a gallon figure, otherwise from the Fuel Log. DEF gallons are listed when the sheet or the log splits them.
+- Owner keeps shows the net, including a negative net such as -$2,649.09.
+- The mile rates are labeled Rate per truck mile and Fuel cost per truck mile. The amounts were already per total truck mile.
+- A shared trip lists each load's Ledger column M miles. The loaded miles total still counts the trip once. The table notes that.
+- Prepare Monday reports downloads one owner report per truck, combined in one PDF. Download PDF stays the fleet statement.
+- A fuel or toll row-count warning is skipped when the later run's date range is narrower than the previous run. A drop across the same full week still warns and still does not block Close week or the PDF.
+- No migration. TONU rate-con reading and receipt photo reading are still not wired. Trucks 1, 2, 9, and 10 still need sheet links.
+
 ## v0.0.0.37 — 2026-10-12
 
 - Download PDF, Prepare report, and Prepare Monday reports use the statement already on the page. A mismatch with imported loads, fuel, tolls, or fixed lines is logged and the PDF is still returned. A blocker, a missing truck, or a failed read still returns an error, and that error shows in a toast.

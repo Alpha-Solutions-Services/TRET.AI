@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { centsPerLoadedMile } from "@/lib/reports/format";
-import { buildOwnerTruckWeek, SHEET_FEE_DIFFERS, TONU_RATE_NOTE } from "@/lib/reports/owner-week";
+import { buildOwnerTruckWeek, SHEET_FEE_DIFFERS, TONU_RATE_NOTE, weekReportGallons } from "@/lib/reports/owner-week";
+import { fuelLogGallons } from "@/lib/sheets/ins-outs";
 import { findFuelLogHeader, locateFuelLogColumns } from "@/lib/fuel-tolls/file/sheet-columns";
 import { compareDailyCheck } from "@/lib/reports/daily-check";
 
@@ -330,6 +331,7 @@ describe("week 41 owner sheet", () => {
     primary[2] = "$1,800.00";
     primary[4] = "M-1195";
     primary[5] = "Yes";
+    primary[12] = "400.00";
     primary[15] = "1165.00";
     const partial = Array.from({ length: 43 }, () => "");
     partial[0] = "10/08/2026";
@@ -337,6 +339,7 @@ describe("week 41 owner sheet", () => {
     partial[2] = "$1,700.00";
     partial[4] = "M-1195";
     partial[5] = "";
+    partial[12] = "765.00";
     partial[15] = "1165.00";
     const week = buildOwnerTruckWeek({
       ledger: [cells, primary, partial],
@@ -346,6 +349,29 @@ describe("week 41 owner sheet", () => {
     expect(week.milesHundredths).toBe(116_500);
     expect(week.loadCount).toBe(2);
     expect(week.grossCents).toBe(350_000);
+    expect(week.loads.find((row) => row.loadId === "TBH--1188")?.ledgerMilesHundredths).toBe(40_000);
+    expect(week.loads.find((row) => row.loadId === "TBH--1192")?.ledgerMilesHundredths).toBe(76_500);
+  });
+
+  it("reads Week Report C28 gallons and a DEF split", () => {
+    const grid = weekReport(TRUCKS[2]!);
+    grid[27]![2] = "398.320";
+    expect(weekReportGallons(grid)).toEqual({ dieselMilli: 398_320, defMilli: null });
+    expect(grid[28]![2]).toContain("$");
+    const withDef = weekReport(TRUCKS[2]!);
+    withDef.push(["DEF gallons", "12.500"]);
+    expect(weekReportGallons(withDef).defMilli).toBe(12_500);
+    expect(
+      fuelLogGallons(
+        [
+          ["Date", "Item", "Gallons"],
+          ["10/06/2026", "ULSD", "100.000"],
+          ["10/06/2026", "DEF", "4.250"],
+        ],
+        WEEK.weekStart,
+        WEEK.weekEnd,
+      ),
+    ).toEqual({ dieselMilli: 100_000, defMilli: 4_250 });
   });
 });
 
