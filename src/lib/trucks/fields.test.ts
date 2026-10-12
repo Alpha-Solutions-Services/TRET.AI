@@ -107,7 +107,7 @@ describe("parseTruckFields", () => {
     });
     expect(parseTruckFields(input({ truckClass: "company" }))).toEqual({
       ok: false,
-      error: "Choose Legacy-owned or Third-party.",
+      error: "Choose Legacy-owned, Tolson owned, or Third-party.",
     });
   });
 });

@@ -1,7 +1,7 @@
 import { weekBoundsForDate, type TruckClass } from "@/lib/fee-engine";
 import type { FeeRatePair } from "@/lib/fees/two-lines";
 import { loadsInWeek } from "@/lib/loads/week-membership";
-import { buildOwnerTruckWeek, type OwnerPendingLoad } from "@/lib/reports/owner-week";
+import { buildOwnerTruckWeek, SHEET_FEE_DIFFERS, type OwnerPendingLoad, type OwnerWeekLoad } from "@/lib/reports/owner-week";
 import { mainTripMilesHundredths, tripMilesHundredths, tripRpmCents, truckMpg, type MetricLoad } from "@/lib/reports/trip-metrics";
 import { inWeek, sheetAmountToCents, sheetDay, columnIndex as sheetColumnIndex, findHeaderRow } from "@/lib/sheets/cell";
 import { gallonsStringToMilli } from "@/lib/fuel-tolls/quantity";
@@ -63,6 +63,14 @@ export type TruckWeekInsOuts = {
   mpg?: string | null;
   /** True when mpg came from the Week Report cell, not from miles divided by gallons. */
   mpgFromSheet?: boolean;
+  /** Week Report F7 when that cell is filled. Four decimals. */
+  rpmLabel?: string | null;
+  /** Sheet Management Fee cell is not the percent-of-gross total. */
+  sheetFeeDiffers?: boolean;
+  /** Misc charged to the owner, apart from fixed. */
+  miscCents?: number;
+  /** Delivered, pending, and TONU rows from the shared week calculation. */
+  weekLoads?: OwnerWeekLoad[];
   /** Allocated truck miles (loaded plus deadhead, each trip once). Omitted when that column is absent. */
   truckMilesHundredths?: number;
   /** Loads that belong to the next week, including a TONU held out of this week. */
@@ -344,7 +352,7 @@ export function displayExpenseColumns(rows: TruckWeekInsOuts[]): string[] {
       if (!extras.includes(category.category)) extras.push(category.category);
     }
   }
-  return [...WEEKLY_EXPENSE_LABELS, ...extras];
+  return [...WEEKLY_EXPENSE_LABELS, ...extras].filter((label) => label !== "Management fee");
 }
 
 export function fleetWeekTrend(rows: TruckWeekInsOuts[]): WeekMoney[] {
@@ -450,6 +458,7 @@ export function buildTruckWeekInsOuts(input: {
   });
   const grossCents = input.loadLedger ? owner.grossCents : (ins?.insCents ?? 0);
   const expenseCents = owner.expenseCents;
+  if (owner.sheetFeeDiffers) notes.push(SHEET_FEE_DIFFERS);
   return {
     ...base,
     insCents: grossCents,
@@ -457,14 +466,19 @@ export function buildTruckWeekInsOuts(input: {
     netCents: grossCents - expenseCents,
     loadCount: input.loadLedger ? owner.loadCount : (ins?.loadCount ?? 0),
     ...tripMiles,
+    ...(owner.deadheadKnown ? { deadheadMilesHundredths: owner.deadheadHundredths } : {}),
     ...(owner.milesFromAllocated
       ? {
           truckMilesHundredths: owner.milesHundredths,
           rpmCents: owner.rpmCents,
         }
       : {}),
-    mpg: owner.mpg ?? tripMiles.mpg,
-    mpgFromSheet: owner.mpg != null,
+    mpg: owner.tripOpen ? null : (owner.mpg ?? tripMiles.mpg),
+    mpgFromSheet: !owner.tripOpen && owner.mpg != null,
+    rpmLabel: owner.rpmLabel,
+    sheetFeeDiffers: owner.sheetFeeDiffers,
+    miscCents: owner.miscCents,
+    weekLoads: owner.loads,
     pending: owner.pending,
     legacyFeeCents: owner.fees.legacyFeeCents,
     tolsonLeaseFeeCents: owner.fees.tolsonLeaseFeeCents,

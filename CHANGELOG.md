@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.0.0.35 — 2026-10-12
+
+- Fee lines are the truck's basis points times weekly gross. Truck 4 is Legacy $250 and Tolson $200, total $450. Truck 5 is $720 and $576. Truck 6 is $200 and $160. Truck 7 is $470 and $376. Truck 8, after the TONU hold-out, is Legacy 10 percent and Tolson 8 percent of $7,900. Truck 3 stays Legacy $855 and Tolson $0. Trucks 1 and 2 stay Tolson 10 percent and Legacy $0. Expenses and net use that total. When the sheet Management Fee cell is different, the page shows "sheet fee differs". Management income is the sum of Legacy fees. Tolson payable is the sum of Tolson fees.
+- TONU TBH--1201 is held to the next week and listed as Pending, "TONU rate unconfirmed", on the Dashboard, Ins and Outs, and Statements. It is not in this week's loads or gross.
+- The Loads page uses that same week list and adds a Status column: Delivered, Pending, or TONU.
+- Deadhead is allocated deadhead from Ledger AV, or Week Report C18. Truck 6 is 29.87, Truck 7 is 27.34, Truck 5 is 288.39, and the fleet is 898.60.
+- MPG stays blank when a counted load shares a trip that delivers next week. Fleet MPG uses trucks with a delivered trip only. Fleet RPM is total gross divided by total truck miles.
+- A row-count drop is a warning. It is compared only to a full Monday–Sunday import of the same kind. A short daily file does not block Close week or Download PDF.
+- Statements add the class Tolson owned. Unit 3 shows that class. Units sort 1, 2, …, 10. Misc is its own owner line. Fixed is the fixed amount.
+- Ins and Outs money uses thousands separators. The fee columns are Legacy fee, Tolson lease fee, and Management fee total. The extra Management fee column is gone.
+- The signed-in header is no longer sticky, so it does not sit mid-page, and the footer stays below the page content. A rate limit on the Gemini status ping shows OK on the Hub. Open issues from an older import run, and older copies of the same rule, are marked resolved.
+- Migrations `supabase/migrations/20261012000000_v35_tolson_owned_enum.sql` and `supabase/migrations/20261012000100_v35_tolson_owned_unit.sql` are included and not applied from this branch. TONU rate-con reading and receipt photo reading are still not wired. Trucks 1, 2, 9, and 10 still need sheet links.
+
 ## v0.0.0.34 — 2026-10-11
 
 - Every truck has two fee lines, both a percent of that truck's weekly gross: Legacy fee and Tolson lease fee. The management fee total is those two lines. Trucks 1 and 2 are Legacy 0 percent and Tolson lease 10 percent. Truck 3 is Legacy 10 percent and Tolson lease 0 percent. Trucks 4 to 8, and a new truck, are Legacy 10 percent and Tolson lease 8 percent (18 percent total).

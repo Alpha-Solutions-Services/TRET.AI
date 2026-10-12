@@ -45,7 +45,8 @@ function miles(hundredths: number | undefined): string {
   return formatMilesHundredths(hundredths);
 }
 
-function rpm(cents: number | null | undefined): string {
+function rpm(cents: number | null | undefined, label?: string | null): string {
+  if (label) return label;
   if (cents == null) return "";
   return formatStatementDollars(cents);
 }
@@ -93,13 +94,16 @@ export function OverviewClient({
       grossCents: row.insCents,
       totalMilesHundredths:
         row.truckMilesHundredths ?? (row.loadedMilesHundredths ?? 0) + (row.deadheadMilesHundredths ?? 0),
-      mainMilesHundredths: row.mpgFromSheet ? 0 : (row.loadedMilesHundredths ?? 0),
-      gallonsMilli: row.mpgFromSheet ? 0 : (row.dieselGallonsMilli ?? 0),
+      mainMilesHundredths: row.loadedMilesHundredths ?? row.truckMilesHundredths ?? 0,
+      gallonsMilli: row.dieselGallonsMilli ?? 0,
       mpg: row.mpg ?? null,
     })),
   );
   const fleetRpm = fleetFigures.rpmCents;
   const fleetMpg = fleetFigures.mpg;
+  const pendingLoads = readable.flatMap((row) =>
+    (row.pending ?? []).map((item) => ({ unitNumber: row.unitNumber, loadId: item.loadId, reason: item.reason })),
+  );
   const issueStatus = data.openIssueCount == null ? "warn" : data.openIssueCount > 0 ? "danger" : "ok";
 
   function openWeek(next: string) {
@@ -195,6 +199,19 @@ export function OverviewClient({
 
       <ConnectionBanner feeds={hub} />
       <HubFlow feeds={hub} />
+
+      {pendingLoads.length > 0 ? (
+        <div className="material rounded-xl border border-[var(--color-border)] px-4 py-3">
+          <h2 className="text-sm font-medium">Pending</h2>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--color-fg-muted)]">
+            {pendingLoads.map((item) => (
+              <li key={`${item.unitNumber}:${item.loadId}`}>
+                Truck {item.unitNumber} {item.loadId}: {item.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
         <Button variant="vivid" onClick={() => openWeek(shiftWeek(data.weekStart, -1))}>
@@ -371,7 +388,7 @@ function InsOutsTable({
                   </td>
                   <td className="px-3 py-2">{row.readable ? formatMilesHundredths(row.truckMilesHundredths ?? row.loadedMilesHundredths ?? 0) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? miles(row.deadheadMilesHundredths) : ""}</td>
-                  <td className="px-3 py-2">{row.readable ? rpm(row.rpmCents) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? rpm(row.rpmCents, row.rpmLabel) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? (row.mpg ?? "") : ""}</td>
                   <td className="px-3 py-2">{row.readable ? money(row.insCents) : ""}</td>
                   <td className="px-3 py-2">{row.readable ? money(row.outsCents) : ""}</td>

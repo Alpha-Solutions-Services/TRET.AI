@@ -422,7 +422,7 @@ function fleetChartExpenses(source: WeeklyReportSource): Array<[string, number]>
   let management = 0;
   let tolson = 0;
   for (const unit of source.units) {
-    if (unit.truckClass === "third_party") management += unit.managementFeeCents;
+    if (unit.truckClass === "third_party" || unit.truckClass === "tolson_owned") management += unit.managementFeeCents;
     else tolson += unit.tolsonPayableCents;
   }
   const fleet = source.fleet;

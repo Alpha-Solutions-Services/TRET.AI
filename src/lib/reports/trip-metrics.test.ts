@@ -77,4 +77,14 @@ describe("trip RPM and MPG", () => {
     ]);
     expect(fleet.mpg).toBe("4.00");
   });
+
+  it("weights fleet MPG from sheet labels when gallons were not stored", () => {
+    const fleet = fleetFromTrucks([
+      { grossCents: 100_000, totalMilesHundredths: 10_000, mainMilesHundredths: 10_000, gallonsMilli: 0, mpg: "5.00" },
+      { grossCents: 100_000, totalMilesHundredths: 10_000, mainMilesHundredths: 10_000, gallonsMilli: 0, mpg: "10.00" },
+      { grossCents: 100_000, totalMilesHundredths: 50_000, mainMilesHundredths: 50_000, gallonsMilli: 9_000_000, mpg: null },
+    ]);
+    expect(fleet.mpg).toBe("6.67");
+    expect(fleet.rpmCents).toBe(centsPerLoadedMile(300_000, 70_000));
+  });
 });

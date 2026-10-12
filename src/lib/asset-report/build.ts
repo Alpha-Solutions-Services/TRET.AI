@@ -10,7 +10,7 @@ import {
   formatStatementDollars,
 } from "@/lib/reports/format";
 import { buildOwnerTruckWeek } from "@/lib/reports/owner-week";
-import { seededFeeRates, splitSheetManagementFee } from "@/lib/fees/two-lines";
+import { seededFeeRates, managementFeeSplit } from "@/lib/fees/two-lines";
 import {
   columnIndex,
   columnIndexes,
@@ -424,8 +424,8 @@ function columnTotal(header: string[], rows: string[][], names: readonly string[
   return sum;
 }
 
-function feeBreakdown(unitNumber: string, managementCents: number): AssetExpenseLine[] {
-  const split = splitSheetManagementFee(managementCents, seededFeeRates(unitNumber));
+function feeBreakdown(unitNumber: string, grossCents: number): AssetExpenseLine[] {
+  const split = managementFeeSplit(grossCents, seededFeeRates(unitNumber));
   return [
     { label: "Legacy fee", cents: split.legacyFeeCents, detail: true },
     { label: "Tolson lease fee", cents: split.tolsonLeaseFeeCents, detail: true },
@@ -544,7 +544,9 @@ export function buildAssetReport(input: {
   } | null;
 }): AssetReport {
   const parsed = input.ledger ? parseLoadLedger(input.ledger) : null;
-  const weekLoads = (parsed?.rows ?? []).filter((row) => inWeek(row.deliveryDay, input.weekStart, input.weekEnd));
+  const weekLoads = (parsed?.rows ?? []).filter(
+    (row) => inWeek(row.deliveryDay, input.weekStart, input.weekEnd) && !/\btonu\b/i.test(row.status ?? ""),
+  );
   const loads: AssetLoadLine[] = layoutManifestGroups(
     weekLoads
       .filter((row) => row.rateCents != null)
@@ -573,7 +575,7 @@ export function buildAssetReport(input: {
     void rankHundredths;
     return load;
   });
-  const grossCents = loads.reduce((sum, row) => sum + row.rateCents, 0);
+  let grossCents = loads.reduce((sum, row) => sum + row.rateCents, 0);
   let loadedMilesHundredths = loads.reduce(
     (sum, row) => sum + countedLoadedHundredths(row.manifestRole, row.loadedHundredths),
     0,
@@ -612,10 +614,14 @@ export function buildAssetReport(input: {
     weekReport: input.weekReport ?? null,
     weekStart: input.weekStart,
     weekEnd: input.weekEnd,
+    unitNumber: input.unitNumber,
   });
+  if (input.ledger) grossCents = owner.grossCents;
+  if (owner.sheetFeeDiffers) notes.push("sheet fee differs");
   if (owner.milesFromAllocated) {
     dispatchMilesHundredths = owner.milesHundredths;
   }
+  if (owner.deadheadKnown) deadheadMilesHundredths = owner.deadheadHundredths;
   for (const item of owner.pending) notes.push(`${item.loadId}: ${item.reason}.`);
   if (input.importTotals) {
     if (fuelCents === 0 && input.importTotals.fuelCostCents > 0) {
@@ -653,8 +659,8 @@ export function buildAssetReport(input: {
   };
   const leftExpenses: AssetExpenseLine[] = [
     { label: percentLabel("Driver Compensation", "20%", weekly, ["driver compensation %", "driver compensation percent"]), cents: lines.driver },
-    { label: percentLabel("Management Fee", "10%", weekly, ["management fee %", "management fee percent", "mgmt fee %"]), cents: lines.management },
-    ...feeBreakdown(input.unitNumber, lines.management),
+    { label: percentLabel("Management Fee", "10%", weekly, ["management fee %", "management fee percent", "mgmt fee %"]), cents: owner.fees.managementFeeCents },
+    ...feeBreakdown(input.unitNumber, owner.grossCents),
     { label: "Dispatch Fee", cents: lines.dispatch },
     { label: percentLabel("Factoring Fee", "1.75%", weekly, ["factoring fee %", "factoring fee percent"]), cents: lines.factoring },
     { label: "Fuel (Diesel + DEF)", cents: lines.fuel },

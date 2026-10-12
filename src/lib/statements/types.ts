@@ -154,6 +154,8 @@ export type WeekStatements = {
   units: UnitStatement[];
   fleet: FleetStatement;
   blockers: StatementBlocker[];
+  /** Row-count drops and sheet fee differences. They do not block Close week or the PDF. */
+  warnings: StatementBlocker[];
   closeAllowed: boolean;
 };
 

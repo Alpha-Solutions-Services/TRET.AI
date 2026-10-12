@@ -7,7 +7,7 @@ import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import { ReportWeekLabel } from "@/components/reports/report-week";
 import { weekBoundsForDate } from "@/lib/fee-engine";
 import type { LegacyEarnings } from "@/lib/legacy/fees";
-import { centsToDollarString } from "@/lib/money/cents";
+import { formatStatementDollars } from "@/lib/reports/format";
 import {
   displayExpenseColumns,
   fleetInsOutsTotals,
@@ -15,8 +15,7 @@ import {
 } from "@/lib/sheets/ins-outs";
 
 function money(cents: number): string {
-  if (cents < 0) return `-$${centsToDollarString(-cents)}`;
-  return `$${centsToDollarString(cents)}`;
+  return formatStatementDollars(cents);
 }
 
 function shiftWeek(weekStart: string, delta: number): string {
@@ -160,7 +159,7 @@ export function InsOutsClient({
               <th className="px-3 py-3 font-medium">Ins</th>
               <th className="px-3 py-3 font-medium">Legacy fee</th>
               <th className="px-3 py-3 font-medium">Tolson lease fee</th>
-              <th className="px-3 py-3 font-medium">Management fee</th>
+              <th className="px-3 py-3 font-medium">Management fee total</th>
               {columns.map((category) => (
                 <th key={category} className="px-3 py-3 font-medium whitespace-nowrap">
                   {category}

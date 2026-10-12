@@ -1,7 +1,6 @@
 import {
   managementFeeSplit,
   seededFeeRates,
-  splitSheetManagementFee,
   type FeeRatePair,
   type FeeSplit,
 } from "@/lib/fees/two-lines";
@@ -16,6 +15,26 @@ type SheetGrid = string[][];
 export type OwnerPendingLoad = {
   loadId: string;
   reason: string;
+};
+
+export type OwnerLoadStatus = "Delivered" | "Pending" | "TONU";
+
+/** One ledger row in this week's shared calculation, including pending and TONU. */
+export type OwnerWeekLoad = {
+  loadId: string;
+  status: OwnerLoadStatus;
+  deliveryDay: string;
+  pickupDay: string | null;
+  rateCents: number | null;
+  reason: string | null;
+  manifestId: string | null;
+  tripGroup: string | null;
+  sheetPrimary: boolean | null;
+  driver: string | null;
+  origin: string | null;
+  destination: string | null;
+  loadedMilesHundredths: number | null;
+  deadheadMilesHundredths: number | null;
 };
 
 export type OwnerCategory = {
@@ -33,19 +52,29 @@ export type OwnerTruckWeek = {
   rpmCents: number | null;
   /** Week Report F7, four decimals. Null when truck miles are zero. */
   rpmLabel: string | null;
-  /** Week Report MPG. Null when that cell is blank. */
+  /** Week Report MPG. Null when that cell is blank or the trip is still open. */
   mpg: string | null;
+  /** True when a load on this truck delivers next week, so MPG stays blank. */
+  tripOpen: boolean;
   miscCents: number;
   expenseCents: number;
   netCents: number;
+  /** Allocated deadhead (Week Report C18, or Ledger AV once per trip). */
+  deadheadHundredths: number;
+  deadheadKnown: boolean;
   categories: OwnerCategory[];
   pending: OwnerPendingLoad[];
   loadIds: string[];
-  /** Legacy fee, Tolson lease fee, and their total. The total matches the sheet Management Fee cell when that cell is present. */
+  /** Delivered, pending, and TONU rows for this week. The Loads page uses this list. */
+  loads: OwnerWeekLoad[];
+  /** Legacy fee and Tolson lease fee, each a percent of weekly gross. Expenses use the total. */
   fees: FeeSplit;
+  /** True when the sheet Management Fee cell is not the percent-of-gross total. */
+  sheetFeeDiffers: boolean;
 };
 
-export const TONU_RATE_NOTE = "TONU amount unconfirmed";
+export const TONU_RATE_NOTE = "TONU rate unconfirmed";
+export const SHEET_FEE_DIFFERS = "sheet fee differs";
 
 /**
  * Owner-week figures from the Load Ledger, Weekly Expenses, and Week Report.
@@ -67,27 +96,32 @@ export function buildOwnerTruckWeek(input: {
   const parsed = input.ledger ? parseLoadLedger(input.ledger) : null;
   const counted: LedgerLoadRow[] = [];
   const pending: OwnerPendingLoad[] = [];
+  const loads: OwnerWeekLoad[] = [];
+  let heldTonuCents = 0;
   const nextEnd = shiftDay(input.weekEnd, 7);
   for (const row of parsed?.rows ?? []) {
     const tonu = isTonu(row.status);
     const inThis = inWeek(row.deliveryDay, input.weekStart, input.weekEnd);
     const inNext = Boolean(row.deliveryDay) && row.deliveryDay > input.weekEnd && row.deliveryDay <= nextEnd;
     const inTransit = !row.deliveryDay && row.pickupDay != null && row.pickupDay <= input.weekEnd;
-    if (tonu && inThis) {
-      counted.push(row);
+    if (tonu && (inThis || inNext || inTransit)) {
+      if (inThis) heldTonuCents += row.rateCents ?? 0;
       pending.push({ loadId: row.loadId, reason: TONU_RATE_NOTE });
-      continue;
-    }
-    if (tonu && (inNext || inTransit)) {
-      pending.push({ loadId: row.loadId, reason: TONU_RATE_NOTE });
+      loads.push(weekLoad(row, "TONU", TONU_RATE_NOTE));
       continue;
     }
     if (inThis) {
       counted.push(row);
+      loads.push(weekLoad(row, "Delivered", null));
       continue;
     }
-    if (inNext) pending.push({ loadId: row.loadId, reason: "Delivers next week" });
-    else if (inTransit) pending.push({ loadId: row.loadId, reason: "In transit" });
+    if (inNext) {
+      pending.push({ loadId: row.loadId, reason: "Delivers next week" });
+      loads.push(weekLoad(row, "Pending", "Delivers next week"));
+    } else if (inTransit) {
+      pending.push({ loadId: row.loadId, reason: "In transit" });
+      loads.push(weekLoad(row, "Pending", "In transit"));
+    }
   }
 
   let grossCents = 0;
@@ -116,9 +150,12 @@ export function buildOwnerTruckWeek(input: {
   }
 
   let milesFromAllocated = Boolean(parsed?.allocatedColumn);
-  let milesHundredths = milesFromAllocated ? allocatedMilesOnce(counted) : 0;
+  let milesHundredths = milesFromAllocated ? allocatedMilesOnce(counted, "allocated") : 0;
   const report = readWeekReportMoney(input.weekReport);
-  if (report.grossCents != null) grossCents = report.grossCents;
+  if (report.grossCents != null) {
+    const includesHeldTonu = heldTonuCents > 0 && report.grossCents === grossCents + heldTonuCents;
+    if (!includesHeldTonu) grossCents = report.grossCents;
+  }
   if (report.milesHundredths != null) {
     milesHundredths = report.milesHundredths;
     milesFromAllocated = true;
@@ -131,11 +168,17 @@ export function buildOwnerTruckWeek(input: {
   if (report.fuelCents != null) replaceCategory(categories, "Fuel", report.fuelCents);
   if (report.tollCents != null) replaceCategory(categories, "Toll fees", report.tollCents);
   miscCents = categories.find((row) => row.category === "Misc")?.cents ?? 0;
-  expenseCents = categories.reduce((sum, row) => sum + row.cents, 0);
   const rates = input.feeRates ?? seededFeeRates(input.unitNumber ?? "");
-  const sheetManagement = categories.find((row) => row.category === "Management fee")?.cents;
-  const fees =
-    sheetManagement != null ? splitSheetManagementFee(sheetManagement, rates) : managementFeeSplit(grossCents, rates);
+  const fees = managementFeeSplit(grossCents, rates);
+  const sheetManagement = categories.find((row) => row.category === "Management fee")?.cents ?? null;
+  const sheetFeeDiffers = sheetManagement != null && sheetManagement !== fees.managementFeeCents;
+  if (sheetManagement != null) replaceCategory(categories, "Management fee", fees.managementFeeCents);
+  expenseCents = categories.reduce((sum, row) => sum + row.cents, 0);
+  const deadheadFromLedger = parsed?.allocatedDeadheadColumn ? allocatedMilesOnce(counted, "deadhead") : null;
+  const deadheadHundredths = report.deadheadHundredths ?? deadheadFromLedger ?? 0;
+  const deadheadKnown = report.deadheadHundredths != null || deadheadFromLedger != null;
+  const tripOpen = countedTripStillOpen(counted, loads);
+  const mpg = tripOpen ? null : (report.mpg ?? weekReportMpg(input.weekReport));
   return {
     loadCount,
     grossCents,
@@ -143,14 +186,52 @@ export function buildOwnerTruckWeek(input: {
     milesFromAllocated,
     rpmCents: milesFromAllocated ? centsPerLoadedMile(grossCents, milesHundredths) : null,
     rpmLabel: milesFromAllocated ? rpmLabelFromReport(input.weekReport, grossCents, milesHundredths) : null,
-    mpg: report.mpg ?? weekReportMpg(input.weekReport),
+    mpg,
+    tripOpen,
     miscCents,
     expenseCents,
     netCents: grossCents - expenseCents,
+    deadheadHundredths,
+    deadheadKnown,
     categories,
     pending,
     loadIds,
+    loads,
     fees,
+    sheetFeeDiffers,
+  };
+}
+
+/** A counted load whose trip also has a row that delivers later. MPG stays blank until that trip delivers. */
+function countedTripStillOpen(counted: readonly LedgerLoadRow[], loads: readonly OwnerWeekLoad[]): boolean {
+  const openKeys = new Set<string>();
+  for (const row of loads) {
+    if (row.status !== "Pending") continue;
+    const trip = (row.tripGroup || row.manifestId || "").trim();
+    if (trip) openKeys.add(trip);
+  }
+  return counted.some((row) => {
+    const trip = (row.tripGroup || row.manifestId || "").trim();
+    return trip !== "" && openKeys.has(trip);
+  });
+}
+
+function weekLoad(row: LedgerLoadRow, status: OwnerLoadStatus, reason: string | null): OwnerWeekLoad {
+  return {
+    loadId: row.loadId,
+    status,
+    deliveryDay: row.deliveryDay,
+    pickupDay: row.pickupDay,
+    rateCents: row.rateCents,
+    reason,
+    manifestId: row.manifestId,
+    tripGroup: row.tripGroup,
+    sheetPrimary: row.sheetPrimary,
+    driver: row.driver,
+    origin: row.origin,
+    destination: row.destination,
+    loadedMilesHundredths: row.loadedMilesHundredths,
+    deadheadMilesHundredths: row.allocatedDeadheadHundredths ?? row.deadheadMilesHundredths,
   };
 }
 
@@ -171,6 +252,7 @@ type WeekReportMoney = {
   fuelCents: number | null;
   tollCents: number | null;
   miscCents: number | null;
+  deadheadHundredths: number | null;
   mpg: string | null;
 };
 
@@ -187,6 +269,7 @@ export function readWeekReportMoney(grid: SheetGrid | null | undefined): WeekRep
     fuelCents: null,
     tollCents: null,
     miscCents: null,
+    deadheadHundredths: null,
     mpg: weekReportMpg(grid),
   };
   if (!grid) return empty;
@@ -201,6 +284,7 @@ export function readWeekReportMoney(grid: SheetGrid | null | undefined): WeekRep
     fuelCents: reportMoney(grid, ["fuel total cost", "fuel total"], 28, 2),
     tollCents: reportMoney(grid, ["toll fees"], 29, 14),
     miscCents: reportMoney(grid, ["misc expenses", "misc expenses (1-5)"], 25, 14),
+    deadheadHundredths: reportMoney(grid, ["deadhead miles", "deadhead", "alloc deadhead"], 17, 2),
     mpg: empty.mpg,
   };
 }
@@ -250,8 +334,8 @@ function shiftDay(iso: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-/** Column P once per trip. The primary row wins when it has miles. Otherwise the largest cell. */
-function allocatedMilesOnce(rows: readonly LedgerLoadRow[]): number {
+/** Column P, or Alloc Deadhead, once per trip. The primary row wins when it has miles. Otherwise the largest cell. */
+function allocatedMilesOnce(rows: readonly LedgerLoadRow[], field: "allocated" | "deadhead"): number {
   const groups = new Map<string, LedgerLoadRow[]>();
   for (const row of rows) {
     const trip = (row.tripGroup || row.manifestId || "").trim();
@@ -262,9 +346,11 @@ function allocatedMilesOnce(rows: readonly LedgerLoadRow[]): number {
   }
   let total = 0;
   for (const group of groups.values()) {
-    const primary = group.find((row) => row.sheetPrimary === true && (row.allocatedMilesHundredths ?? 0) > 0);
-    const values = group.map((row) => row.allocatedMilesHundredths ?? 0);
-    total += primary?.allocatedMilesHundredths ?? Math.max(0, ...values);
+    const valueOf = (row: LedgerLoadRow) =>
+      field === "deadhead" ? (row.allocatedDeadheadHundredths ?? 0) : (row.allocatedMilesHundredths ?? 0);
+    const primary = group.find((row) => row.sheetPrimary === true && valueOf(row) > 0);
+    const values = group.map(valueOf);
+    total += primary ? valueOf(primary) : Math.max(0, ...values);
   }
   return total;
 }

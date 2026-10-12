@@ -63,7 +63,7 @@ function ensureFleetUnits(rows: TruckWeekInsOuts[], weekStart: string, weekEnd: 
     buildTruckWeekInsOuts({
       unitNumber: unit,
       truckName: `Truck ${unit}`,
-      truckClass: "third_party",
+      truckClass: unit === "3" ? "tolson_owned" : "third_party",
       weekStart,
       weekEnd,
       loadLedger: null,

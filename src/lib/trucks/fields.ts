@@ -114,8 +114,8 @@ export function parseTruckFields(input: TruckFieldInput): TruckFieldResult {
 
   if (!unitNumber) return { ok: false, error: "Unit number is required." };
   if (!name) return { ok: false, error: "Name is required." };
-  if (input.truckClass !== "legacy_owned" && input.truckClass !== "third_party") {
-    return { ok: false, error: "Choose Legacy-owned or Third-party." };
+  if (input.truckClass !== "legacy_owned" && input.truckClass !== "third_party" && input.truckClass !== "tolson_owned") {
+    return { ok: false, error: "Choose Legacy-owned, Tolson owned, or Third-party." };
   }
 
   const sheet = parseGoogleSheetUrl(input.googleSheetUrl);

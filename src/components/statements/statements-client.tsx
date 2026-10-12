@@ -12,7 +12,8 @@ import { bpToPercentString } from "@/lib/fees/percent";
 import { formatStatementDollars } from "@/lib/reports/format";
 import type { StatementsPageData } from "@/lib/statements/queries";
 import type { UnitStatement } from "@/lib/statements/types";
-import { truckClassLabel } from "@/lib/fees/kinds";
+import { ownerPaysManagementTotal, statementClassLabel } from "@/lib/fees/kinds";
+import { compareUnitNumbers } from "@/lib/fees/two-lines";
 import { PrepareReportButtons, ReportWeekLabel } from "@/components/reports/report-week";
 
 function rateCell(line: { lineCode: string; rateBp: number | null }): string {
@@ -21,7 +22,9 @@ function rateCell(line: { lineCode: string; rateBp: number | null }): string {
 }
 
 function managementTotal(unit: UnitStatement): number {
-  return unit.truckClass === "third_party" ? unit.managementFeeCents : unit.legacyRetainedCents + unit.tolsonPayableCents;
+  return ownerPaysManagementTotal(unit.truckClass)
+    ? unit.managementFeeCents
+    : unit.legacyRetainedCents + unit.tolsonPayableCents;
 }
 
 function money(cents: number): string {
@@ -42,8 +45,9 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
   const [pending, startTransition] = useTransition();
   const [downloading, setDownloading] = useState(false);
   const [unitNumber, setUnitNumber] = useState(data.units[0]?.unitNumber ?? "");
-  const selected = data.units.find((unit) => unit.unitNumber === unitNumber) ?? data.units[0];
-  const pdfAllowed = !data.error && data.units.length > 0 && (data.locked || data.blockers.length === 0);
+  const units = [...data.units].sort((a, b) => compareUnitNumbers(a.unitNumber, b.unitNumber));
+  const selected = units.find((unit) => unit.unitNumber === unitNumber) ?? units[0];
+  const pdfAllowed = !data.error && units.length > 0 && (data.locked || data.blockers.length === 0);
 
   function openWeek(next: string) {
     router.push(`/statements?week=${next}`);
@@ -141,10 +145,22 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
           {downloading ? "Preparing PDF…" : "Download PDF"}
         </Button>
       </div>
-      {!pdfAllowed && !data.error && data.units.length > 0 ? (
+      {!pdfAllowed && !data.error && units.length > 0 ? (
         <p className="text-sm text-[var(--color-fg-muted)]">
           The PDF stays off while this week has blockers.
         </p>
+      ) : null}
+
+      {(data.warnings ?? []).length > 0 ? (
+        <div role="status" className="rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 py-3">
+          <h2 className="text-sm font-medium">Warnings</h2>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--color-fg-muted)]">
+            {data.warnings.map((warning) => (
+              <li key={`${warning.rule}:${warning.ref ?? ""}:${warning.message}`}>{warning.message}</li>
+            ))}
+          </ul>
+          <p className="mt-2 text-sm text-[var(--color-fg-muted)]">These do not block Close week or the PDF.</p>
+        </div>
       ) : null}
 
       {data.error ? (
@@ -197,7 +213,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
         </div>
       ) : null}
 
-      {data.units.length === 0 ? (
+      {units.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-field)] px-6 py-12 text-center text-[var(--color-fg-muted)]">
           Nothing to show for this week.
         </div>
@@ -217,7 +233,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                   <th className="px-3 py-3 font-medium">Driver</th>
                   <th className="px-3 py-3 font-medium">Legacy fee</th>
                   <th className="px-3 py-3 font-medium">Tolson lease fee</th>
-                  <th className="px-3 py-3 font-medium">Management fee</th>
+                  <th className="px-3 py-3 font-medium">Management fee total</th>
                   <th className="px-3 py-3 font-medium">Dispatch</th>
                   <th className="px-3 py-3 font-medium">Factoring</th>
                   <th className="px-3 py-3 font-medium">Fuel</th>
@@ -227,7 +243,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                 </tr>
               </thead>
               <tbody>
-                {data.units.map((unit) => (
+                {units.map((unit) => (
                   <tr key={unit.truckId} className="border-b border-[var(--color-border)]">
                     <td className="px-3 py-2">
                       <button
@@ -238,7 +254,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                         {unit.unitNumber}
                       </button>
                     </td>
-                    <td className="px-3 py-2">{truckClassLabel(unit.truckClass)}</td>
+                    <td className="px-3 py-2">{statementClassLabel(unit.unitNumber, unit.truckClass)}</td>
                     <td className="px-3 py-2">{unit.loadCount}</td>
                     <td className="px-3 py-2">{money(unit.grossCents)}</td>
                     <td className="px-3 py-2">{money(unit.driverPayCents)}</td>
@@ -306,7 +322,7 @@ export function StatementsClient({ data }: { data: StatementsPageData }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {selected.lines.map((line) => (
+                  {selected.lines.filter((line) => line.amountCents !== 0).map((line) => (
                     <tr key={line.lineCode} className="border-b border-[var(--color-border)]">
                       <td className="px-3 py-2">
                         {line.label}

@@ -6,6 +6,7 @@ import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
 import { loadStatements, resolveWeekStart } from "@/lib/statements/queries";
 import { buildInbox, type ImportIssueInput, type InboxRow } from "./inbox";
+import { staleIssueIds, type StaleIssue } from "./stale";
 
 export type ImportIssueList = {
   ready: boolean;
@@ -30,7 +31,7 @@ export async function listImportIssues(): Promise<ImportIssueList> {
       .select("id, severity, rule, message, ref, status, import_run_id, created_at")
       .in("severity", ["Warn", "Block"])
       .order("created_at", { ascending: false }),
-    supabase.from("import_runs").select("id, range_from, range_to"),
+    supabase.from("import_runs").select("id, range_from, range_to, kind, finished_at"),
   ]);
 
   if (issuesRes.error) {
@@ -40,11 +41,34 @@ export async function listImportIssues(): Promise<ImportIssueList> {
     return { ready: false, error: issuesRes.error.message, issues: [] };
   }
 
-  const runs = new Map<string, { range_from: string; range_to: string }>();
+  const runs = new Map<string, { range_from: string; range_to: string; kind: string | null; finished_at: string | null }>();
   if (!runsRes.error) {
     for (const run of runsRes.data ?? []) {
-      runs.set(run.id, { range_from: run.range_from, range_to: run.range_to });
+      runs.set(run.id, {
+        range_from: run.range_from,
+        range_to: run.range_to,
+        kind: run.kind ?? null,
+        finished_at: run.finished_at ?? null,
+      });
     }
+  }
+
+  const staleInput: StaleIssue[] = (issuesRes.data ?? []).map((row) => {
+    const run = row.import_run_id ? runs.get(row.import_run_id) : undefined;
+    return {
+      id: row.id,
+      rule: row.rule,
+      ref: row.ref,
+      status: row.status,
+      createdAt: row.created_at,
+      importRunId: row.import_run_id,
+      kind: run?.kind ?? null,
+      runFinishedAt: run?.finished_at ?? null,
+    };
+  });
+  const stale = new Set(staleIssueIds(staleInput));
+  if (stale.size > 0) {
+    await supabase.from("issues").update({ status: "resolved" }).in("id", [...stale]);
   }
 
   const issues: ImportIssueInput[] = (issuesRes.data ?? []).map((row) => {
@@ -55,7 +79,7 @@ export async function listImportIssues(): Promise<ImportIssueList> {
       rule: row.rule,
       message: row.message,
       ref: row.ref,
-      status: row.status,
+      status: stale.has(row.id) ? "resolved" : row.status,
       createdAt: row.created_at,
       rangeFrom: run?.range_from ?? null,
       rangeTo: run?.range_to ?? null,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { feeCentsFromGross, managementFeeSplit, seededFeeRates, splitSheetManagementFee } from "./two-lines";
 
-/** Week 41 gross from the truck sheets, in cents. T6 excludes week 42. T8 includes the TONU placeholder. */
+/** Week 41 gross in cents. T6 excludes week 42. T8 holds the TONU placeholder out. */
 const WEEK_41_GROSS = [
   { unit: "1", gross: 0, legacy: 0, tolson: 0 },
   { unit: "2", gross: 0, legacy: 0, tolson: 0 },
@@ -10,7 +10,7 @@ const WEEK_41_GROSS = [
   { unit: "5", gross: 720_000, legacy: 72_000, tolson: 57_600 },
   { unit: "6", gross: 200_000, legacy: 20_000, tolson: 16_000 },
   { unit: "7", gross: 470_000, legacy: 47_000, tolson: 37_600 },
-  { unit: "8", gross: 990_000, legacy: 99_000, tolson: 79_200 },
+  { unit: "8", gross: 790_000, legacy: 79_000, tolson: 63_200 },
   { unit: "9", gross: 0, legacy: 0, tolson: 0 },
   { unit: "10", gross: 0, legacy: 0, tolson: 0 },
 ] as const;

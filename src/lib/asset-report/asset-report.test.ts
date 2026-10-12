@@ -121,7 +121,7 @@ describe("weekly asset report", () => {
     expect(report.leftExpenses.map((line) => line.label)).not.toContain("MC Lease");
     expect(report.leftExpenses.find((line) => line.label.startsWith("Driver"))?.cents).toBe(96_000);
     expect(report.leftExpenses.find((line) => line.label.startsWith("Management"))?.label).toBe("Management Fee - 10%");
-    expect(report.expenseCents).toBe(221_841);
+    expect(report.expenseCents).toBe(269_841);
     expect(report.fuelCostCents).toBe(4_000);
     expect(report.fuelEconomy).toBe("10.00");
     expect(report.netCents).toBe(report.grossCents - report.expenseCents);
@@ -170,8 +170,8 @@ describe("weekly asset report", () => {
     expect(report.escrowBalanceCents).toBeNull();
     expect(report.loadCount).toBe(4);
     expect(report.driver).toBe("Brison Hunter");
-    expect(report.expenseCents).toBe(405_177);
-    expect(report.netCents).toBe(294_823);
+    expect(report.expenseCents).toBe(461_177);
+    expect(report.netCents).toBe(238_823);
     expect(report.leftExpenses.map((line) => line.label)).toEqual([
       "Driver Compensation - 20%",
       "Management Fee - 10%",
@@ -202,7 +202,7 @@ describe("weekly asset report", () => {
     expect(report.fuelEconomy).toBe("19.97");
     expect(report.fuelUnitPriceCents).toBe(555);
     expect(report.fuelPerMileCents).toBe(20);
-    expect(report.notes).toEqual([]);
+    expect(report.notes).toEqual(["sheet fee differs"]);
     expect(report.notes.join(" ")).not.toContain(DEFAULT_DISPATCHER);
     const bytes = await renderAssetReportPdf(report);
     const text = pdfText(bytes);
@@ -210,8 +210,8 @@ describe("weekly asset report", () => {
     expect(pdf.getPageCount()).toBe(4);
     expect(pdf.getPage(0).getWidth()).toBe(PAGE_W);
     expect(pdf.getPage(0).getHeight()).toBe(PAGE_H);
-    expect(text).toContain("$4,051.77");
-    expect(text).toContain("$2,948.23");
+    expect(text).toContain("$4,611.77");
+    expect(text).toContain("$2,388.23");
     expect(text).toContain("Brison Hunter");
     expect(text).toContain("Legacy Dispatch Team");
     expect(text).not.toContain("because the truck record");
@@ -278,8 +278,8 @@ describe("weekly asset report", () => {
     expect(report.revenuePerLoadCents).toBe(158_000);
     expect(report.fuelPerMileCents).toBe(50);
     expect(report.fuelEconomy).toBe("7.86");
-    expect(report.expenseCents).toBe(444_053);
-    expect(report.netCents).toBe(345_947);
+    expect(report.expenseCents).toBe(507_253);
+    expect(report.netCents).toBe(282_747);
     expect(report.rightExpenses.find((line) => line.label === "Maintenance Escrow Weekly")?.cents).toBe(0);
     expect(report.escrowCardLabel).toBe("Escrow Balance");
     expect(report.escrowBalanceCents).toBe(20_000);

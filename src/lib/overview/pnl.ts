@@ -51,7 +51,7 @@ export function buildManagementPnl(input: {
     assertNonNegativeInteger(unit.dispatchFeeCents, `dispatch ${unit.unitNumber}`);
     assertNonNegativeInteger(unit.fixedManagementCents, `fixed management ${unit.unitNumber}`);
     assertNonNegativeInteger(unit.tolsonPayableCents, `Tolson ${unit.unitNumber}`);
-    if (unit.truckClass === "third_party") {
+    if (unit.truckClass === "third_party" || unit.truckClass === "tolson_owned") {
       legacyRetainedCents += unit.legacyRetainedCents;
     }
     dispatchFeeCents += unit.dispatchFeeCents;

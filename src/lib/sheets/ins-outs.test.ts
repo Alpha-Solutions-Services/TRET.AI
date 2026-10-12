@@ -182,7 +182,7 @@ describe("sheet Ins and Outs", () => {
     expect(html).toContain("Sheet vs Vektor: 1 open rate or missing-load checks");
     expect(html).toContain("GOOGLE_SERVICE_ACCOUNT_EMAIL");
     expect(html).toContain("Fleet");
-    expect(html).toContain("$5950.00");
+    expect(html).toContain("$5,950.00");
     expect(html).toContain("$330.00");
     expect(html).not.toContain("\u2014");
     expect(html).not.toContain("\u2013");

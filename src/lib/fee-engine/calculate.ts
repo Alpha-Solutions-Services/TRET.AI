@@ -50,7 +50,7 @@ function validateTruckClassRules(
 ): void {
   const byKind = new Map(rules.map((r) => [r.kind, r]));
 
-  if (truckClass === "third_party") {
+  if (truckClass === "third_party" || truckClass === "tolson_owned") {
     const management = byKind.get("MANAGEMENT_FEE");
     if (!management) {
       throw new Error(

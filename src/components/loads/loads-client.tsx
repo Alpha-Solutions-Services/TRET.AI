@@ -12,6 +12,8 @@ import { centsToDollarString } from "@/lib/money/cents";
 import { centsPerLoadedMile, formatMilesHundredths } from "@/lib/reports/format";
 import { milesValueToHundredths } from "@/lib/statements/miles";
 
+export type LoadWeekStatus = "Delivered" | "Pending" | "TONU";
+
 export type LoadListRow = {
   id: string;
   load_id: string | null;
@@ -30,6 +32,7 @@ export type LoadListRow = {
   rate_cents: number;
   truck_unit_number: string | null;
   source_manifest_ref?: string | null;
+  status?: LoadWeekStatus;
 };
 
 function dollars(cents: number): string {
@@ -76,13 +79,26 @@ export function LoadsClient({
   }, [weekStart]);
 
   const combined = useMemo(() => {
-    const seen = new Set(
-      loads.map((row) => `${(row.truck_unit_number ?? "").replace(/^0+/, "")}:${canonicalLoadId(row.load_id ?? "")}`),
+    if (sheetLoads.length === 0) return loads.map((row) => ({ ...row, status: row.status ?? ("Delivered" as const) }));
+    const dbById = new Map(
+      loads.map((row) => [canonicalLoadId(row.load_id ?? ""), row]),
     );
-    const extra = sheetLoads.filter(
-      (row) => !seen.has(`${(row.truck_unit_number ?? "").replace(/^0+/, "")}:${canonicalLoadId(row.load_id ?? "")}`),
-    );
-    return [...loads, ...extra];
+    return sheetLoads.map((row) => {
+      const stored = dbById.get(canonicalLoadId(row.load_id ?? ""));
+      if (!stored) return row;
+      return {
+        ...row,
+        driver_name: row.driver_name ?? stored.driver_name,
+        broker_name: stored.broker_name,
+        origin_city: row.origin_city ?? stored.origin_city,
+        origin_state: stored.origin_state,
+        destination_city: row.destination_city ?? stored.destination_city,
+        destination_state: stored.destination_state,
+        loaded_distance_mi: row.loaded_distance_mi ?? stored.loaded_distance_mi,
+        deadhead_miles: row.deadhead_miles ?? stored.deadhead_miles,
+        status: row.status ?? "Delivered",
+      };
+    });
   }, [loads, sheetLoads]);
 
   const weekEnd = useMemo(
@@ -91,17 +107,20 @@ export function LoadsClient({
   );
 
   const filtered = useMemo(() => {
-    const members = combined
-      .filter((row) => !truck || row.truck_unit_number === truck)
-      .map((row) => ({
-        row,
-        loadId: row.id,
-        pickupDay: row.pickup_date,
-        deliveryDay: row.delivery_date,
-        tripRef: row.source_manifest_ref ?? null,
-      }));
-    const chosen = new Set(loadsInWeek(members, weekStart, weekEnd).map((item) => item.loadId));
-    const rows = combined.filter((row) => chosen.has(row.id));
+    const scoped = combined.filter((row) => !truck || row.truck_unit_number === truck);
+    const rows = sheetLoads.length
+      ? scoped
+      : scoped.filter((row) => {
+          const members = [
+            {
+              loadId: row.id,
+              pickupDay: row.pickup_date,
+              deliveryDay: row.delivery_date,
+              tripRef: row.source_manifest_ref ?? null,
+            },
+          ];
+          return loadsInWeek(members, weekStart, weekEnd).length > 0;
+        });
     return layoutManifestGroups(
       rows.map((row) => ({
         ...row,
@@ -109,10 +128,10 @@ export function LoadsClient({
         rankHundredths: hundredths(row.loaded_distance_mi),
       })),
     );
-  }, [combined, weekStart, weekEnd, truck]);
+  }, [combined, sheetLoads.length, weekStart, weekEnd, truck]);
 
   const totals = useMemo(() => {
-    return filtered.reduce(
+    return filtered.filter((row) => (row.status ?? "Delivered") === "Delivered").reduce(
       (acc, row) => {
         acc.rateCents += row.rate_cents;
         acc.loaded += countedLoadedHundredths(row.manifestRole, hundredths(row.loaded_distance_mi));
@@ -134,7 +153,7 @@ export function LoadsClient({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Loads</h1>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Read-only. Week is Monday to Sunday. A load counts when its delivery date is in that week. In-transit loads stay Pending. The count matches the truck sheet.
+          Read-only. Week is Monday to Sunday. Delivered, Pending, and TONU use the same week calculation as the dashboard.
         </p>
       </div>
 
@@ -198,6 +217,7 @@ export function LoadsClient({
                 <th className="px-3 py-3 font-medium">Loaded</th>
                 <th className="px-3 py-3 font-medium">Deadhead</th>
                 <th className="px-3 py-3 font-medium">Rate</th>
+                <th className="px-3 py-3 font-medium">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -205,7 +225,7 @@ export function LoadsClient({
                 <Fragment key={row.id}>
                   {row.manifestHeader && row.manifestRef ? (
                     <tr className="border-b border-[var(--color-border)] bg-[var(--color-muted)]">
-                      <td className="px-3 py-2 font-medium" colSpan={10}>
+                      <td className="px-3 py-2 font-medium" colSpan={11}>
                         Manifest {row.manifestRef}
                       </td>
                     </tr>
@@ -225,12 +245,13 @@ export function LoadsClient({
                       {row.deadhead_miles == null ? "Blank" : formatMilesHundredths(hundredths(row.deadhead_miles))}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 num">{dollars(row.rate_cents)}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{row.status ?? "Delivered"}</td>
                   </tr>
                 </Fragment>
               ))}
               <tr className="bg-[var(--color-muted)] font-medium">
                 <td className="px-3 py-3" colSpan={7}>
-                  Totals ({filtered.length} loads). Rate per dispatch mile{" "}
+                  Totals ({filtered.filter((row) => (row.status ?? "Delivered") === "Delivered").length} delivered). Rate per dispatch mile{" "}
                   {totals.loaded + totals.deadhead === 0
                     ? "n/a"
                     : dollars(centsPerLoadedMile(totals.rateCents, totals.loaded + totals.deadhead) ?? 0)}
@@ -238,6 +259,7 @@ export function LoadsClient({
                 <td className="whitespace-nowrap px-3 py-3 num">{formatMilesHundredths(totals.loaded)}</td>
                 <td className="whitespace-nowrap px-3 py-3 num">{formatMilesHundredths(totals.deadhead)}</td>
                 <td className="whitespace-nowrap px-3 py-3 num">{dollars(totals.rateCents)}</td>
+                <td className="px-3 py-3"></td>
               </tr>
             </tbody>
           </table>
