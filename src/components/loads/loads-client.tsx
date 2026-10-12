@@ -5,8 +5,6 @@ import { sheetLoadsForWeek } from "@/app/loads/sheet-action";
 import { canonicalLoadId } from "@/lib/loads/load-id";
 import { ReportWeekLabel } from "@/components/reports/report-week";
 import { weekBoundsForDate } from "@/lib/fee-engine";
-import { lastFinishedWeekStart } from "@/lib/reports/delivery";
-import { loadsInWeek } from "@/lib/loads/week-membership";
 import { countedLoadedHundredths, layoutManifestGroups } from "@/lib/loads/manifest-miles";
 import { centsToDollarString } from "@/lib/money/cents";
 import { centsPerLoadedMile, formatMilesHundredths } from "@/lib/reports/format";
@@ -53,53 +51,69 @@ function hundredths(value: number | null): number {
   }
 }
 
+/** The sheet week list is the page. Database rows only fill blank broker and place fields. */
+export function weekLoadRows(sheetLoads: readonly LoadListRow[], loads: readonly LoadListRow[]): LoadListRow[] {
+  const dbById = new Map(loads.map((row) => [canonicalLoadId(row.load_id ?? ""), row]));
+  return sheetLoads.map((row) => {
+    const stored = dbById.get(canonicalLoadId(row.load_id ?? ""));
+    if (!stored) return row;
+    return {
+      ...row,
+      driver_name: row.driver_name ?? stored.driver_name,
+      broker_name: row.broker_name ?? stored.broker_name,
+      origin_city: row.origin_city ?? stored.origin_city,
+      origin_state: row.origin_state ?? stored.origin_state,
+      destination_city: row.destination_city ?? stored.destination_city,
+      destination_state: row.destination_state ?? stored.destination_state,
+      loaded_distance_mi: row.loaded_distance_mi ?? stored.loaded_distance_mi,
+      deadhead_miles: row.deadhead_miles ?? stored.deadhead_miles,
+      delivery_date: row.delivery_date,
+      status: row.status ?? "Delivered",
+    };
+  });
+}
+
 export function LoadsClient({
   loads,
   truckUnits,
+  initialWeek,
+  initialSheet,
 }: {
   loads: LoadListRow[];
   truckUnits: string[];
+  initialWeek: string;
+  initialSheet: { rows: LoadListRow[]; error: string | null };
 }) {
-  const [weekStart, setWeekStart] = useState(() => lastFinishedWeekStart());
+  const [weekStart, setWeekStart] = useState(initialWeek);
   const [truck, setTruck] = useState("");
-  const [sheetLoads, setSheetLoads] = useState<LoadListRow[]>([]);
+  const [sheetLoads, setSheetLoads] = useState<LoadListRow[]>(initialSheet.rows);
+  const [sheetError, setSheetError] = useState<string | null>(initialSheet.error);
+  const [loading, setLoading] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    if (reloadKey === 0 && weekStart === initialWeek) return;
     let cancel = false;
+    setLoading(true);
     sheetLoadsForWeek(weekStart)
-      .then((rows) => {
-        if (!cancel) setSheetLoads(rows);
+      .then((result) => {
+        if (cancel) return;
+        setSheetLoads(result.rows);
+        setSheetError(result.error);
+        setLoading(false);
       })
       .catch(() => {
-        if (!cancel) setSheetLoads([]);
+        if (cancel) return;
+        setSheetLoads([]);
+        setSheetError("The sheet week list did not load.");
+        setLoading(false);
       });
     return () => {
       cancel = true;
     };
-  }, [weekStart]);
+  }, [weekStart, reloadKey, initialWeek]);
 
-  const combined = useMemo(() => {
-    if (sheetLoads.length === 0) return loads.map((row) => ({ ...row, status: row.status ?? ("Delivered" as const) }));
-    const dbById = new Map(
-      loads.map((row) => [canonicalLoadId(row.load_id ?? ""), row]),
-    );
-    return sheetLoads.map((row) => {
-      const stored = dbById.get(canonicalLoadId(row.load_id ?? ""));
-      if (!stored) return row;
-      return {
-        ...row,
-        driver_name: row.driver_name ?? stored.driver_name,
-        broker_name: stored.broker_name,
-        origin_city: row.origin_city ?? stored.origin_city,
-        origin_state: stored.origin_state,
-        destination_city: row.destination_city ?? stored.destination_city,
-        destination_state: stored.destination_state,
-        loaded_distance_mi: row.loaded_distance_mi ?? stored.loaded_distance_mi,
-        deadhead_miles: row.deadhead_miles ?? stored.deadhead_miles,
-        status: row.status ?? "Delivered",
-      };
-    });
-  }, [loads, sheetLoads]);
+  const combined = useMemo(() => weekLoadRows(sheetLoads, loads), [loads, sheetLoads]);
 
   const weekEnd = useMemo(
     () => weekBoundsForDate(weekStart).end,
@@ -107,20 +121,7 @@ export function LoadsClient({
   );
 
   const filtered = useMemo(() => {
-    const scoped = combined.filter((row) => !truck || row.truck_unit_number === truck);
-    const rows = sheetLoads.length
-      ? scoped
-      : scoped.filter((row) => {
-          const members = [
-            {
-              loadId: row.id,
-              pickupDay: row.pickup_date,
-              deliveryDay: row.delivery_date,
-              tripRef: row.source_manifest_ref ?? null,
-            },
-          ];
-          return loadsInWeek(members, weekStart, weekEnd).length > 0;
-        });
+    const rows = combined.filter((row) => !truck || row.truck_unit_number === truck);
     return layoutManifestGroups(
       rows.map((row) => ({
         ...row,
@@ -128,7 +129,7 @@ export function LoadsClient({
         rankHundredths: hundredths(row.loaded_distance_mi),
       })),
     );
-  }, [combined, sheetLoads.length, weekStart, weekEnd, truck]);
+  }, [combined, truck]);
 
   const totals = useMemo(() => {
     return filtered.filter((row) => (row.status ?? "Delivered") === "Delivered").reduce(
@@ -194,7 +195,24 @@ export function LoadsClient({
         </p>
       </div>
 
-      {combined.length === 0 ? (
+      {loading ? (
+        <p className="text-sm text-[var(--color-fg-muted)]" aria-busy="true">
+          Loading this week from the truck sheets.
+        </p>
+      ) : null}
+      {sheetError ? (
+        <div role="alert" className="rounded-md border border-[var(--color-danger)] bg-[var(--color-field)] px-3 py-3 text-sm">
+          <p>The sheet week list did not load. {sheetError}</p>
+          <button
+            type="button"
+            className="mt-2 inline-flex h-10 items-center rounded-md border border-[var(--color-border)] px-3 font-medium"
+            onClick={() => setReloadKey((value) => value + 1)}
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
+      {sheetError ? null : combined.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-field)] px-6 py-12 text-center text-[var(--color-fg-muted)]">
           No loads yet. Run Import now on the Imports page after Vektor is configured.
         </div>

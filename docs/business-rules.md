@@ -43,12 +43,12 @@
 - Owner net = gross − driver − (management fee, or Tolson on a Legacy-owned truck) − dispatch − factoring − discounted fuel − tolls − fixed expenses charged to the owner.
 - A fixed expense charged to management is stored and left out of owner net. A kind with no row is zero. Overlapping versions block the close.
 - Close is blocked by unlinked fuel, a missing or mid-week contract, a load whose stored week disagrees with its delivery date, or a net that does not reconcile. A row-count drop is a warning. It is compared only with a full Monday–Sunday import of the same kind. A short daily file does not warn, and the warning does not block Close week or the PDF.
-- Displayed statement dollars for a truck with a Weekly Expenses sheet come from that sheet plus Load Ledger misc, not from a second fee pass. Truck miles are Load Ledger column P, once per trip. MPG is Week Report C31.
+- Displayed statement dollars for a truck with a Weekly Expenses sheet come from that sheet plus Load Ledger misc, not from a second fee pass. Truck miles are Load Ledger column P, once per trip. MPG is Week Report C31 when that cell is filled. A 0 or a blank cell leaves MPG empty. A trip that continues next week does not clear a filled cell.
 
 ## Weekly PDF
 
 - The file is one week: each unit, then fleet totals. Money on the page is dollars formatted from integer cents.
-- A locked week uses the snapshot. An unlocked week can be downloaded when that week has no blockers. The PDF is refused when the net, statement lines, load rows, discounted fuel, or tolls do not match those totals.
+- A locked week uses the snapshot. An unlocked week can be downloaded when that week has no blockers. Warnings do not refuse the file. The PDF is refused when the net or the statement lines do not match. Load rows are the sheet delivered loads. Fuel and toll amounts in the file match the statement. An import that differs from the sheet does not refuse the file.
 - Owner earnings on a managed unit show one management fee. Tolson payable and Legacy retained stay off that unit. The fleet page shows them as internal totals.
 - Fuel on the PDF is the discounted amount. Diesel gallons are used for MPG. DEF gallons are listed and are not part of MPG.
 - The unlabeled $228 line is not printed.

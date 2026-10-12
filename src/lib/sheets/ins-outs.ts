@@ -473,8 +473,8 @@ export function buildTruckWeekInsOuts(input: {
           rpmCents: owner.rpmCents,
         }
       : {}),
-    mpg: owner.tripOpen ? null : (owner.mpg ?? tripMiles.mpg),
-    mpgFromSheet: !owner.tripOpen && owner.mpg != null,
+    mpg: owner.mpg ?? (owner.tripOpen ? null : tripMiles.mpg),
+    mpgFromSheet: owner.mpg != null,
     rpmLabel: owner.rpmLabel,
     sheetFeeDiffers: owner.sheetFeeDiffers,
     miscCents: owner.miscCents,

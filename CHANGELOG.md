@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.0.0.36 — 2026-10-12
+
+- Download PDF, Prepare report, and Prepare Monday reports return the file when the week only has warnings. A real blocker still refuses the file. The PDF uses the sheet week loads, and fuel and toll lines that add up to the statement, so an import that does not match the sheet does not return HTTP 409.
+- TONU TBH--1201 is read from the Load Ledger even when that row sits above the header or the TONU word is not in the Status column. It stays Pending as "TONU rate unconfirmed" and is not in this week's gross.
+- The Loads page renders that same sheet week list. Pending and TONU keep their own status. A database delivery date does not replace the sheet row.
+- MPG uses Week Report C31 whenever that cell has a value. It is blank only when the sheet shows 0 or is empty. A trip that continues next week does not clear a filled cell. Truck 7 week 41 stays 7.42.
+- Management and Statements show a loading state, retry a failed read, and show an error with Try again. A failed render does not leave the main area empty.
+- The page content has bottom padding equal to the footer height, so the footer does not cover the Dashboard tiles.
+- No migration. TONU rate-con reading and receipt photo reading are still not wired. Trucks 1, 2, 9, and 10 still need sheet links.
+
 ## v0.0.0.35 — 2026-10-12
 
 - Fee lines are the truck's basis points times weekly gross. Truck 4 is Legacy $250 and Tolson $200, total $450. Truck 5 is $720 and $576. Truck 6 is $200 and $160. Truck 7 is $470 and $376. Truck 8, after the TONU hold-out, is Legacy 10 percent and Tolson 8 percent of $7,900. Truck 3 stays Legacy $855 and Tolson $0. Trucks 1 and 2 stay Tolson 10 percent and Legacy $0. Expenses and net use that total. When the sheet Management Fee cell is different, the page shows "sheet fee differs". Management income is the sum of Legacy fees. Tolson payable is the sum of Tolson fees.

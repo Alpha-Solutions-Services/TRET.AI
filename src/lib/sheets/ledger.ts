@@ -1,7 +1,9 @@
+import { canonicalLoadId } from "@/lib/loads/load-id";
 import {
   cleanCell,
   cleanLoadId,
   columnIndex,
+  columnIndexes,
   findHeaderRow,
   isEmptyCell,
   sheetAmountToCents,
@@ -12,7 +14,18 @@ type SheetGrid = string[][];
 
 const DELIVERY = ["delivery date", "deliverydate", "delivery_date", "order date delivered"];
 const DELIVERY_FALLBACK = ["destination datetime"];
-const LOAD_ID = ["load id", "loadid", "load_id", "order friendly id", "friendly id", "order id"];
+const LOAD_ID = [
+  "load id",
+  "loadid",
+  "load_id",
+  "load #",
+  "load number",
+  "order friendly id",
+  "friendly id",
+  "order id",
+  "order #",
+  "order number",
+];
 const RATE = ["rate", "gross amount", "grossamount", "gross_amount", "gross"];
 const PICKUP = ["pick up date", "pickup date", "pickup_date", "pickupdate", "origin datetime"];
 const LOADED = ["loaded miles", "loaded distance", "loadeddistance", "loaded_distance"];
@@ -38,7 +51,7 @@ const ALLOCATED = ["allocated miles", "allocated mile", "trip miles"];
 const ALLOC_DEADHEAD = ["alloc deadhead", "allocated deadhead", "allocated deadhead miles"];
 /** Load Ledger column AV. A=0, so AV is 47. */
 const ALLOC_DEADHEAD_INDEX = 47;
-const STATUS = ["status"];
+const STATUS = ["status", "load status", "order status", "trip status"];
 /** Load Ledger columns AM through AQ. Misc receipts live here. */
 const MISC_START = 38;
 const MISC_END = 42;
@@ -171,20 +184,22 @@ export function parseLoadLedger(
   const truckMilesCol = columnIndex(header, TRUCK_MILES);
   const allocatedCol = allocatedColumnIndex(header);
   const deadheadAllocCol = allocatedDeadheadColumnIndex(header);
-  const statusCol = columnIndex(header, STATUS);
+  const statusCols = columnIndexes(header, STATUS);
   const rows: LedgerLoadRow[] = [];
   for (const row of grid.slice(headerIndex + 1)) {
-    const loadId = cleanLoadId(cell(row, loadCol));
+    const loadId = cleanLoadId(cell(row, loadCol)) || loadIdInRow(row);
     if (!loadId || loadId.toLowerCase() === "total" || loadId.toLowerCase() === "totals") continue;
     const primaryDay = sheetDay(cell(row, dateCol));
     const fallbackDay = primaryDay ? null : sheetDay(cell(row, fallbackCol));
-    const deliveryDay = primaryDay || fallbackDay || "";
-    if (!deliveryDay && !opts?.keepUndated) continue;
+    const tonu = rowIsTonu(row, statusCols);
+    let deliveryDay = primaryDay || fallbackDay || "";
+    if (!deliveryDay && tonu) deliveryDay = firstDay(row);
+    if (!deliveryDay && !opts?.keepUndated && !tonu) continue;
     rows.push({
       loadId,
       deliveryDay,
       pickupDay: sheetDay(cell(row, pickupCol)),
-      rateCents: sheetAmountToCents(cell(row, rateCol)),
+      rateCents: sheetAmountToCents(cell(row, rateCol)) ?? (tonu ? dollarCents(row) : null),
       loadedMilesHundredths: milesToHundredths(cell(row, loadedCol)),
       deadheadMilesHundredths: milesToHundredths(cell(row, deadheadCol)),
       broker: textOrNull(cell(row, brokerCol)),
@@ -199,10 +214,11 @@ export function parseLoadLedger(
       allocatedMilesHundredths: allocatedCol >= 0 ? milesToHundredths(cell(row, allocatedCol)) : null,
       allocatedDeadheadHundredths: deadheadAllocCol >= 0 ? milesToHundredths(cell(row, deadheadAllocCol)) : null,
       miscCents: miscColumnsCents(row),
-      status: textOrNull(cell(row, statusCol)),
-      deliverySource: primaryDay ? "column" : fallbackDay ? "fallback" : null,
+      status: tonu ? "TONU" : textOrNull(statusCols.map((index) => cell(row, index)).join(" ")),
+      deliverySource: primaryDay ? "column" : fallbackDay ? "fallback" : deliveryDay ? "fallback" : null,
     });
   }
+  rows.push(...recoverTonuRows(grid, rows));
   return {
     headerFound: true,
     rows,
@@ -239,4 +255,82 @@ function miscColumnsCents(row: string[]): number {
     total += sheetAmountToCents(row[index] ?? "") ?? 0;
   }
   return total;
+}
+
+function rowIsTonu(row: readonly string[], statusCols: readonly number[]): boolean {
+  for (const index of statusCols) {
+    if (/\btonu\b/i.test(row[index] ?? "")) return true;
+  }
+  return row.some((value) => /\btonu\b/i.test(value ?? ""));
+}
+
+/** Letters plus digits, such as TBH--1201. A one-letter trip id such as M-1202 is not a load. */
+function loadIdInText(raw: string): string | null {
+  const compact = cleanCell(raw).replace(/\s+/g, "");
+  const match = /([A-Za-z]{2,})-*(\d{3,})/.exec(compact);
+  if (!match) return null;
+  return canonicalLoadId(`${match[1]}--${match[2]}`);
+}
+
+function loadIdInRow(row: readonly string[]): string {
+  for (const value of row) {
+    const found = loadIdInText(value ?? "");
+    if (found) return found;
+  }
+  return "";
+}
+
+function firstDay(row: readonly string[]): string {
+  for (const value of row) {
+    const day = sheetDay(value ?? "");
+    if (day) return day;
+  }
+  return "";
+}
+
+function dollarCents(row: readonly string[]): number | null {
+  for (const value of row) {
+    if (!(value ?? "").includes("$")) continue;
+    const cents = sheetAmountToCents(value ?? "");
+    if (cents != null) return cents;
+  }
+  return null;
+}
+
+/**
+ * A TONU can sit above the detected header (Load Ledger row 11) or in columns
+ * the header names do not cover. Keep it when the row says TONU and has a load id.
+ */
+function recoverTonuRows(grid: SheetGrid, existing: readonly LedgerLoadRow[]): LedgerLoadRow[] {
+  const seen = new Set(existing.map((row) => canonicalLoadId(row.loadId)));
+  const extra: LedgerLoadRow[] = [];
+  for (const row of grid) {
+    if (!row.some((value) => /\btonu\b/i.test(value ?? ""))) continue;
+    const loadId = loadIdInRow(row);
+    if (!loadId || seen.has(loadId)) continue;
+    seen.add(loadId);
+    extra.push({
+      loadId,
+      deliveryDay: firstDay(row),
+      pickupDay: null,
+      rateCents: dollarCents(row),
+      loadedMilesHundredths: null,
+      deadheadMilesHundredths: null,
+      broker: null,
+      origin: null,
+      destination: null,
+      driver: null,
+      unitNumber: null,
+      manifestId: null,
+      tripGroup: null,
+      sheetPrimary: null,
+      truckMilesHundredths: null,
+      allocatedMilesHundredths: null,
+      allocatedDeadheadHundredths: null,
+      miscCents: 0,
+      status: "TONU",
+      deliverySource: firstDay(row) ? "fallback" : null,
+    });
+  }
+  return extra;
 }
