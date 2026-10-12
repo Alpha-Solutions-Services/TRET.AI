@@ -72,6 +72,15 @@ export function TruckFieldsForm({
           <input
             type="radio"
             name="truckClass"
+            checked={values.truckClass === "tolson_owned"}
+            onChange={() => onChange({ truckClass: "tolson_owned" })}
+          />
+          Tolson owned
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name="truckClass"
             checked={values.truckClass === "third_party"}
             onChange={() => onChange({ truckClass: "third_party" })}
           />

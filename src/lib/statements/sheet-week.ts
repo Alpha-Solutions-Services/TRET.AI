@@ -1,3 +1,5 @@
+import { compareUnitNumbers } from "@/lib/fees/two-lines";
+import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { expectedNetCents } from "@/lib/statements/engine";
 import type { FleetStatement, StatementLine, UnitStatement, WeekStatements } from "@/lib/statements/types";
@@ -17,38 +19,45 @@ export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): Unit
   const factoring = cents(row, "Factoring fee");
   const fuel = cents(row, "Fuel");
   const tolls = cents(row, "Toll fees");
-  const named = driver + management + dispatch + factoring + fuel + tolls;
+  const misc = row.miscCents ?? cents(row, "Misc");
+  const named = driver + management + dispatch + factoring + fuel + tolls + misc;
   const fixed = row.outsCents - named;
-  const third = unit.truckClass === "third_party";
+  const paysTotal = ownerPaysManagementTotal(unit.truckClass);
+  const fixedCents = fixed > 0 ? fixed : 0;
+  const miscCents = misc > 0 ? misc : 0;
   const next: UnitStatement = {
     ...unit,
     grossCents: row.insCents,
     driverPayCents: driver,
-    managementFeeCents: third ? management : 0,
-    tolsonPayableCents: third ? tolson : management,
+    managementFeeCents: paysTotal ? management : 0,
+    tolsonPayableCents: paysTotal ? tolson : management,
     legacyRetainedCents: legacy,
     dispatchFeeCents: dispatch,
     factoringFeeCents: factoring,
     fuelCents: fuel,
     tollsCents: tolls,
-    fixedOwnerCents: fixed > 0 ? fixed : 0,
+    fixedOwnerCents: fixedCents + miscCents,
     fixedManagementCents: 0,
     loadCount: row.loadCount,
-    loadedMilesHundredths: row.truckMilesHundredths ?? row.loadedMilesHundredths ?? 0,
-    deadheadMilesHundredths: row.truckMilesHundredths != null ? 0 : (row.deadheadMilesHundredths ?? 0),
+    loadedMilesHundredths:
+      row.truckMilesHundredths != null
+        ? Math.max(0, row.truckMilesHundredths - (row.deadheadMilesHundredths ?? 0))
+        : (row.loadedMilesHundredths ?? 0),
+    deadheadMilesHundredths: row.deadheadMilesHundredths ?? 0,
     netCents: 0,
     lines: syncSheetLines(unit.lines, {
       driver,
-      management: third ? management : 0,
-      tolson: third ? tolson : management,
+      management: paysTotal ? management : 0,
+      tolson: paysTotal ? tolson : management,
       legacy,
       dispatch,
       factoring,
       fuel,
       tolls,
-      fixed: fixed > 0 ? fixed : 0,
-      chargeManagement: third,
-      chargeTolson: !third,
+      fixed: fixedCents,
+      misc: miscCents,
+      chargeManagement: paysTotal,
+      chargeTolson: !paysTotal,
     }),
   };
   next.netCents = expectedNetCents(next);
@@ -65,6 +74,7 @@ type SheetLineAmounts = {
   fuel: number;
   tolls: number;
   fixed: number;
+  misc: number;
   chargeManagement: boolean;
   chargeTolson: boolean;
 };
@@ -90,6 +100,7 @@ function syncSheetLines(existing: readonly StatementLine[], amounts: SheetLineAm
     "FUEL",
     "TOLLS",
     "SHEET_FIXED",
+    "MISC",
   ]);
   for (const line of lines) {
     if (kept.has(line.lineCode)) continue;
@@ -97,7 +108,8 @@ function syncSheetLines(existing: readonly StatementLine[], amounts: SheetLineAm
     line.chargedTo = null;
     line.ownerVisible = false;
   }
-  putLine(lines, "SHEET_FIXED", "Fixed and misc", amounts.fixed, 80, true);
+  putLine(lines, "MISC", "Misc", amounts.misc, 70, amounts.misc > 0);
+  putLine(lines, "SHEET_FIXED", "Fixed", amounts.fixed, 80, amounts.fixed > 0);
   lines.sort((a, b) => a.sortOrder - b.sortOrder);
   return lines;
 }
@@ -129,10 +141,12 @@ export function overlaySheetStatements(
   statements: WeekStatements,
   rows: readonly TruckWeekInsOuts[],
 ): WeekStatements {
-  const units = statements.units.map((unit) => {
-    const row = rows.find((item) => unitKey(item.unitNumber) === unitKey(unit.unitNumber));
-    return row ? applySheetWeek(unit, row) : unit;
-  });
+  const units = statements.units
+    .map((unit) => {
+      const row = rows.find((item) => unitKey(item.unitNumber) === unitKey(unit.unitNumber));
+      return row ? applySheetWeek(unit, row) : unit;
+    })
+    .sort((a, b) => compareUnitNumbers(a.unitNumber, b.unitNumber));
   return { ...statements, units, fleet: fleetFromUnits(units) };
 }
 

@@ -1,4 +1,5 @@
 import { assertInteger, assertNonNegativeInteger } from "@/lib/fee-engine/money";
+import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
 import { expectedNetCents } from "@/lib/statements/engine";
 import type { TruckClass } from "@/lib/fee-engine";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
@@ -44,8 +45,9 @@ export function ownerFeeCents(unit: UnitStatement): number {
   assertNonNegativeInteger(unit.tolsonPayableCents, "Tolson payable");
   assertNonNegativeInteger(unit.dispatchFeeCents, "dispatch fee");
   assertNonNegativeInteger(unit.factoringFeeCents, "factoring fee");
-  const managementOrTolson =
-    unit.truckClass === "third_party" ? unit.managementFeeCents : unit.tolsonPayableCents;
+  const managementOrTolson = ownerPaysManagementTotal(unit.truckClass)
+    ? unit.managementFeeCents
+    : unit.tolsonPayableCents;
   const fees =
     unit.driverPayCents + managementOrTolson + unit.dispatchFeeCents + unit.factoringFeeCents;
   assertNonNegativeInteger(fees, "fees");
@@ -188,7 +190,7 @@ function snapshotRow(unit: UnitStatement): SnapshotRow {
   assertNonNegativeInteger(unit.tollsCents, `tolls ${unit.unitNumber}`);
   assertNonNegativeInteger(unit.fixedOwnerCents, `fixed ${unit.unitNumber}`);
   assertInteger(unit.netCents, `net ${unit.unitNumber}`);
-  if (unit.truckClass !== "legacy_owned" && unit.truckClass !== "third_party") {
+  if (unit.truckClass !== "legacy_owned" && unit.truckClass !== "third_party" && unit.truckClass !== "tolson_owned") {
     throw new Error(`Unit ${unit.unitNumber} has an unknown truck class`);
   }
   const feesCents = ownerFeeCents(unit);
@@ -202,7 +204,9 @@ function snapshotRow(unit: UnitStatement): SnapshotRow {
     feesCents,
     legacyFeeCents: unit.legacyRetainedCents,
     tolsonLeaseFeeCents: unit.tolsonPayableCents,
-    managementFeeCents: unit.truckClass === "third_party" ? unit.managementFeeCents : unit.legacyRetainedCents + unit.tolsonPayableCents,
+    managementFeeCents: ownerPaysManagementTotal(unit.truckClass)
+      ? unit.managementFeeCents
+      : unit.legacyRetainedCents + unit.tolsonPayableCents,
     fuelCents: unit.fuelCents,
     tollsCents: unit.tollsCents,
     fixedCents: unit.fixedOwnerCents,

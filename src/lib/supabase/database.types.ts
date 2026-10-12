@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type TruckClass = "legacy_owned" | "third_party";
+export type TruckClass = "legacy_owned" | "third_party" | "tolson_owned";
 
 export type TolsonPayableType = "percent_of_gross" | "fixed_weekly";
 

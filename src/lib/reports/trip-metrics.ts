@@ -1,3 +1,4 @@
+import { roundHalfUpDivide } from "@/lib/fee-engine/money";
 import { countedLoadedHundredths, layoutManifestGroups } from "@/lib/loads/manifest-miles";
 import { centsPerLoadedMile, formatDieselMpg } from "@/lib/reports/format";
 
@@ -124,13 +125,22 @@ export function fleetFromTrucks(
   for (const truck of trucks) {
     gross += truck.grossCents;
     miles += truck.totalMilesHundredths;
-    if (truck.mpg != null) {
-      main += truck.mainMilesHundredths;
-      gallons += truck.gallonsMilli;
-    }
+    if (truck.mpg == null) continue;
+    const mainMiles = truck.mainMilesHundredths > 0 ? truck.mainMilesHundredths : truck.totalMilesHundredths;
+    main += mainMiles;
+    gallons += truck.gallonsMilli > 0 ? truck.gallonsMilli : gallonsFromMpg(mainMiles, truck.mpg);
   }
   return {
     rpmCents: centsPerLoadedMile(gross, miles),
     mpg: formatDieselMpg(main, gallons),
   };
+}
+
+/** Gallons thousandths implied by a sheet MPG label, so fleet MPG can weight trucks that have no gallon row. */
+function gallonsFromMpg(milesHundredths: number, mpg: string): number {
+  const match = /^(\d+)\.(\d{2})$/.exec(mpg);
+  if (!match || milesHundredths <= 0) return 0;
+  const mpgHundredths = Number(match[1]) * 100 + Number(match[2]);
+  if (mpgHundredths <= 0) return 0;
+  return Number(roundHalfUpDivide(BigInt(milesHundredths) * BigInt(1000), BigInt(mpgHundredths)));
 }

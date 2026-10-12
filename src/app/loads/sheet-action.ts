@@ -19,8 +19,8 @@ export async function sheetLoadsForWeek(weekStart: string): Promise<LoadListRow[
   }));
   const rows: LoadListRow[] = [];
   for (const truck of loaded.rows) {
-    for (const load of truck.ledgerLoads) {
-      if (load.rateCents == null || !load.deliveryDay) continue;
+    const weekLoads = truck.weekLoads ?? [];
+    for (const load of weekLoads) {
       rows.push({
         id: `sheet:${truck.unitNumber}:${load.loadId}`,
         load_id: load.loadId,
@@ -28,19 +28,25 @@ export async function sheetLoadsForWeek(weekStart: string): Promise<LoadListRow[
         delivery_date: load.deliveryDay,
         week_start: bounds.start,
         pickup_date: load.pickupDay ?? null,
-        driver_name: load.driverName ?? null,
+        driver_name: load.driver,
         broker_name: null,
-        origin_city: null,
+        origin_city: load.origin,
         origin_state: null,
-        destination_city: null,
+        destination_city: load.destination,
         destination_state: null,
-        loaded_distance_mi: null,
-        deadhead_miles: null,
-        rate_cents: load.rateCents,
+        loaded_distance_mi: milesNumber(load.loadedMilesHundredths),
+        deadhead_miles: milesNumber(load.deadheadMilesHundredths),
+        rate_cents: load.rateCents ?? 0,
         truck_unit_number: truck.unitNumber,
         source_manifest_ref: load.tripGroup ?? load.manifestId,
+        status: load.status,
       });
     }
   }
   return rows;
+}
+
+function milesNumber(hundredths: number | null): number | null {
+  if (hundredths == null) return null;
+  return hundredths / 100;
 }

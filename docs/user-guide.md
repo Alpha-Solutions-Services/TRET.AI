@@ -136,7 +136,7 @@ Fees on a fuel row are not added to Total Cost. A fuel row with no load is still
 1. Open **Statements**.
 2. Pick the week. The date snaps to the Monday. For 21–27 Sep 2026 choose `2026-09-21`.
 3. The fleet table lists each unit. Click a unit number to see its lines.
-4. Each truck shows the Legacy fee, the Tolson lease fee, and the management fee total. The total is those two lines, taken from the sheet Management Fee cell, and it is subtracted once. Fee settings stores the two percents. Trucks 1 and 2 are 0 and 10. Truck 3 is 10 and 0. Trucks 4 to 8 and a new truck are 10 and 8.
+4. Each truck shows the Legacy fee, the Tolson lease fee, and the management fee total. Each line is that truck's percent of weekly gross, and the total is subtracted once. If the sheet Management Fee cell is a different amount, the row says "sheet fee differs" and the expenses still use the computed total. Fee settings stores the two percents. Trucks 1 and 2 are 0 and 10. Truck 3 is 10 and 0 (Tolson owned). Trucks 4 to 8 and a new truck are 10 and 8.
 5. The week opens on the last finished week. The line says which week the report is for and the Monday it is delivered. Prepare report downloads that truck. Prepare Monday reports downloads every truck. If Close is blocked, the reasons are listed above the button. Fix those, then come back.
 6. **Close week** asks you to confirm. After that the week is locked. The numbers on the page are the snapshot. There is no reopen on this screen.
 7. **Download PDF** saves one file for that week. Each unit has its own pages, then a fleet page. Amounts on the PDF are dollars.
@@ -148,7 +148,7 @@ A fixed-expense override cannot be saved for a unit and week that is already loc
 ## Dashboard
 
 1. Open **Dashboard**.
-2. The cards are Ins, Outs, Net, Loads, Truck miles, Deadhead, RPM, MPG, and Open issues. Truck miles include deadhead and count each trip once. MPG is the Week Report figure. The hub shows whether Vektor, Sheets, Fuel, Tolls, and Gemini are reaching TRET. Fuel and Tolls say Last file after a file import. A green, yellow, or red dot is a status. Other colors are categories.
+2. The cards are Ins, Outs, Net, Loads, Truck miles, Deadhead, RPM, MPG, and Open issues. Truck miles include deadhead and count each trip once. Deadhead is the allocated deadhead from the sheet. MPG is the Week Report figure, and it stays blank when a trip is still open. Fleet MPG uses the trucks that have a delivered trip. Pending lists a next-week load and a TONU whose rate is not confirmed. The hub shows whether Vektor, Sheets, Fuel, Tolls, and Gemini are reaching TRET. Fuel and Tolls say Last file after a file import. A rate limit on the Gemini status check shows OK. A green, yellow, or red dot is a status. Other colors are categories.
 3. Charts show Ins and Outs by truck across the full width, the last eight weeks from those same sheets, and the sheet expense mix. Outs and the mix come from each truck's Weekly Expenses row. Each truck is also a card with loads, miles, RPM, MPG, and net.
 4. The tables below are the week snapshot, the management profit and loss, and the sheet Ins and Outs. The week snapshot uses those same sheet totals. Gross is Ins. Fees, fuel, tolls, and fixed split the Outs. The snapshot also shows the Legacy fee, the Tolson lease fee, and the management fee total. Net is Ins minus Outs. Income is the sum of Legacy fees. Tolson payable is the sum of Tolson lease fees. Expenses are the portal costs for that week's month. Net is Legacy income minus those portal expenses.
 

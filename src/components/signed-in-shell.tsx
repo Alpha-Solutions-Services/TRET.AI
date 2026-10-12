@@ -29,7 +29,7 @@ export async function SignedInShell({
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--color-bg)] text-[var(--color-fg)]">
-      <header className="material sticky top-0 z-20 flex items-center justify-between border-b border-[var(--color-border)] px-8 py-5">
+      <header className="material relative z-20 flex items-center justify-between border-b border-[var(--color-border)] px-8 py-5">
         <div>
           <p className="text-lg font-medium tracking-[-0.03em]">TRET.AI</p>
           <p className="mt-0.5 text-sm text-[var(--color-fg-muted)]">{title}</p>
@@ -43,7 +43,7 @@ export async function SignedInShell({
         <aside className="w-52 shrink-0">
           <AppNav />
         </aside>
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 flex-1 pb-16">{children}</main>
       </div>
       <AppFooter version={readAppVersion()} health={sheetsAccountHealth()} />
     </div>

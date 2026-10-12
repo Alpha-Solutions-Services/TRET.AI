@@ -1,4 +1,4 @@
-export type TruckClass = "legacy_owned" | "third_party";
+export type TruckClass = "legacy_owned" | "third_party" | "tolson_owned";
 
 export type FeeRuleKind =
   | "DRIVER_PAY"

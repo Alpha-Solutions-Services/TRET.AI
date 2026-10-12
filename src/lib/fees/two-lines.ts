@@ -20,6 +20,14 @@ export function unitDigits(unitNumber: string): string {
   return unitNumber.replace(/\D/g, "").replace(/^0+/, "") || unitNumber.trim();
 }
 
+/** 1, 2, …, 10. Text order would put 10 between 1 and 2. */
+export function compareUnitNumbers(a: string, b: string): number {
+  const left = Number(unitDigits(a));
+  const right = Number(unitDigits(b));
+  if (Number.isFinite(left) && Number.isFinite(right) && left !== right) return left - right;
+  return a.localeCompare(b);
+}
+
 /** Trucks 1 and 2 are Legacy owned. Truck 3 is Tolson's. Trucks 4 to 8 and new trucks use the default. */
 export function seededFeeRates(unitNumber: string): FeeRatePair {
   const unit = unitDigits(unitNumber);

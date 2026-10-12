@@ -8,7 +8,8 @@ import {
   type TruckClass,
 } from "@/lib/fee-engine";
 import { assertInteger, assertNonNegativeInteger } from "@/lib/fee-engine/money";
-import { managementFeeSplit, seededFeeRates } from "@/lib/fees/two-lines";
+import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
+import { compareUnitNumbers, managementFeeSplit, seededFeeRates } from "@/lib/fees/two-lines";
 import { FIXED_EXPENSE_KINDS, FIXED_EXPENSE_LABELS } from "@/lib/fixed-expenses/kinds";
 import { lookupWeeklyFixedExpense } from "@/lib/fixed-expenses/lookup";
 import { validateUnlinkedFuelAtWeekClose, validateFuelRowCountDrop, validateTollRowCountDrop } from "@/lib/fuel-tolls/validate";
@@ -51,8 +52,9 @@ const FEE_SORT: Record<FeeRuleKind, number> = {
  * Fixed expenses charged to management are stored and are not deducted.
  */
 export function ownerDeductionCents(unit: UnitStatement): number {
-  const managementOrTolson =
-    unit.truckClass === "third_party" ? unit.managementFeeCents : unit.tolsonPayableCents;
+  const managementOrTolson = ownerPaysManagementTotal(unit.truckClass)
+    ? unit.managementFeeCents
+    : unit.tolsonPayableCents;
   return (
     unit.driverPayCents +
     managementOrTolson +
@@ -113,10 +115,10 @@ export function buildWeekStatements(input: WeekStatementInput): WeekStatements {
       ref: issue.ref ?? null,
     });
   }
-  blockers.push(...rowCountBlockers(input));
+  const warnings = rowCountWarnings(input);
 
   const units: UnitStatement[] = [];
-  const trucks = [...input.trucks].sort((a, b) => a.unitNumber.localeCompare(b.unitNumber));
+  const trucks = [...input.trucks].sort((a, b) => compareUnitNumbers(a.unitNumber, b.unitNumber));
   const seen = new Set<string>();
   for (const truck of trucks) {
     if (seen.has(truck.id)) {
@@ -157,6 +159,7 @@ export function buildWeekStatements(input: WeekStatementInput): WeekStatements {
     units,
     fleet,
     blockers,
+    warnings,
     closeAllowed: blockers.length === 0,
   };
 }
@@ -212,9 +215,14 @@ function assertDropPct(value: number, label: string): void {
   }
 }
 
-function rowCountBlockers(input: WeekStatementInput): StatementBlocker[] {
+function coversFullWeek(rangeFrom: string, rangeTo: string, weekStart: string, weekEnd: string): boolean {
+  return rangeFrom <= weekStart && rangeTo >= weekEnd;
+}
+
+/** A short daily file is normal. Only a full Monday–Sunday import of the same kind can warn, and it does not block close or the PDF. */
+function rowCountWarnings(input: WeekStatementInput): StatementBlocker[] {
   const weekEnd = weekBoundsForDate(input.weekStart).end;
-  const blockers: StatementBlocker[] = [];
+  const warnings: StatementBlocker[] = [];
   const kinds = ["loads", "fuel", "tolls"] as const;
   for (const kind of kinds) {
     if (input.acknowledgedDrops?.includes(kind)) continue;
@@ -223,7 +231,7 @@ function rowCountBlockers(input: WeekStatementInput): StatementBlocker[] {
         (run) =>
           run.kind === kind &&
           (run.status === "success" || run.status === "blocked") &&
-          rangesOverlap(run.rangeFrom, run.rangeTo, input.weekStart, weekEnd),
+          coversFullWeek(run.rangeFrom, run.rangeTo, input.weekStart, weekEnd),
       )
       .sort((a, b) => (a.finishedAt ?? "").localeCompare(b.finishedAt ?? ""));
     if (overlapping.length === 0) continue;
@@ -249,14 +257,14 @@ function rowCountBlockers(input: WeekStatementInput): StatementBlocker[] {
           ? validateFuelRowCountDrop(latest.rowsFetched, previous, dropSettings(pct))
           : validateTollRowCountDrop(latest.rowsFetched, previous, dropSettings(pct));
     if (issue) {
-      blockers.push({
+      warnings.push({
         rule: "row_count_drop",
         message: `${kind}: ${issue.message}`,
         ref: input.weekStart,
       });
     }
   }
-  return blockers;
+  return warnings;
 }
 
 function dropSettings(pct: number): FuelTollSettings {
@@ -269,10 +277,6 @@ function dropSettings(pct: number): FuelTollSettings {
     mpgMaxMilli: 0,
     rowCountDropBlockPct: pct,
   };
-}
-
-function rangesOverlap(from: string, to: string, weekStart: string, weekEnd: string): boolean {
-  return from <= weekEnd && weekStart <= to;
 }
 
 function buildUnit(
@@ -435,7 +439,7 @@ function buildUnit(
   const tolsonFixed =
     truck.tolsonFixedCents != null && feeIsActive(truck.tolsonEffectiveFrom, input.weekStart);
   const legacyFixed =
-    truck.truckClass === "third_party" &&
+    ownerPaysManagementTotal(truck.truckClass) &&
     truck.legacyFixedCents != null &&
     feeIsActive(truck.legacyEffectiveFrom, input.weekStart);
   if (tolsonFixed) tolsonPayableCents = truck.tolsonFixedCents ?? 0;
@@ -467,7 +471,7 @@ function buildUnit(
         ? { legacyFeeBp: truck.legacyFeeBp, tolsonLeaseFeeBp: truck.tolsonLeaseFeeBp }
         : seededFeeRates(truck.unitNumber);
     const split = managementFeeSplit(grossCents, rates);
-    const owned = feeClassFor(truck) === "legacy_owned";
+    const owned = !ownerPaysManagementTotal(feeClassFor(truck));
     managementFeeCents = owned ? 0 : split.managementFeeCents;
     tolsonPayableCents = owned ? split.managementFeeCents : split.tolsonLeaseFeeCents;
     legacyRetainedCents = split.legacyFeeCents;
@@ -510,7 +514,7 @@ function buildUnit(
 function ownerSeesFee(truckClass: TruckClass, kind: FeeRuleKind): boolean {
   if (kind === "LEGACY_RETAINED") return false;
   if (kind === "TOLSON_PAYABLE") return truckClass === "legacy_owned";
-  if (kind === "MANAGEMENT_FEE") return truckClass === "third_party";
+  if (kind === "MANAGEMENT_FEE") return ownerPaysManagementTotal(truckClass);
   return true;
 }
 
@@ -565,6 +569,7 @@ function feeIsActive(from: string | null | undefined, weekStart: string): boolea
 }
 
 function feeModelFor(truck: StatementTruck): "lease_to_tolson" | "owner_management" | null {
+  if (truck.truckClass === "tolson_owned") return "owner_management";
   if (truck.feeModel === "lease_to_tolson" || truck.feeModel === "owner_management") return truck.feeModel;
   if (truck.truckClass === "legacy_owned") return "lease_to_tolson";
   if (truck.truckClass === "third_party") return "owner_management";
@@ -572,6 +577,7 @@ function feeModelFor(truck: StatementTruck): "lease_to_tolson" | "owner_manageme
 }
 
 function feeClassFor(truck: StatementTruck): TruckClass {
+  if (truck.truckClass === "tolson_owned") return "tolson_owned";
   const model = feeModelFor(truck);
   if (model === "lease_to_tolson") return "legacy_owned";
   if (model === "owner_management") return "third_party";
@@ -580,7 +586,9 @@ function feeClassFor(truck: StatementTruck): TruckClass {
 
 /** 10 percent management when no contract is stored. Tolson and Legacy stay unset until someone enters them. */
 function defaultContract(truck: StatementTruck, weekStart: string): StatementContract | null {
-  if (truck.truckClass !== "legacy_owned" && truck.truckClass !== "third_party") return null;
+  if (truck.truckClass !== "legacy_owned" && truck.truckClass !== "third_party" && truck.truckClass !== "tolson_owned") {
+    return null;
+  }
   const rules: StatementContract["rules"] = [];
   const model = feeModelFor(truck);
   if (model === "lease_to_tolson") {

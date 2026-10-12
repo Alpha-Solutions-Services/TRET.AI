@@ -9,7 +9,7 @@
 - A fuel card file or an E-ZPass file (v0.0.0.29) uses the truck number on the row. A known unit is enough when the card or tag is new. A card, plate, or tag that belongs to a different truck is not entered. Fuel goes to the Fuel Log input columns only. Toll amount is added to Toll Expense on the load whose pickup through delivery contains the exit time. Several loads on one trip use the primary load. A negative amount or an unknown unit is not entered. The week is still Monday to Sunday.
 - v0.0.0.32 counts a load only in the Monday to Sunday week of its delivery date. A pickup from an earlier week is included when delivery is in the week. In-transit loads show as Pending and are not counted. Sharing a trip does not pull another load into the week. In transit, dispatched, and en route rows can still be imported. Booked and deleted stay out.
 - Fee rules are per truck, stored in the database with effective dates, never hardcoded. The number of trucks is not fixed; adding a truck must be easy.
-- v0.0.0.34 fee lines, both a percent of that truck's weekly gross: Legacy fee and Tolson lease fee. The management fee total is their sum. Trucks 1 and 2 are Legacy 0 percent and Tolson lease 10 percent. Truck 3 is Legacy 10 percent and Tolson lease 0 percent. Trucks 4 to 8 and a new truck are Legacy 10 percent and Tolson lease 8 percent. The dollar amount is the sheet Management Fee cell. The two lines split that cell and are not added on top of it. A stored fee contract still wins for that contract's own lines.
+- v0.0.0.35 fee lines, both a percent of that truck's weekly gross: Legacy fee and Tolson lease fee. The management fee total is their sum, computed from the truck's basis points times gross. Trucks 1 and 2 are Legacy 0 percent and Tolson lease 10 percent. Truck 3 is Legacy 10 percent and Tolson lease 0 percent and its class is Tolson owned. Trucks 4 to 8 and a new truck are Legacy 10 percent and Tolson lease 8 percent. The sheet Management Fee cell is not the amount. When it differs, the page shows "sheet fee differs" and expenses still use the computed total. A stored fee contract still wins for that contract's own lines.
 - Legacy-owned trucks: the Tolson lease fee is the amount deducted. Their report goes to Legacy. Legacy pays the expenses. A stored contract for this class must not include `MANAGEMENT_FEE` or `LEGACY_RETAINED`.
 - Third-party trucks: the owner is charged the management fee total (Legacy fee plus Tolson lease fee). That total is deducted once. The two lines are the breakdown and are not deducted again.
 - Dispatch fee is a per-truck rate (currently 5.5% or 5%) and can change per truck.
@@ -42,7 +42,7 @@
 - Dispatch is deducted from the owner. It is also Legacy income on the management P&L, on its own line.
 - Owner net = gross − driver − (management fee, or Tolson on a Legacy-owned truck) − dispatch − factoring − discounted fuel − tolls − fixed expenses charged to the owner.
 - A fixed expense charged to management is stored and left out of owner net. A kind with no row is zero. Overlapping versions block the close.
-- Close is blocked by unlinked fuel, a row-count drop on an import whose dates overlap the week, a missing or mid-week contract, a load whose stored week disagrees with its delivery date, or a net that does not reconcile. A row-count drop the operator acknowledged with a reason, for that same import type and week, does not block.
+- Close is blocked by unlinked fuel, a missing or mid-week contract, a load whose stored week disagrees with its delivery date, or a net that does not reconcile. A row-count drop is a warning. It is compared only with a full Monday–Sunday import of the same kind. A short daily file does not warn, and the warning does not block Close week or the PDF.
 - Displayed statement dollars for a truck with a Weekly Expenses sheet come from that sheet plus Load Ledger misc, not from a second fee pass. Truck miles are Load Ledger column P, once per trip. MPG is Week Report C31.
 
 ## Weekly PDF
@@ -55,7 +55,7 @@
 
 ## Dashboard and Management cards
 
-- Income is the sum of Legacy fees for the selected Monday–Sunday week. Each fee is that truck's Legacy percent of weekly gross, taken from the sheet Management Fee cell when that cell is present.
+- Income is the sum of Legacy fees for the selected Monday–Sunday week. Each fee is that truck's Legacy percent of weekly gross. Tolson payable is the sum of Tolson lease fees.
 - Tolson payable is the sum of Tolson lease fees for the same week. It is shown and is not subtracted from Legacy income.
 - Expenses are portal operating costs whose date falls in the expense month of that week's Monday. The whole month is shown. It is not a one-seventh share of the month.
 - Net is Legacy income minus those portal expenses.

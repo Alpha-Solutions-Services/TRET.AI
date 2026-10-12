@@ -1,3 +1,5 @@
+import { compareUnitNumbers } from "@/lib/fees/two-lines";
+import { SHEET_FEE_DIFFERS } from "@/lib/reports/owner-week";
 import { weekBoundsForDate, type FeeRuleKind, type TruckClass } from "@/lib/fee-engine";
 import { canonicalLoadId } from "@/lib/loads/load-id";
 import { loadActiveTruckInsOuts } from "@/lib/sheets/load-week";
@@ -47,6 +49,8 @@ export type StatementsPageData = {
   blockers: StatementBlocker[];
   /** Close checks from the current rows. Still filled when the week is locked. */
   liveBlockers: StatementBlocker[];
+  /** Shown on the page. Does not turn off Close week or Download PDF. */
+  warnings: StatementBlocker[];
   closeAllowed: boolean;
   pending: { unitNumber: string; loadId: string; reason: string }[];
 };
@@ -356,6 +360,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
       fleet: live.fleet,
       blockers: live.blockers,
       liveBlockers: live.blockers,
+      warnings: pageWarnings(live, sheets.rows),
       closeAllowed: live.closeAllowed && !lockMissing,
       pending: pendingFromSheets(sheets.rows),
     };
@@ -381,7 +386,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
     : { data: [], error: null };
   if (lineError) return failed(bounds, lineError.message);
 
-  const units = (stored ?? []).map((row) => toStoredUnit(row, lineRows ?? []));
+  const units = (stored ?? []).map((row) => toStoredUnit(row, lineRows ?? [])).sort((a, b) => compareUnitNumbers(a.unitNumber, b.unitNumber));
   const fleet = fleetFromUnits(units);
 
   return {
@@ -398,6 +403,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
     fleet,
     blockers: [],
     liveBlockers: live.blockers,
+    warnings: pageWarnings(live, sheets.rows),
     closeAllowed: false,
     pending: pendingFromSheets(sheets.rows),
   };
@@ -428,6 +434,7 @@ export async function closeWeek(weekStart: string): Promise<
       units: page.units,
       fleet: page.fleet,
       blockers: [],
+      warnings: [],
       closeAllowed: true,
     });
   } catch (err) {
@@ -466,9 +473,24 @@ function failed(
     fleet: EMPTY_FLEET,
     blockers: [],
     liveBlockers: [],
+    warnings: [],
     closeAllowed: false,
     pending: [],
   };
+}
+
+function pageWarnings(
+  live: { warnings: StatementBlocker[] },
+  rows: readonly { unitNumber: string; sheetFeeDiffers?: boolean }[],
+): StatementBlocker[] {
+  const fees = rows
+    .filter((row) => row.sheetFeeDiffers)
+    .map((row) => ({
+      rule: "sheet_fee_differs",
+      message: `Truck ${row.unitNumber}: ${SHEET_FEE_DIFFERS}`,
+      ref: row.unitNumber,
+    }));
+  return [...live.warnings, ...fees];
 }
 
 function acknowledgedKinds(

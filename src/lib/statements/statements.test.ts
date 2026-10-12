@@ -172,7 +172,7 @@ describe("close blockers", () => {
     expect(() => lockPayload(result)).toThrow(/blockers/);
   });
 
-  it("blocks a row-count drop on an import that overlaps the week", () => {
+  it("warns on a full-week row-count drop and still allows close", () => {
     const result = buildWeekStatements(
       inputFrom(fixture, {
         importRuns: [
@@ -181,22 +181,66 @@ describe("close blockers", () => {
             status: "success",
             rangeFrom: "2026-09-21",
             rangeTo: "2026-09-27",
-            rowsFetched: 40,
+            rowsFetched: 54,
             finishedAt: "2026-09-28T00:00:00Z",
           },
           {
             kind: "fuel",
-            status: "blocked",
+            status: "success",
             rangeFrom: "2026-09-21",
             rangeTo: "2026-09-27",
-            rowsFetched: 10,
+            rowsFetched: 5,
             finishedAt: "2026-09-29T00:00:00Z",
           },
         ],
       }),
     );
-    expect(result.blockers.map((row) => row.rule)).toContain("row_count_drop");
-    expect(result.closeAllowed).toBe(false);
+    expect(result.blockers.map((row) => row.rule)).not.toContain("row_count_drop");
+    expect(result.warnings.map((row) => row.rule)).toContain("row_count_drop");
+    expect(result.closeAllowed).toBe(true);
+  });
+
+  it("ignores a short daily file when the previous import was larger", () => {
+    const result = buildWeekStatements(
+      inputFrom(fixture, {
+        importRuns: [
+          {
+            kind: "fuel",
+            status: "success",
+            rangeFrom: "2026-09-21",
+            rangeTo: "2026-09-27",
+            rowsFetched: 54,
+            finishedAt: "2026-09-28T00:00:00Z",
+          },
+          {
+            kind: "fuel",
+            status: "success",
+            rangeFrom: "2026-09-27",
+            rangeTo: "2026-09-27",
+            rowsFetched: 5,
+            finishedAt: "2026-09-29T00:00:00Z",
+          },
+          {
+            kind: "tolls",
+            status: "success",
+            rangeFrom: "2026-09-21",
+            rangeTo: "2026-09-27",
+            rowsFetched: 64,
+            finishedAt: "2026-09-28T00:00:00Z",
+          },
+          {
+            kind: "tolls",
+            status: "success",
+            rangeFrom: "2026-09-27",
+            rangeTo: "2026-09-27",
+            rowsFetched: 0,
+            finishedAt: "2026-09-29T00:00:00Z",
+          },
+        ],
+      }),
+    );
+    expect(result.warnings.map((row) => row.rule)).not.toContain("row_count_drop");
+    expect(result.closeAllowed).toBe(true);
   });
 
   it("ignores a row-count drop whose dates do not overlap the week", () => {

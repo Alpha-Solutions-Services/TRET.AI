@@ -47,7 +47,9 @@ export async function loadHubStatus(): Promise<HubFeed[]> {
     vektor = vektorTone(null);
   }
 
-  const gemini = await geminiPromise;
+  const probed = await geminiPromise;
+  // A rate limit on the status ping is not an outage. The hub stays OK when the key is set.
+  const gemini = probed === "Busy" ? "OK" : probed;
   return buildHubFeeds({ vektor, sheets, fuelCount, tollCount, gemini, fuelFile, tollFile });
 }
 
