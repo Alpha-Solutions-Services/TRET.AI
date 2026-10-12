@@ -71,25 +71,23 @@ describe("trip RPM and MPG", () => {
     expect(fleet.mpg).toBe(fleetMpgFromTrucks(trucks.map((truck) => ({
       truckMilesHundredths: truck.totalMilesHundredths,
       gallonsMilli: truck.gallonsMilli,
-      mpg: truck.mpg,
     }))));
   });
 
-  it("leaves a truck with a blank MPG out of the fleet MPG", () => {
+  it("includes a truck with a blank MPG in the fleet miles and gallons", () => {
     const fleet = fleetFromTrucks([
-      { grossCents: 10_000, totalMilesHundredths: 10_000, mainMilesHundredths: 10_000, gallonsMilli: 5_000_000, mpg: null },
-      { grossCents: 10_000, totalMilesHundredths: 10_000, mainMilesHundredths: 4_000, gallonsMilli: 10_000, mpg: "4.00" },
+      { grossCents: 10_000, totalMilesHundredths: 1_159_695, mainMilesHundredths: 1_159_695, gallonsMilli: 1_637_860, mpg: null },
     ]);
-    expect(fleet.mpg).toBe("10.00");
+    expect(fleet.mpg).toBe("7.08");
   });
 
-  it("weights fleet MPG from sheet labels when gallons were not stored", () => {
+  it("does not invent gallons from an MPG label", () => {
     const fleet = fleetFromTrucks([
       { grossCents: 100_000, totalMilesHundredths: 10_000, mainMilesHundredths: 10_000, gallonsMilli: 0, mpg: "5.00" },
       { grossCents: 100_000, totalMilesHundredths: 10_000, mainMilesHundredths: 10_000, gallonsMilli: 0, mpg: "10.00" },
       { grossCents: 100_000, totalMilesHundredths: 50_000, mainMilesHundredths: 50_000, gallonsMilli: 9_000_000, mpg: null },
     ]);
-    expect(fleet.mpg).toBe("6.67");
+    expect(fleet.mpg).toBe("0.08");
     expect(fleet.rpmCents).toBe(centsPerLoadedMile(300_000, 70_000));
   });
 });

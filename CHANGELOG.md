@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.0.0.40 — 2026-10-12
+
+- Owner PDF and statement MPG follow the trip. While the trip is open, Week Report C31 is shown, and a blank cell stays blank. Truck 6 week 41 is blank. Truck 7 is 7.42. A delivered trip is truck miles divided by diesel gallons. Truck 8 is 9.39, from 2,650 miles and 282.21 gallons. Fleet MPG is every truck's miles divided by every truck's diesel gallons, 7.08 from 11,596.95 miles and 1,637.86 gallons, including Truck 6.
+- The shared-trip footnote shows only when that truck's table has a shared trip. Truck 3 and Truck 4 do not get it. Truck 7 still does.
+- No migration. TONU rate-con reading and receipt photo reading are still not wired. Trucks 1, 2, 9, and 10 still need sheet links.
+
 ## v0.0.0.39 — 2026-10-12
 
 - A held or pending TONU keeps its deadhead miles and toll for the week it is counted, the week after delivery. TBH--1201 stays out of week 41. Truck 8 week 41 matches the v0.0.0.38 PDF: tolls $36.61, deadhead 241, truck miles 2,650, expenses $6,298.84, net $1,601.16. The fleet follows: tolls $715.21, deadhead 888.60, truck miles 11,596.95, expenses $33,916.14, net -$1,066.14. The 10 deadhead miles and $12.00 toll count in week 42. The TONU rate stays out of gross. The dashboard, Ins and Outs, statements, and PDFs use the same figures.

@@ -5,7 +5,7 @@ import { truckClassLabel } from "@/lib/fees/kinds";
 import { reportDeliveryLabel } from "@/lib/reports/delivery";
 import { expectedNetCents, miscOwnerCents, ownerDeductionCents } from "@/lib/statements/engine";
 import type { FleetStatement, StatementLine, UnitStatement } from "@/lib/statements/types";
-import { displayedTruckMpg, fleetMpgFromTrucks } from "@/lib/reports/trip-metrics";
+import { fleetMpgFromTrucks, sheetMpgText } from "@/lib/reports/trip-metrics";
 import {
   centsPerLoad,
   centsPerLoadedMile,
@@ -222,7 +222,7 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
             deadhead: formatMilesHundredths(unit.deadheadMilesHundredths),
             rate: formatStatementDollars(unit.grossCents),
           },
-    loadNote: sharedTripNote(loads, unit.loadedMilesHundredths),
+    loadNote: sharedTripNote(loads),
     performance: [
       { label: "Loads", value: String(unit.loadCount) },
       { label: "Loaded miles", value: formatMilesHundredths(unit.loadedMilesHundredths) },
@@ -254,26 +254,26 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
   };
 }
 
+/**
+ * Owner PDF and statement MPG.
+ * An open trip uses Week Report C31, or stays blank when that cell is empty.
+ * A delivered trip is truck miles divided by the diesel gallons on the statement.
+ */
 function unitMpg(unit: UnitStatement, source: WeeklyReportSource, dieselMilli: number): string | null {
   const sheet = source.sheetUnits?.find(
-    (row) => unitNumberFromRaw(row.unitNumber) === unitNumberFromRaw(unit.unitNumber) && row.mpgKnown,
+    (row) => unitNumberFromRaw(row.unitNumber) === unitNumberFromRaw(unit.unitNumber),
   );
-  const computed = formatDieselMpg(unit.loadedMilesHundredths, dieselMilli);
-  if (!sheet) return computed;
-  return displayedTruckMpg({
-    sheetMpg: sheet.mpgFromSheet ? sheet.mpg : null,
-    mpgFromSheet: sheet.mpgFromSheet === true,
-    tripOpen: sheet.tripOpen === true || sheet.mpg == null,
-    computedMpg: sheet.mpg ?? computed,
-  });
+  if (sheet?.tripOpen === true) {
+    return sheet.mpgFromSheet ? sheetMpgText(sheet.mpg) : null;
+  }
+  const truckMiles = unit.loadedMilesHundredths + unit.deadheadMilesHundredths;
+  return formatDieselMpg(truckMiles, dieselMilli);
 }
 
-function sharedTripNote(loads: readonly ReportLoadRow[], loadedMilesHundredths: number): string | null {
+function sharedTripNote(loads: readonly ReportLoadRow[]): string | null {
   if (loads.some((load) => load.inSharedTrip)) return SHARED_TRIP_NOTE;
   const counts = new Map<string, number>();
-  let tableMiles = 0;
   for (const load of loads) {
-    tableMiles += load.tableLoadedMilesHundredths ?? load.loadedMilesHundredths;
     const key = load.tripKey?.trim() ?? "";
     if (!key) continue;
     counts.set(key, (counts.get(key) ?? 0) + 1);
@@ -281,7 +281,6 @@ function sharedTripNote(loads: readonly ReportLoadRow[], loadedMilesHundredths: 
   for (const count of counts.values()) {
     if (count > 1) return SHARED_TRIP_NOTE;
   }
-  if (loads.length > 0 && tableMiles !== loadedMilesHundredths) return SHARED_TRIP_NOTE;
   return null;
 }
 
@@ -506,7 +505,6 @@ function buildFleetChart(source: WeeklyReportSource, perTruck: boolean): Prepare
             source.fuel.filter((row) => row.unitNumber === unit.unitNumber),
             "diesel",
           ),
-          mpg: unitMpg(unit, source, sumGallons(source.fuel.filter((row) => row.unitNumber === unit.unitNumber), "diesel")),
         })),
       );
   const who = only ? `Truck ${only.unitNumber}` : "the fleet";

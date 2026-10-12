@@ -81,7 +81,7 @@ function loadsForUnit(
               ? Math.max(0, row.ledgerMilesHundredths)
               : Math.max(0, row.loadedMilesHundredths ?? 0),
           tripKey,
-          inSharedTrip: row.sheetPrimary === false || (group != null && (tripCounts.get(group) ?? 0) > 1),
+          inSharedTrip: group != null && (tripCounts.get(group) ?? 0) > 1,
         };
       })
     : dbLoads.filter((row) => row.truckId === unit.truckId).map((row) => ({ ...row }));

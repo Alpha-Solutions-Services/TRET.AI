@@ -1,4 +1,3 @@
-import { roundHalfUpDivide } from "@/lib/fee-engine/money";
 import { countedLoadedHundredths, layoutManifestGroups } from "@/lib/loads/manifest-miles";
 import { centsPerLoadedMile, formatDieselMpg } from "@/lib/reports/format";
 
@@ -117,8 +116,9 @@ export function sheetMpgText(mpg: string | null | undefined): string | null {
 }
 
 /**
- * MPG shown on the dashboard and the owner PDF.
+ * MPG on the dashboard.
  * Week Report C31 wins. A blank cell stays blank while the trip is open.
+ * The owner PDF uses this only while the trip is open. A delivered trip uses truck miles and diesel gallons.
  */
 export function displayedTruckMpg(input: {
   sheetMpg: string | null | undefined;
@@ -152,7 +152,6 @@ export function fleetFromTrucks(
       trucks.map((truck) => ({
         truckMilesHundredths: truck.totalMilesHundredths,
         gallonsMilli: truck.gallonsMilli,
-        mpg: truck.mpg,
       })),
     ),
   };
@@ -160,26 +159,17 @@ export function fleetFromTrucks(
 
 /**
  * Fleet MPG for the dashboard and the owner PDF.
- * Truck miles divided by diesel gallons, using trucks whose trip has delivered.
+ * All fleet truck miles divided by all diesel gallons.
+ * A truck whose own MPG is blank still counts, when it has miles or gallons.
  */
 export function fleetMpgFromTrucks(
-  trucks: readonly { truckMilesHundredths: number; gallonsMilli: number; mpg: string | null }[],
+  trucks: readonly { truckMilesHundredths: number; gallonsMilli: number }[],
 ): string | null {
   let miles = 0;
   let gallons = 0;
   for (const truck of trucks) {
-    if (truck.mpg == null) continue;
     miles += truck.truckMilesHundredths;
-    gallons += truck.gallonsMilli > 0 ? truck.gallonsMilli : gallonsFromMpg(truck.truckMilesHundredths, truck.mpg);
+    gallons += truck.gallonsMilli;
   }
   return formatDieselMpg(miles, gallons);
-}
-
-/** Gallons thousandths implied by a sheet MPG label, so fleet MPG can weight trucks that have no gallon row. */
-function gallonsFromMpg(milesHundredths: number, mpg: string): number {
-  const match = /^(\d+)\.(\d{2})$/.exec(mpg);
-  if (!match || milesHundredths <= 0) return 0;
-  const mpgHundredths = Number(match[1]) * 100 + Number(match[2]);
-  if (mpgHundredths <= 0) return 0;
-  return Number(roundHalfUpDivide(BigInt(milesHundredths) * BigInt(1000), BigInt(mpgHundredths)));
 }
