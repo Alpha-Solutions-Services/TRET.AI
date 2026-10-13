@@ -123,7 +123,7 @@ describe("weekly asset report", () => {
     expect(report.leftExpenses.find((line) => line.label.startsWith("Management"))?.label).toBe("Management Fee - 10%");
     expect(report.expenseCents).toBe(269_841);
     expect(report.fuelCostCents).toBe(4_000);
-    expect(report.fuelEconomy).toBe("10.00");
+    expect(report.fuelEconomy).toBe("15.00");
     expect(report.netCents).toBe(report.grossCents - report.expenseCents);
     expect(report.notes.join(" ")).not.toContain("MC Lease");
     const bytes = await renderAssetReportPdf(report);
@@ -199,7 +199,7 @@ describe("weekly asset report", () => {
     expect(report.compliance).toBe("Good");
     expect(report.maintenance).toBe("Current");
     expect(report.driverQualification).toBe("Current");
-    expect(report.fuelEconomy).toBe("19.97");
+    expect(report.fuelEconomy).toBe("28.17");
     expect(report.fuelUnitPriceCents).toBe(555);
     expect(report.fuelPerMileCents).toBe(20);
     expect(report.notes).toEqual(["sheet fee differs"]);
@@ -277,7 +277,7 @@ describe("weekly asset report", () => {
     expect(report.ratePerMileCents).toBe(341);
     expect(report.revenuePerLoadCents).toBe(158_000);
     expect(report.fuelPerMileCents).toBe(50);
-    expect(report.fuelEconomy).toBe("7.86");
+    expect(report.fuelEconomy).toBe("11.09");
     expect(report.expenseCents).toBe(507_253);
     expect(report.netCents).toBe(282_747);
     expect(report.rightExpenses.find((line) => line.label === "Maintenance Escrow Weekly")?.cents).toBe(0);
@@ -336,5 +336,40 @@ describe("weekly asset report", () => {
     expect(report.loadsDelivered).toBe("2");
     expect(report.leftExpenses.find((line) => line.label.startsWith("Management"))?.label).toBe("Management Fee - 12%");
     expect(report.notes.join(" ")).not.toContain(DEFAULT_DISPATCHER);
+  });
+
+  it("uses weekMpg, so an open trip shows the sheet figure", () => {
+    const open = buildAssetReport({
+      ...WEEK,
+      unitNumber: "3",
+      ownerName: "Tolson Blackhawk LLC",
+      ledger: [
+        ["Delivery Date", "Load ID", "Rate", "Loaded Miles", "Deadhead Miles", "Trip Group"],
+        ["2026-09-01", "TBH--1", "$1,000.00", "100", "0", "M-1"],
+        ["2026-09-10", "TBH--2", "$1,000.00", "100", "0", "M-1"],
+      ],
+      weekly: WEEKLY,
+      fuelLog: FUEL,
+      fleet: FLEET,
+      weekReport: [["MPG", "6.50"]],
+      sheetNote: null,
+    });
+    expect(open.fuelEconomy).toBe("6.50");
+
+    const blank = buildAssetReport({
+      ...WEEK,
+      unitNumber: "3",
+      ownerName: "Tolson Blackhawk LLC",
+      ledger: [
+        ["Delivery Date", "Load ID", "Rate", "Loaded Miles", "Deadhead Miles", "Trip Group"],
+        ["2026-09-01", "TBH--1", "$1,000.00", "100", "0", "M-1"],
+        ["2026-09-10", "TBH--2", "$1,000.00", "100", "0", "M-1"],
+      ],
+      weekly: WEEKLY,
+      fuelLog: FUEL,
+      fleet: FLEET,
+      sheetNote: null,
+    });
+    expect(blank.fuelEconomy).toBe("n/a");
   });
 });

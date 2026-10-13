@@ -4,12 +4,12 @@ import { countedLoadedHundredths, layoutManifestGroups, manifestGroupKey, type M
 import {
   centsPerLoad,
   centsPerLoadedMile,
-  formatDieselMpg,
   formatGallonsMilli,
   formatMilesHundredths,
   formatStatementDollars,
 } from "@/lib/reports/format";
 import { buildOwnerTruckWeek } from "@/lib/reports/owner-week";
+import { weekMpg } from "@/lib/reports/trip-metrics";
 import { percentFeeStatement } from "@/lib/statements/engine";
 import {
   columnIndex,
@@ -733,13 +733,13 @@ export function buildAssetReport(input: {
   const assetStatus = rawStatus || (loads.length > 0 ? "Active" : "Review");
   const active = /^active$/i.test(assetStatus);
   const ratePerMileCents = centsPerLoadedMile(grossCents, dispatchMilesHundredths);
-  const economyMiles =
-    input.importTotals && input.importTotals.dispatchMilesHundredths > 0
-      ? input.importTotals.dispatchMilesHundredths
-      : fuelLog.milesHundredths > 0
-        ? fuelLog.milesHundredths
-        : dispatchMilesHundredths;
-  const fuelEconomy = owner.mpg ?? formatDieselMpg(economyMiles, gallonsMilli) ?? "n/a";
+  const fuelEconomy =
+    weekMpg({
+      tripOpen: owner.tripOpen,
+      truckMilesHundredths: dispatchMilesHundredths,
+      dieselGallonsMilli: gallonsMilli,
+      sheetMpg: owner.mpg,
+    }) ?? "n/a";
   const fuelPerMileCents = centsPerLoadedMile(fuelCents, dispatchMilesHundredths);
   const netCents = grossCents - expenseCents;
   const periodLabel = `${shortDate(input.weekStart)} to ${shortDate(input.weekEnd)}`;
