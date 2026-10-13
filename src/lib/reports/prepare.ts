@@ -3,9 +3,9 @@ import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
 import { bpToPercentString } from "@/lib/fees/percent";
 import { truckClassLabel } from "@/lib/fees/kinds";
 import { reportDeliveryLabel } from "@/lib/reports/delivery";
-import { expectedNetCents, miscOwnerCents, ownerDeductionCents } from "@/lib/statements/engine";
+import { linesMatchNet, miscOwnerCents } from "@/lib/statements/engine";
 import type { FleetStatement, StatementLine, UnitStatement } from "@/lib/statements/types";
-import { fleetMpgFromTrucks, weekMpg } from "@/lib/reports/trip-metrics";
+import { fleetMpgFromTrucks, tripMilesHundredths, tripOpenAtSunday, weekMpg, type MetricLoad } from "@/lib/reports/trip-metrics";
 import {
   centsPerLoad,
   centsPerLoadedMile,
@@ -95,13 +95,8 @@ function assertUnit(unit: UnitStatement): void {
   assertNonNegativeInteger(unit.loadCount, "load count");
   assertNonNegativeInteger(unit.loadedMilesHundredths, "loaded miles");
   assertNonNegativeInteger(unit.deadheadMilesHundredths, "deadhead");
-  if (unit.netCents !== expectedNetCents(unit)) {
-    warnMismatch(`Unit ${unit.unitNumber} net does not match gross minus owner deductions.`);
-  }
-  const ownerLines = unit.lines.filter((line) => line.ownerVisible && line.chargedTo === "owner");
-  const lineSum = sumLineAmounts(ownerLines, `unit ${unit.unitNumber} lines`);
-  if (lineSum !== ownerDeductionCents(unit)) {
-    warnMismatch(`Unit ${unit.unitNumber} lines do not add up to the owner deductions.`);
+  if (!linesMatchNet(unit)) {
+    warnMismatch(`Unit ${unit.unitNumber} net does not match the statement lines.`);
   }
   requireLine(unit, "FUEL", unit.fuelCents);
   requireLine(unit, "TOLLS", unit.tollsCents);
@@ -258,22 +253,33 @@ function unitMpg(unit: UnitStatement, source: WeeklyReportSource, dieselMilli: n
   const sheet = source.sheetUnits?.find(
     (row) => unitNumberFromRaw(row.unitNumber) === unitNumberFromRaw(unit.unitNumber),
   );
-  const loads =
+  const tripOpen =
     sheet?.mpgLoads && sheet.mpgLoads.length > 0
-      ? sheet.mpgLoads
-      : sheet?.tripOpen
-        ? [
-            { tripRef: "open", deliveryDay: source.weekStart },
-            { tripRef: "open", deliveryDay: null },
-          ]
-        : [];
+      ? tripOpenAtSunday(sheet.mpgLoads, source.weekEnd)
+      : sheet?.tripOpen === true;
   return weekMpg({
-    loads,
-    weekEnd: source.weekEnd,
-    truckMilesHundredths: unit.loadedMilesHundredths + unit.deadheadMilesHundredths,
+    tripOpen,
+    truckMilesHundredths: truckMilesOnce(unit, source),
     dieselGallonsMilli: dieselMilli,
     sheetMpg: sheet?.mpgFromSheet ? sheet.mpg : null,
   });
+}
+
+/** Trip miles counted once. The statement total is used when the rows have no trip. */
+function truckMilesOnce(unit: UnitStatement, source: WeeklyReportSource): number {
+  const rows = source.loads.filter((load) => load.truckId === unit.truckId);
+  if (!rows.some((load) => (load.tripKey ?? "").trim())) {
+    return unit.loadedMilesHundredths + unit.deadheadMilesHundredths;
+  }
+  const metrics: MetricLoad[] = rows.map((load) => ({
+    loadId: load.loadNumber ?? "",
+    rateCents: load.rateCents,
+    loadedMilesHundredths: load.loadedMilesHundredths,
+    deadheadMilesHundredths: load.deadheadMilesHundredths,
+    tripRef: load.tripKey ?? null,
+    sheetPrimary: null,
+  }));
+  return tripMilesHundredths(metrics);
 }
 
 function sharedTripNote(loads: readonly ReportLoadRow[]): string | null {
@@ -506,7 +512,7 @@ function buildFleetChart(source: WeeklyReportSource, perTruck: boolean): Prepare
     ? unitMpg(only, source, sumGallons(source.fuel.filter((row) => row.unitNumber === only.unitNumber), "diesel"))
     : fleetMpgFromTrucks(
         source.units.map((unit) => ({
-          truckMilesHundredths: unit.loadedMilesHundredths + unit.deadheadMilesHundredths,
+          truckMilesHundredths: truckMilesOnce(unit, source),
           gallonsMilli: sumGallons(
             source.fuel.filter((row) => row.unitNumber === unit.unitNumber),
             "diesel",

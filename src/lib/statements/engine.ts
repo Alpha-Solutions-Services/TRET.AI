@@ -12,9 +12,7 @@ import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
 import { compareUnitNumbers, managementFeeSplit, seededFeeRates } from "@/lib/fees/two-lines";
 import { FIXED_EXPENSE_KINDS, FIXED_EXPENSE_LABELS } from "@/lib/fixed-expenses/kinds";
 import { lookupWeeklyFixedExpense } from "@/lib/fixed-expenses/lookup";
-import { validateUnlinkedFuelAtWeekClose, validateFuelRowCountDrop, validateTollRowCountDrop } from "@/lib/fuel-tolls/validate";
-import type { FuelTollSettings } from "@/lib/fuel-tolls/types";
-import { validateRowCountDrop } from "@/lib/vektor/validate";
+import { validateUnlinkedFuelAtWeekClose } from "@/lib/fuel-tolls/validate";
 import type {
   FleetStatement,
   StatementBlocker,
@@ -79,6 +77,21 @@ export function ownerDeductionCents(unit: UnitStatement): number {
 
 export function expectedNetCents(unit: UnitStatement): number {
   return unit.grossCents - ownerDeductionCents(unit);
+}
+
+/** Owner-charged lines. Legacy retained and the internal split are not in this sum. */
+export function ownerChargedLineCents(unit: Pick<UnitStatement, "lines">): number {
+  let total = 0;
+  for (const line of unit.lines) {
+    if (line.chargedTo !== "owner") continue;
+    total += line.amountCents;
+  }
+  return total;
+}
+
+/** Gross minus the owner-charged lines equals net. */
+export function linesMatchNet(unit: Pick<UnitStatement, "lines" | "grossCents" | "netCents">): boolean {
+  return unit.grossCents - ownerChargedLineCents(unit) === unit.netCents;
 }
 
 export function buildWeekStatements(input: WeekStatementInput): WeekStatements {
@@ -155,10 +168,10 @@ export function buildWeekStatements(input: WeekStatementInput): WeekStatements {
   }
 
   for (const unit of units) {
-    if (unit.netCents !== expectedNetCents(unit)) {
+    if (!linesMatchNet(unit)) {
       blockers.push({
         rule: "statement_does_not_reconcile",
-        message: `Unit ${unit.unitNumber} net does not match gross minus owner deductions.`,
+        message: `Unit ${unit.unitNumber} net does not match the statement lines.`,
         ref: unit.unitNumber,
       });
     }
@@ -207,8 +220,8 @@ function assertUnitMoney(unit: UnitStatement): void {
   assertNonNegativeInteger(unit.fixedOwnerCents, "fixed owner");
   assertNonNegativeInteger(unit.fixedManagementCents, "fixed management");
   assertInteger(unit.netCents, "net");
-  if (unit.netCents !== expectedNetCents(unit)) {
-    throw new Error(`Unit ${unit.unitNumber} net does not reconcile`);
+  if (!linesMatchNet(unit)) {
+    throw new Error(`Unit ${unit.unitNumber} net does not match the statement lines`);
   }
 }
 
@@ -275,16 +288,12 @@ function rowCountWarnings(input: WeekStatementInput): StatementBlocker[] {
         : kind === "fuel"
           ? input.rowCountDropPct.fuel
           : input.rowCountDropPct.tolls;
-    const issue =
-      kind === "loads"
-        ? validateRowCountDrop(latest.rowsFetched, previous, { rowCountDropBlockPct: pct })
-        : kind === "fuel"
-          ? validateFuelRowCountDrop(latest.rowsFetched, previous, dropSettings(pct))
-          : validateTollRowCountDrop(latest.rowsFetched, previous, dropSettings(pct));
-    if (issue) {
+    const noun = kind === "loads" ? "rows" : kind === "fuel" ? "fuel rows" : "toll rows";
+    const message = rowCountDrop(latest.rowsFetched, previous, pct, noun);
+    if (message) {
       warnings.push({
         rule: "row_count_drop",
-        message: `${kind}: ${issue.message}`,
+        message: `${kind}: ${message}`,
         ref: input.weekStart,
       });
     }
@@ -292,16 +301,14 @@ function rowCountWarnings(input: WeekStatementInput): StatementBlocker[] {
   return warnings;
 }
 
-function dropSettings(pct: number): FuelTollSettings {
-  return {
-    priceMinTenthCents: 0,
-    priceMaxTenthCents: 0,
-    dieselTankGallonsMilli: 0,
-    defTankGallonsMilli: 0,
-    mpgMinMilli: 0,
-    mpgMaxMilli: 0,
-    rowCountDropBlockPct: pct,
-  };
+/** One row-count check. The noun keeps the fuel and toll warning text. */
+function rowCountDrop(fetched: number, previousFetched: number | null, pct: number, noun: string): string | null {
+  if (previousFetched == null || previousFetched <= 0) return null;
+  const minAllowed = Math.ceil((previousFetched * (100 - pct)) / 100);
+  if (fetched < minAllowed) {
+    return `Fetched ${fetched} ${noun}; previous run had ${previousFetched}. Drop exceeds ${pct}% threshold.`;
+  }
+  return null;
 }
 
 function buildUnit(
@@ -389,8 +396,8 @@ function buildUnit(
   if (!hasActivity) {
     if (!truck.active) return null;
     const lines: StatementLine[] = [expenseLine("FUEL", "Fuel", 0, 50), expenseLine("TOLLS", "Tolls", 0, 60)];
-    ensureUnsetLine(lines, "TOLSON_PAYABLE", truck.truckClass);
-    ensureUnsetLine(lines, "LEGACY_RETAINED", truck.truckClass);
+    ensureUnsetLine(lines, "TOLSON_PAYABLE");
+    ensureUnsetLine(lines, "LEGACY_RETAINED");
     lines.sort((a, b) => a.sortOrder - b.sortOrder);
     return {
       truckId: truck.id,
@@ -416,98 +423,15 @@ function buildUnit(
     };
   }
 
-  let feeLines: FeeLineResult[] = [];
-  let contractId: string | null = null;
-  if (loads.length > 0 || grossCents > 0) {
-    const stored = input.contracts.filter((contract) => contract.truckId === truck.id);
-    const covering = stored.filter((contract) => contractCovers(contract, input.weekStart));
-    const fallback = covering.length === 0 ? defaultContract(truck, input.weekStart) : null;
-    const truckContracts = covering.length > 0 ? stored : fallback ? [fallback] : [];
-    if (truckContracts.length === 0) {
-      blockers.push({
-        rule: "missing_fee_contract",
-        message: `Truck ${truck.unitNumber} has no fee setup. Open the truck and set Tolson payable or the management fee.`,
-        ref: truck.id,
-      });
-      return null;
-    }
-    try {
-      const contract = findContractForDate(toContractRecords(truckContracts), input.weekStart);
-      const full = truckContracts.find((row) => row.id === contract.id);
-      if (!full) throw new Error(`No fee contract covers date ${input.weekStart}`);
-      for (const load of loads) {
-        const day = findContractForDate(toContractRecords(truckContracts), load.deliveryDate);
-        if (day.id !== contract.id) {
-          throw new Error(
-            `Rates change inside week ${input.weekStart} (contracts ${contract.id} and ${day.id})`,
-          );
-        }
-      }
-      const feeClass = covering.length > 0 ? truck.truckClass : feeClassFor(truck);
-      feeLines = calculateFeeLines({
-        grossCents,
-        truckClass: feeClass,
-        rules: full.rules,
-      });
-      contractId = contract.id;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Fee contract error";
-      blockers.push({
-        rule: message.startsWith("No fee contract") ? "missing_fee_contract" : "fee_contract_error",
-        message: `Truck ${truck.unitNumber}: ${message}`,
-        ref: truck.unitNumber,
-      });
-      return null;
-    }
+  const resolved = resolveFees(truck, input, grossCents, loads);
+  if (!resolved.ok) {
+    blockers.push(resolved.blocker);
+    return null;
   }
-
-  const driverPayCents = feeAmount(feeLines, "DRIVER_PAY");
-  let managementFeeCents = feeAmount(feeLines, "MANAGEMENT_FEE");
-  let tolsonPayableCents = feeAmount(feeLines, "TOLSON_PAYABLE");
-  let legacyRetainedCents = feeAmount(feeLines, "LEGACY_RETAINED");
-  const tolsonFixed =
-    truck.tolsonFixedCents != null && feeIsActive(truck.tolsonEffectiveFrom, input.weekStart);
-  const legacyFixed =
-    ownerPaysManagementTotal(truck.truckClass) &&
-    truck.legacyFixedCents != null &&
-    feeIsActive(truck.legacyEffectiveFrom, input.weekStart);
-  if (tolsonFixed) tolsonPayableCents = truck.tolsonFixedCents ?? 0;
-  if (legacyFixed) legacyRetainedCents = truck.legacyFixedCents ?? 0;
-  const dispatchFeeCents = feeAmount(feeLines, "DISPATCH_FEE");
-  const factoringFeeCents = feeAmount(feeLines, "FACTORING_FEE");
-
-  const lines: StatementLine[] = [];
-  for (const line of feeLines) {
-    const ownerVisible = ownerSeesFee(truck.truckClass, line.kind);
-    lines.push({
-      lineCode: line.kind,
-      label: FEE_LABELS[line.kind],
-      amountCents: line.amountCents,
-      rateBp: line.rateBp,
-      basePctBp: line.basePctBp,
-      chargedTo: ownerVisible ? "owner" : null,
-      ownerVisible,
-      sortOrder: FEE_SORT[line.kind],
-    });
-  }
-  ensureUnsetLine(lines, "TOLSON_PAYABLE", truck.truckClass);
-  ensureUnsetLine(lines, "LEGACY_RETAINED", truck.truckClass);
-  if (tolsonFixed) syncFixedLine(lines, "TOLSON_PAYABLE", tolsonPayableCents);
-  if (legacyFixed) syncFixedLine(lines, "LEGACY_RETAINED", legacyRetainedCents);
-  if (contractId?.startsWith("default:")) {
-    const rates =
-      truck.legacyFeeBp != null && truck.tolsonLeaseFeeBp != null
-        ? { legacyFeeBp: truck.legacyFeeBp, tolsonLeaseFeeBp: truck.tolsonLeaseFeeBp }
-        : seededFeeRates(truck.unitNumber);
-    const split = managementFeeSplit(grossCents, rates);
-    const owned = !ownerPaysManagementTotal(feeClassFor(truck));
-    managementFeeCents = owned ? 0 : split.managementFeeCents;
-    tolsonPayableCents = owned ? split.managementFeeCents : split.tolsonLeaseFeeCents;
-    legacyRetainedCents = split.legacyFeeCents;
-    upsertFeeLine(lines, "MANAGEMENT_FEE", managementFeeCents, rates.legacyFeeBp + rates.tolsonLeaseFeeBp, true, !owned);
-    upsertFeeLine(lines, "TOLSON_PAYABLE", owned ? split.managementFeeCents : split.tolsonLeaseFeeCents, rates.tolsonLeaseFeeBp, true, owned);
-    upsertFeeLine(lines, "LEGACY_RETAINED", split.legacyFeeCents, rates.legacyFeeBp, true, false);
-  }
+  const fees = resolved.fees;
+  const lines = [...fees.lines];
+  ensureUnsetLine(lines, "TOLSON_PAYABLE");
+  ensureUnsetLine(lines, "LEGACY_RETAINED");
   lines.push(expenseLine("FUEL", "Fuel", fuelCents, 50));
   lines.push(expenseLine("TOLLS", "Tolls", tollsCents, 60));
   lines.push(...fixedLines);
@@ -516,15 +440,15 @@ function buildUnit(
   const unit: UnitStatement = {
     truckId: truck.id,
     unitNumber: truck.unitNumber,
-    truckClass: contractId?.startsWith("default:") ? feeClassFor(truck) : truck.truckClass,
-    contractId,
+    truckClass: fees.truckClass,
+    contractId: fees.contractId,
     grossCents,
-    driverPayCents,
-    managementFeeCents,
-    tolsonPayableCents,
-    legacyRetainedCents,
-    dispatchFeeCents,
-    factoringFeeCents,
+    driverPayCents: fees.driverPayCents,
+    managementFeeCents: fees.managementFeeCents,
+    tolsonPayableCents: fees.tolsonPayableCents,
+    legacyRetainedCents: fees.legacyRetainedCents,
+    dispatchFeeCents: fees.dispatchFeeCents,
+    factoringFeeCents: fees.factoringFeeCents,
     fuelCents,
     tollsCents,
     fixedOwnerCents,
@@ -537,6 +461,200 @@ function buildUnit(
   };
   unit.netCents = expectedNetCents(unit);
   assertInteger(unit.netCents, `net for ${truck.unitNumber}`);
+  return unit;
+}
+
+type ResolvedFees = {
+  contractId: string | null;
+  truckClass: TruckClass;
+  driverPayCents: number;
+  managementFeeCents: number;
+  tolsonPayableCents: number;
+  legacyRetainedCents: number;
+  dispatchFeeCents: number;
+  factoringFeeCents: number;
+  lines: StatementLine[];
+};
+
+/**
+ * One fee for the week.
+ * A stored contract is the source, and an active fixed weekly amount replaces that kind.
+ * With no stored contract, the source is the truck's two basis-point lines, or the seeded pair.
+ * A fixed weekly amount is not applied on that path. Whether it should win is open.
+ */
+function resolveFees(
+  truck: StatementTruck,
+  input: WeekStatementInput,
+  grossCents: number,
+  loads: StatementLoad[],
+): { ok: true; fees: ResolvedFees } | { ok: false; blocker: StatementBlocker } {
+  if (!(loads.length > 0 || grossCents > 0)) {
+    return { ok: true, fees: emptyFees(truck.truckClass) };
+  }
+  const stored = input.contracts.filter((contract) => contract.truckId === truck.id);
+  const covering = stored.filter((contract) => contractCovers(contract, input.weekStart));
+  if (covering.length > 0) {
+    try {
+      return { ok: true, fees: feesFromContract(truck, input.weekStart, stored, grossCents, loads) };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Fee contract error";
+      return {
+        ok: false,
+        blocker: {
+          rule: message.startsWith("No fee contract") ? "missing_fee_contract" : "fee_contract_error",
+          message: `Truck ${truck.unitNumber}: ${message}`,
+          ref: truck.unitNumber,
+        },
+      };
+    }
+  }
+  if (truck.truckClass !== "legacy_owned" && truck.truckClass !== "third_party" && truck.truckClass !== "tolson_owned") {
+    return {
+      ok: false,
+      blocker: {
+        rule: "missing_fee_contract",
+        message: `Truck ${truck.unitNumber} has no fee setup. Open the truck and set Tolson payable or the management fee.`,
+        ref: truck.id,
+      },
+    };
+  }
+  return { ok: true, fees: feesFromPercent(truck, grossCents) };
+}
+
+function emptyFees(truckClass: TruckClass): ResolvedFees {
+  return {
+    contractId: null,
+    truckClass,
+    driverPayCents: 0,
+    managementFeeCents: 0,
+    tolsonPayableCents: 0,
+    legacyRetainedCents: 0,
+    dispatchFeeCents: 0,
+    factoringFeeCents: 0,
+    lines: [],
+  };
+}
+
+function feesFromContract(
+  truck: StatementTruck,
+  weekStart: string,
+  stored: StatementContract[],
+  grossCents: number,
+  loads: StatementLoad[],
+): ResolvedFees {
+  const records = toContractRecords(stored);
+  const contract = findContractForDate(records, weekStart);
+  const full = stored.find((row) => row.id === contract.id);
+  if (!full) throw new Error(`No fee contract covers date ${weekStart}`);
+  for (const load of loads) {
+    const day = findContractForDate(records, load.deliveryDate);
+    if (day.id !== contract.id) {
+      throw new Error(`Rates change inside week ${weekStart} (contracts ${contract.id} and ${day.id})`);
+    }
+  }
+  const calculated = calculateFeeLines({
+    grossCents,
+    truckClass: truck.truckClass,
+    rules: full.rules,
+  });
+  const tolsonFixed =
+    truck.tolsonFixedCents != null && feeIsActive(truck.tolsonEffectiveFrom, weekStart) ? truck.tolsonFixedCents : null;
+  const legacyFixed =
+    ownerPaysManagementTotal(truck.truckClass) &&
+    truck.legacyFixedCents != null &&
+    feeIsActive(truck.legacyEffectiveFrom, weekStart)
+      ? truck.legacyFixedCents
+      : null;
+  const lines = calculated.map((line) => feeLineFromResult(truck.truckClass, line));
+  const tolsonPayableCents = tolsonFixed ?? feeAmount(calculated, "TOLSON_PAYABLE");
+  const legacyRetainedCents = legacyFixed ?? feeAmount(calculated, "LEGACY_RETAINED");
+  if (tolsonFixed != null) applyFixedAmount(lines, "TOLSON_PAYABLE", tolsonFixed);
+  if (legacyFixed != null) applyFixedAmount(lines, "LEGACY_RETAINED", legacyFixed);
+  return {
+    contractId: contract.id,
+    truckClass: truck.truckClass,
+    driverPayCents: feeAmount(calculated, "DRIVER_PAY"),
+    managementFeeCents: feeAmount(calculated, "MANAGEMENT_FEE"),
+    tolsonPayableCents,
+    legacyRetainedCents,
+    dispatchFeeCents: feeAmount(calculated, "DISPATCH_FEE"),
+    factoringFeeCents: feeAmount(calculated, "FACTORING_FEE"),
+    lines,
+  };
+}
+
+/** Two lines, each a percent of this gross. The total is their sum. Computed once. */
+function feesFromPercent(truck: StatementTruck, grossCents: number): ResolvedFees {
+  const rates =
+    truck.legacyFeeBp != null && truck.tolsonLeaseFeeBp != null
+      ? { legacyFeeBp: truck.legacyFeeBp, tolsonLeaseFeeBp: truck.tolsonLeaseFeeBp }
+      : seededFeeRates(truck.unitNumber);
+  const split = managementFeeSplit(grossCents, rates);
+  const truckClass = feeClassFor(truck);
+  const owned = !ownerPaysManagementTotal(truckClass);
+  const managementFeeCents = owned ? 0 : split.managementFeeCents;
+  const tolsonPayableCents = owned ? split.managementFeeCents : split.tolsonLeaseFeeCents;
+  const lines: StatementLine[] = [
+    percentLine("MANAGEMENT_FEE", managementFeeCents, rates.legacyFeeBp + rates.tolsonLeaseFeeBp, true, !owned),
+    percentLine("TOLSON_PAYABLE", owned ? split.managementFeeCents : split.tolsonLeaseFeeCents, rates.tolsonLeaseFeeBp, true, owned),
+    percentLine("LEGACY_RETAINED", split.legacyFeeCents, rates.legacyFeeBp, true, false),
+  ];
+  return {
+    contractId: `default:${truck.id}`,
+    truckClass,
+    driverPayCents: 0,
+    managementFeeCents,
+    tolsonPayableCents,
+    legacyRetainedCents: split.legacyFeeCents,
+    dispatchFeeCents: 0,
+    factoringFeeCents: 0,
+    lines,
+  };
+}
+
+/**
+ * Fee lines for a sheet gross when no statement has been built yet.
+ * The owner week uses this unit for the fee. It does not recompute the percent.
+ */
+export function percentFeeStatement(input: {
+  unitNumber: string;
+  truckClass?: TruckClass;
+  grossCents: number;
+  weekStart: string;
+  legacyFeeBp?: number | null;
+  tolsonLeaseFeeBp?: number | null;
+}): UnitStatement {
+  const truck: StatementTruck = {
+    id: input.unitNumber,
+    unitNumber: input.unitNumber,
+    truckClass: input.truckClass ?? "third_party",
+    legacyFeeBp: input.legacyFeeBp,
+    tolsonLeaseFeeBp: input.tolsonLeaseFeeBp,
+  };
+  const fees = feesFromPercent(truck, input.grossCents);
+  const unit: UnitStatement = {
+    truckId: truck.id,
+    unitNumber: truck.unitNumber,
+    truckClass: fees.truckClass,
+    contractId: fees.contractId,
+    grossCents: input.grossCents,
+    driverPayCents: fees.driverPayCents,
+    managementFeeCents: fees.managementFeeCents,
+    tolsonPayableCents: fees.tolsonPayableCents,
+    legacyRetainedCents: fees.legacyRetainedCents,
+    dispatchFeeCents: 0,
+    factoringFeeCents: 0,
+    fuelCents: 0,
+    tollsCents: 0,
+    fixedOwnerCents: 0,
+    fixedManagementCents: 0,
+    netCents: 0,
+    loadCount: 0,
+    loadedMilesHundredths: 0,
+    deadheadMilesHundredths: 0,
+    lines: fees.lines,
+  };
+  unit.netCents = expectedNetCents(unit);
   return unit;
 }
 
@@ -560,27 +678,45 @@ function expenseLine(code: string, label: string, amountCents: number, sortOrder
   };
 }
 
-function upsertFeeLine(
-  lines: StatementLine[],
+function percentLine(
   kind: "MANAGEMENT_FEE" | "TOLSON_PAYABLE" | "LEGACY_RETAINED",
   cents: number,
   rateBp: number,
   ownerVisible: boolean,
   charged: boolean,
-): void {
-  const line = lines.find((row) => row.lineCode === kind);
-  const next = {
+): StatementLine {
+  return {
     lineCode: kind,
     label: FEE_LABELS[kind],
     amountCents: cents,
     rateBp,
     basePctBp: 10000,
-    chargedTo: charged && cents > 0 ? ("owner" as const) : null,
+    chargedTo: charged && cents > 0 ? "owner" : null,
     ownerVisible,
     sortOrder: FEE_SORT[kind],
   };
-  if (line) Object.assign(line, next);
-  else lines.push(next);
+}
+
+function feeLineFromResult(truckClass: TruckClass, line: FeeLineResult): StatementLine {
+  const ownerVisible = ownerSeesFee(truckClass, line.kind);
+  return {
+    lineCode: line.kind,
+    label: FEE_LABELS[line.kind],
+    amountCents: line.amountCents,
+    rateBp: line.rateBp,
+    basePctBp: line.basePctBp,
+    chargedTo: ownerVisible ? "owner" : null,
+    ownerVisible,
+    sortOrder: FEE_SORT[line.kind],
+  };
+}
+
+function applyFixedAmount(lines: StatementLine[], kind: "TOLSON_PAYABLE" | "LEGACY_RETAINED", cents: number): void {
+  const line = lines.find((row) => row.lineCode === kind);
+  if (!line) return;
+  line.amountCents = cents;
+  line.rateBp = null;
+  line.basePctBp = null;
 }
 
 function feeAmount(lines: FeeLineResult[], kind: FeeRuleKind): number {
@@ -613,65 +749,7 @@ function feeClassFor(truck: StatementTruck): TruckClass {
   return truck.truckClass;
 }
 
-/** 10 percent management when no contract is stored. Tolson and Legacy stay unset until someone enters them. */
-function defaultContract(truck: StatementTruck, weekStart: string): StatementContract | null {
-  if (truck.truckClass !== "legacy_owned" && truck.truckClass !== "third_party" && truck.truckClass !== "tolson_owned") {
-    return null;
-  }
-  const rules: StatementContract["rules"] = [];
-  const model = feeModelFor(truck);
-  if (model === "lease_to_tolson") {
-    const tolson =
-      truck.tolsonFixedCents == null &&
-      truck.tolsonRateBp != null &&
-      feeIsActive(truck.tolsonEffectiveFrom, weekStart)
-        ? truck.tolsonRateBp
-        : 1000;
-    if (truck.tolsonFixedCents == null) {
-      rules.push({ kind: "TOLSON_PAYABLE", rateBp: tolson, basePctBp: 10000 });
-    }
-  }
-  if (model === "owner_management") {
-    const management =
-      truck.managementFeeBp != null && feeIsActive(truck.managementEffectiveFrom, weekStart)
-        ? truck.managementFeeBp
-        : 1000;
-    rules.push({ kind: "MANAGEMENT_FEE", rateBp: management, basePctBp: 10000 });
-    const splitReady =
-      truck.tolsonFixedCents == null &&
-      truck.legacyFixedCents == null &&
-      truck.tolsonRateBp != null &&
-      truck.legacyRateBp != null &&
-      feeIsActive(truck.tolsonEffectiveFrom, weekStart) &&
-      feeIsActive(truck.legacyEffectiveFrom, weekStart) &&
-      truck.tolsonRateBp + truck.legacyRateBp === management;
-    if (splitReady) {
-      rules.push({ kind: "TOLSON_PAYABLE", rateBp: truck.tolsonRateBp ?? 0, basePctBp: 10000 });
-      rules.push({ kind: "LEGACY_RETAINED", rateBp: truck.legacyRateBp ?? 0, basePctBp: 10000 });
-    }
-  }
-  return {
-    id: `default:${truck.id}`,
-    truckId: truck.id,
-    effectiveFrom: "2000-01-01",
-    effectiveTo: null,
-    rules,
-  };
-}
-
-function syncFixedLine(
-  lines: StatementLine[],
-  kind: "TOLSON_PAYABLE" | "LEGACY_RETAINED",
-  cents: number,
-): void {
-  const line = lines.find((row) => row.lineCode === kind);
-  if (!line) return;
-  line.amountCents = cents;
-  line.rateBp = null;
-  line.basePctBp = null;
-}
-
-function ensureUnsetLine(lines: StatementLine[], kind: "TOLSON_PAYABLE" | "LEGACY_RETAINED", truckClass: TruckClass): void {
+function ensureUnsetLine(lines: StatementLine[], kind: "TOLSON_PAYABLE" | "LEGACY_RETAINED"): void {
   if (lines.some((line) => line.lineCode === kind)) return;
   lines.push({
     lineCode: kind,
@@ -683,7 +761,6 @@ function ensureUnsetLine(lines: StatementLine[], kind: "TOLSON_PAYABLE" | "LEGAC
     ownerVisible: false,
     sortOrder: FEE_SORT[kind],
   });
-  void truckClass;
 }
 
 function toContractRecords(contracts: StatementContract[]) {

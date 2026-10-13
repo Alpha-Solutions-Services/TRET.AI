@@ -7,7 +7,7 @@ import { FUEL_TOLL_SETTING_DEFAULTS } from "@/lib/fuel-tolls/settings";
 import { fuelWeekTotals, tollWeekTotals } from "@/lib/fuel-tolls/totals";
 import type { FuelDraft, LoadSpan, WeekMiles } from "@/lib/fuel-tolls/types";
 import type { FeeRuleInput, TruckClass } from "@/lib/fee-engine";
-import { buildWeekStatements, expectedNetCents, lockPayload, ownerDeductionCents } from "./engine";
+import { buildWeekStatements, linesMatchNet, lockPayload, ownerDeductionCents } from "./engine";
 import type { StatementContract, WeekStatementInput } from "./types";
 
 const WEEK = "2026-09-21";
@@ -107,8 +107,8 @@ describe("week 2026-09-21 reference statements", () => {
       netCents: 305_630,
       loadCount: 1,
     });
-    expect(owned!.netCents).toBe(expectedNetCents(owned!));
-    expect(managed!.netCents).toBe(expectedNetCents(managed!));
+    expect(linesMatchNet(owned!)).toBe(true);
+    expect(linesMatchNet(managed!)).toBe(true);
     expect(result.fleet).toMatchObject({
       grossCents: 900_000,
       tolsonPayableCents: 90_000,
@@ -391,7 +391,7 @@ describe("close blockers", () => {
     const managed = result.units.find((unit) => unit.unitNumber === "03");
     expect(managed?.tollsCents).toBe(400);
     expect(managed?.netCents).toBe(305_730);
-    expect(managed?.netCents).toBe(expectedNetCents(managed!));
+    expect(linesMatchNet(managed!)).toBe(true);
     const idle = result.units.find((unit) => unit.unitNumber === "04");
     expect(idle).toMatchObject({ grossCents: 0, loadCount: 0, netCents: 0 });
     expect(result.units.some((unit) => unit.unitNumber === "09")).toBe(false);
@@ -404,7 +404,7 @@ describe("close blockers", () => {
     expect(managed?.lines.find((line) => line.lineCode === "MISC")?.amountCents).toBe(4_200);
     expect(managed?.lines.find((line) => line.lineCode === "MISC")?.chargedTo).toBe("owner");
     expect(managed?.fixedOwnerCents).toBe(1_500);
-    expect(managed?.netCents).toBe(expectedNetCents(managed!));
+    expect(linesMatchNet(managed!)).toBe(true);
   });
 
   it("rejects a float gross", () => {

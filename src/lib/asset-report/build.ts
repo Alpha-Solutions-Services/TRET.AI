@@ -10,7 +10,7 @@ import {
   formatStatementDollars,
 } from "@/lib/reports/format";
 import { buildOwnerTruckWeek } from "@/lib/reports/owner-week";
-import { seededFeeRates, managementFeeSplit } from "@/lib/fees/two-lines";
+import { percentFeeStatement } from "@/lib/statements/engine";
 import {
   columnIndex,
   columnIndexes,
@@ -424,11 +424,13 @@ function columnTotal(header: string[], rows: string[][], names: readonly string[
   return sum;
 }
 
-function feeBreakdown(unitNumber: string, grossCents: number): AssetExpenseLine[] {
-  const split = managementFeeSplit(grossCents, seededFeeRates(unitNumber));
+function feeBreakdown(unitNumber: string, grossCents: number, weekStart: string): AssetExpenseLine[] {
+  const unit = percentFeeStatement({ unitNumber, grossCents, weekStart });
+  const legacy = unit.legacyRetainedCents;
+  const total = unit.managementFeeCents > 0 ? unit.managementFeeCents : unit.tolsonPayableCents;
   return [
-    { label: "Legacy fee", cents: split.legacyFeeCents, detail: true },
-    { label: "Tolson lease fee", cents: split.tolsonLeaseFeeCents, detail: true },
+    { label: "Legacy fee", cents: legacy, detail: true },
+    { label: "Tolson lease fee", cents: total - legacy, detail: true },
   ];
 }
 
@@ -660,7 +662,7 @@ export function buildAssetReport(input: {
   const leftExpenses: AssetExpenseLine[] = [
     { label: percentLabel("Driver Compensation", "20%", weekly, ["driver compensation %", "driver compensation percent"]), cents: lines.driver },
     { label: percentLabel("Management Fee", "10%", weekly, ["management fee %", "management fee percent", "mgmt fee %"]), cents: owner.fees.managementFeeCents },
-    ...feeBreakdown(input.unitNumber, owner.grossCents),
+    ...feeBreakdown(input.unitNumber, owner.grossCents, input.weekStart),
     { label: "Dispatch Fee", cents: lines.dispatch },
     { label: percentLabel("Factoring Fee", "1.75%", weekly, ["factoring fee %", "factoring fee percent"]), cents: lines.factoring },
     { label: "Fuel (Diesel + DEF)", cents: lines.fuel },

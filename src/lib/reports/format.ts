@@ -62,6 +62,54 @@ export function centsPerLoadedMile(cents: number, milesHundredths: number): numb
   return roundHalfUpDivide(BigInt(cents) * BigInt(100), BigInt(milesHundredths));
 }
 
+function decimalScale(places: number): number {
+  if (!Number.isInteger(places) || places < 0 || places > 8) {
+    throw new Error("Decimal places must be from 0 to 8");
+  }
+  return 10 ** places;
+}
+
+/**
+ * Dollars per mile as fixed text, half up.
+ * Places 4 is the Week Report rate (2.9979). Null when miles are zero or the rate is zero.
+ */
+export function formatDollarsPerMile(cents: number, milesHundredths: number, places: number): string | null {
+  if (!Number.isInteger(cents) || !Number.isInteger(milesHundredths) || milesHundredths < 0) {
+    throw new Error("Rate per mile needs integer cents and miles");
+  }
+  if (milesHundredths === 0) return null;
+  const scale = decimalScale(places);
+  const scaled = Number(roundHalfUpDivide(BigInt(cents) * BigInt(scale), BigInt(milesHundredths)));
+  if (scaled <= 0) return null;
+  return fixedFromScaled(scaled, scale, places);
+}
+
+/**
+ * A positive sheet number as fixed text, half up.
+ * Places 2 is MPG. Places 4 is rate per mile. Null when the text is not a positive number.
+ * `maxScaled` rejects a figure above that scaled integer (MPG stops at 100.00).
+ */
+export function formatPositiveDecimal(raw: string, places: number, maxScaled?: number): string | null {
+  const cleaned = raw.replace(/[$,]/g, "").trim();
+  if (!/^\d+(\.\d+)?$/.test(cleaned)) return null;
+  const scale = decimalScale(places);
+  const [whole = "0", frac = ""] = cleaned.split(".");
+  const digits = (frac + "0".repeat(places + 1)).slice(0, places + 1);
+  const head = digits.slice(0, places);
+  let scaled = Number.parseInt(whole, 10) * scale + (head ? Number.parseInt(head, 10) : 0);
+  if ((digits[places] ?? "0") >= "5") scaled += 1;
+  if (scaled <= 0) return null;
+  if (maxScaled != null && scaled > maxScaled) return null;
+  return fixedFromScaled(scaled, scale, places);
+}
+
+function fixedFromScaled(scaled: number, scale: number, places: number): string {
+  const whole = Math.floor(scaled / scale);
+  if (places === 0) return String(whole);
+  const frac = String(scaled % scale).padStart(places, "0");
+  return `${whole}.${frac}`;
+}
+
 /** Average cents per load. Null when there are no loads. */
 export function centsPerLoad(cents: number, loadCount: number): number | null {
   if (!Number.isInteger(cents) || !Number.isInteger(loadCount) || loadCount < 0) {
