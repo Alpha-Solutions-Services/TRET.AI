@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.0.0.42 — 2026-10-13
+
+- Connection cards and the dashboard Hub pulse a status dot only while that check is connected or busy. A missing check stays still. Cards and the New, Duplicate, and Flagged counters take one accent border on hover and scale slightly on press.
+- The import diagram draws Vektor, Fuel, and Tolls into TRET and on to Google Sheets. One accent mark travels those lines. The import steps move that mark only while a job is running. The counters show the current number at once and move only after the number changes.
+- Checking AI status, loading imports, and a running import or AI check use a skeleton shaped like that content. The bar-wave loader is gone.
+- No migration. MPG and the report rules are unchanged.
+
 ## v0.0.0.41 — 2026-10-13
 
 - One MPG function for the dashboard, the owner PDF, and the statement. It uses diesel gallons only. DEF stays in the fuel cost and on the fuel summary, and it is not in the MPG denominator. A shared trip counts once, and only after every load on it has a delivery date on or before that week's Sunday. Today's date is not used. An open trip shows Week Report C31, or stays blank. Week 41: Truck 3 is 7.35, Truck 4 is 8.44, Truck 5 is 10.90, Truck 6 is blank, Truck 7 is 7.42, Truck 8 is 9.82, and the fleet is 8.81.

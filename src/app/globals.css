@@ -504,12 +504,15 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   .pressable,
   button,
-  body {
+  body,
+  .press-card,
+  .flow-node {
     transition: none;
   }
 
   .pressable:active,
-  button:active {
+  button:active,
+  .press-card:active {
     transform: none;
   }
 
@@ -525,6 +528,10 @@ textarea {
 
   .rv-particle {
     display: none;
+  }
+
+  .skeleton-shimmer {
+    animation: none;
   }
 }
 
@@ -544,9 +551,14 @@ textarea {
 }
 
 @keyframes rv-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
   50% {
-    opacity: 0.45;
-    transform: scale(1.18);
+    opacity: 0.4;
+    transform: scale(1.45);
   }
 }
 
@@ -563,5 +575,47 @@ textarea {
 }
 
 .rv-pulse {
-  animation: rv-pulse 3s ease-in-out infinite;
+  transform-origin: center;
+  animation: rv-pulse 2.4s ease-in-out infinite;
+}
+
+.press-card {
+  transition: transform 150ms ease, border-color 150ms ease;
+}
+
+.press-card:hover {
+  border-color: var(--color-accent);
+}
+
+.press-card:active {
+  transform: scale(0.98);
+}
+
+.skeleton-shimmer {
+  background-color: var(--color-border);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-fg) 22%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.flow-node {
+  transition: stroke 150ms ease;
+}
+
+.flow-node:hover {
+  stroke: var(--color-accent);
 }

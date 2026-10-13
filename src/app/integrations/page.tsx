@@ -3,7 +3,7 @@ import { AiStatusCard } from "@/components/integrations/ai-status";
 import { FileQuickbooksClient } from "@/components/integrations/file-quickbooks-client";
 import { IntegrationsClient } from "@/components/integrations/integrations-client";
 import { ConnectionMap } from "@/components/motion/connection-map";
-import { Waveform } from "@/components/motion/waveform";
+import { IntegrationsSkeleton } from "@/components/motion/page-skeletons";
 import {
   quickbooksApiTone,
   quickbooksFileTone,
@@ -75,11 +75,7 @@ export default async function IntegrationsPage({
   return (
     <SignedInShell title="Integrations">
       <Suspense
-        fallback={
-          <div className="h-16" aria-busy="true">
-            <Waveform label="Checking AI status" />
-          </div>
-        }
+        fallback={<IntegrationsSkeleton />}
       >
         <IntegrationsContent notice={params.quickbooks ?? null} />
       </Suspense>

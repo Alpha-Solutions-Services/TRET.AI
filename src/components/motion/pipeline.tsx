@@ -2,7 +2,7 @@
 
 const STEPS = ["Parse", "Match", "Review", "Sheets"] as const;
 
-/** Import steps. Labels stay inside the drawing. No decorative dots. */
+/** Import steps. The accent travels the line only while a job is running. */
 export function Pipeline({ pending = false }: { pending?: boolean }) {
   const path = "M 70 28 H 610";
   return (
@@ -10,7 +10,12 @@ export function Pipeline({ pending = false }: { pending?: boolean }) {
       <h2 className="mb-2 text-sm font-medium">Import steps</h2>
       <div className="w-full">
         <svg viewBox="0 0 680 112" className="h-auto w-full" role="img" aria-label="Parse, match, review, then sheets">
-          <path d={path} stroke="var(--color-fg)" strokeWidth="1.25" fill="none" opacity={pending ? 1 : 0.85} />
+          <path d={path} stroke="var(--color-fg)" strokeWidth="1.25" fill="none" opacity="0.35" />
+          {pending ? (
+            <circle className="rv-particle" r="3.5" fill="var(--color-accent)">
+              <animateMotion dur="1.6s" repeatCount="indefinite" path={path} />
+            </circle>
+          ) : null}
           {STEPS.map((step, index) => {
             const x = 70 + index * 180;
             return (

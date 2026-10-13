@@ -12,11 +12,11 @@ import {
 import { ReviewQueueList, UploadPreviewTable } from "@/components/fuel-tolls/upload-preview";
 import type { OpenQueueItem } from "@/lib/fuel-tolls/file/messages";
 import { filePreviewCounts } from "@/components/motion/counts";
-import { Waveform } from "@/components/motion/waveform";
+import { WorkSkeleton } from "@/components/motion/page-skeletons";
 import type { ImportPreviewRow } from "@/lib/fuel-tolls/file/types";
 
 const DataFlow = dynamic(() => import("@/components/motion/data-flow").then((mod) => mod.DataFlow), {
-  loading: () => <div className="h-80" aria-hidden="true" />,
+  loading: () => <WorkSkeleton label="Loading import flow" />,
 });
 
 async function fileBody(file: File): Promise<{ csvText?: string; xlsxBase64?: string }> {
@@ -106,7 +106,7 @@ export function FileImportPanel({
   return (
     <section className="space-y-4" aria-label="Upload fuel or toll file">
       <DataFlow counts={counts} />
-      {pending ? <Waveform label="Reading the file" /> : null}
+      {pending ? <WorkSkeleton label="Reading the file" /> : null}
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
           <span className="mb-1 block text-[var(--color-fg-muted)]">Fuel or toll file</span>

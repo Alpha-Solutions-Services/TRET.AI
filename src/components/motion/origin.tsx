@@ -1,7 +1,7 @@
 "use client";
 
 import { type ConnectionTone } from "@/components/motion/tones";
-import { StatusDot, type StatusTone } from "@/components/ui/status-dot";
+import { StatusDot, statusDotIsLive, type StatusTone } from "@/components/ui/status-dot";
 
 export type OriginNode = {
   label: string;
@@ -9,7 +9,7 @@ export type OriginNode = {
   caption: string;
 };
 
-/** Connection status. Labels stay fully visible. No inner scrollbar or glow. */
+/** Connection cards. A live check pulses. One accent on hover. No inner scrollbar or glow. */
 export function OriginMap({ nodes }: { nodes: OriginNode[] }) {
   return (
     <section className="rounded-xl border border-[var(--color-border)] px-4 py-4" aria-label="Connections">
@@ -18,14 +18,16 @@ export function OriginMap({ nodes }: { nodes: OriginNode[] }) {
         {nodes.map((node) => (
           <li key={node.label} className={nodeClass()}>
             <p className="flex items-center justify-center gap-2 text-sm font-medium">
-              <StatusDot tone={dotTone(node.tone)} />
+              <StatusDot tone={dotTone(node.tone)} live={statusDotIsLive(node.tone)} />
               {node.label}
             </p>
             <p className="mt-1 text-xs text-[var(--color-fg-muted)]">{node.caption}</p>
           </li>
         ))}
       </ul>
-      <p className="mx-auto mt-3 w-fit rounded-full border border-[var(--color-accent)] px-4 py-2 text-sm font-semibold">TRET</p>
+      <p className="press-card mx-auto mt-3 w-fit rounded-full border border-[var(--color-accent)] px-4 py-2 text-sm font-semibold">
+        TRET
+      </p>
     </section>
   );
 }
@@ -41,5 +43,5 @@ function dotTone(tone: ConnectionTone | undefined): StatusTone {
 }
 
 function nodeClass(): string {
-  return "min-w-[8.5rem] flex-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-field)] px-3 py-2 text-center";
+  return "press-card min-w-[8.5rem] flex-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-field)] px-3 py-2 text-center";
 }
