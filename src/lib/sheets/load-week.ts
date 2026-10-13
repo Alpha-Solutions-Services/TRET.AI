@@ -6,6 +6,9 @@ import { loadTruckWeekInsOuts, missingGoogleServiceAccountEnv } from "@/lib/shee
 import { sheetLedgerRefs } from "@/lib/sheets/mismatch";
 import { syncSheetMismatches } from "@/lib/sheets/sync-mismatches";
 import { listTrucks } from "@/lib/trucks/queries";
+import { applyTonuConfirmations } from "@/lib/documents/tonu-flag";
+import { listConfirmedTonuRates } from "@/lib/documents/store";
+import { missingSheetLinkNote } from "@/lib/trucks/fields";
 
 export async function loadActiveTruckInsOuts(
   weekStart: string,
@@ -29,7 +32,8 @@ export async function loadActiveTruckInsOuts(
       weekStart,
       weekEnd,
     );
-    return { rows, error: null };
+    const confirmed = await listConfirmedTonuRates().catch(() => ({}));
+    return { rows: applyTonuConfirmations(rows, confirmed), error: null };
   } catch (err) {
     return {
       rows: [],
@@ -69,7 +73,7 @@ function ensureFleetUnits(rows: TruckWeekInsOuts[], weekStart: string, weekEnd: 
       loadLedger: null,
       mgmtExpenses: null,
       weeklyExpenses: null,
-      note: "No Google Sheet link. Paste it on Trucks.",
+      note: missingSheetLinkNote(unit),
     }),
   );
   return [...rows, ...extra].sort((a, b) => Number(unitKey(a.unitNumber)) - Number(unitKey(b.unitNumber)));

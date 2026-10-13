@@ -207,6 +207,7 @@ export function TrucksClient({ trucks, feeSummaries, googleSheetReady, tolsonRea
                   <td className="px-4 py-3">
                     <GoogleSheetLink
                       url={truck.google_sheet_url}
+                      unitNumber={truck.unit_number}
                       compact
                       label={`Open Google Sheet for ${truck.unit_number}`}
                     />

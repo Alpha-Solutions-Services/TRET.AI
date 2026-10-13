@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { centsPerLoadedMile } from "./format";
-import { assignLoadRpms, fleetFromTrucks, fleetMpgFromTrucks, loadRpmsAddUp, tripRpmCents, truckMpg } from "./trip-metrics";
+import { assignLoadRpms, fleetFromTrucks, fleetMpgFromTrucks, loadRpmsAddUp, tripRpmCents, truckMpg, weekMpg } from "./trip-metrics";
 
 describe("trip RPM and MPG", () => {
   it("divides the rate by loaded plus deadhead and adds per-load RPMs up to the trip", () => {
@@ -89,5 +89,59 @@ describe("trip RPM and MPG", () => {
     ]);
     expect(fleet.mpg).toBe("0.08");
     expect(fleet.rpmCents).toBe(centsPerLoadedMile(300_000, 70_000));
+  });
+
+  it("counts a shared trip once, and only after every load has delivered by Sunday", () => {
+    const settled = weekMpg({
+      loads: [
+        { tripRef: "M-8", deliveryDay: "2026-10-07" },
+        { tripRef: "M-8", deliveryDay: "2026-10-09" },
+      ],
+      weekEnd: "2026-10-11",
+      truckMilesHundredths: 265_000,
+      dieselGallonsMilli: 269_857,
+      sheetMpg: "7.04",
+    });
+    expect(settled).toBe("9.82");
+    const open = weekMpg({
+      loads: [
+        { tripRef: "M-6", deliveryDay: "2026-10-06" },
+        { tripRef: "M-6", deliveryDay: "2026-10-12" },
+      ],
+      weekEnd: "2026-10-11",
+      truckMilesHundredths: 69_880,
+      dieselGallonsMilli: 83_616,
+      sheetMpg: null,
+    });
+    expect(open).toBeNull();
+    const sheet = weekMpg({
+      loads: [
+        { tripRef: "M-7", deliveryDay: "2026-10-08" },
+        { tripRef: "M-7", deliveryDay: "2026-10-12" },
+      ],
+      weekEnd: "2026-10-11",
+      truckMilesHundredths: 130_076,
+      dieselGallonsMilli: 158_818,
+      sheetMpg: "7.42",
+    });
+    expect(sheet).toBe("7.42");
+  });
+
+  it("does not read today's date when deciding if a trip counts", () => {
+    const source = weekMpg.toString();
+    expect(source).not.toContain("new Date");
+    expect(source).not.toContain("Date.now");
+    const input = {
+      loads: [
+        { tripRef: "M-3", deliveryDay: "2026-10-06" },
+        { tripRef: "M-3", deliveryDay: "2026-10-11" },
+      ],
+      weekEnd: "2026-10-11",
+      truckMilesHundredths: 285_200,
+      dieselGallonsMilli: 388_027,
+      sheetMpg: "7.16",
+    };
+    expect(weekMpg(input)).toBe("7.35");
+    expect(weekMpg({ ...input, dieselGallonsMilli: 388_027 + 10_297 })).not.toBe("7.35");
   });
 });

@@ -29,8 +29,11 @@ type Spec = {
   miscCents: number;
   fixedCents: number;
   netCents: number;
-  /** Week Report C28. The PDF divides truck miles by these gallons once the trip has delivered. */
+  /** Week Report C28 diesel gallons. DEF is not included. */
   gallonsMilli: number;
+  /** Week Report C31 when the displayed MPG is the diesel figure instead. */
+  sheetMpg?: string | null;
+  defGallonsMilli?: number;
   /** Fuel log gallons when they differ from C28. The PDF must not use this for MPG. */
   fuelLogMilli?: number;
   /** Owner PDF MPG when it is not the dashboard C31 figure. */
@@ -41,21 +44,21 @@ type Spec = {
 };
 
 const TRUCKS: Spec[] = [
-  { unit: "1", truckClass: "legacy_owned", grossCents: 0, milesHundredths: 0, deadheadHundredths: 0, mpg: null, driverCents: 0, dispatchCents: 0, factoringCents: 0, managementCents: 0, fuelCents: 0, tollCents: 0, miscCents: 0, fixedCents: 72_945, netCents: -72_945, gallonsMilli: 295_829 },
+  { unit: "1", truckClass: "legacy_owned", grossCents: 0, milesHundredths: 0, deadheadHundredths: 0, mpg: null, driverCents: 0, dispatchCents: 0, factoringCents: 0, managementCents: 0, fuelCents: 0, tollCents: 0, miscCents: 0, fixedCents: 72_945, netCents: -72_945, gallonsMilli: 0 },
   { unit: "2", truckClass: "legacy_owned", grossCents: 0, milesHundredths: 0, deadheadHundredths: 0, mpg: null, driverCents: 0, dispatchCents: 0, factoringCents: 0, managementCents: 0, fuelCents: 139_665, tollCents: 0, miscCents: 0, fixedCents: 78_292, netCents: -217_957, gallonsMilli: 0 },
-  { unit: "3", truckClass: "tolson_owned", grossCents: 855_000, milesHundredths: 285_200, deadheadHundredths: 22_100, mpg: "7.16", driverCents: 171_000, dispatchCents: 47_025, factoringCents: 14_963, managementCents: 85_500, fuelCents: 156_430, tollCents: 64_213, miscCents: 97_488, fixedCents: 67_041, netCents: 151_340, gallonsMilli: 398_324 },
-  { unit: "4", truckClass: "third_party", grossCents: 250_000, milesHundredths: 150_700, deadheadHundredths: 8_100, mpg: "8.29", driverCents: 68_125, dispatchCents: 0, factoringCents: 0, managementCents: 45_000, fuelCents: 106_556, tollCents: 0, miscCents: 227_502, fixedCents: 67_726, netCents: -264_909, gallonsMilli: 181_785 },
-  { unit: "5", truckClass: "third_party", grossCents: 720_000, milesHundredths: 258_839, deadheadHundredths: 28_839, mpg: "10.65", driverCents: 192_600, dispatchCents: 0, factoringCents: 0, managementCents: 129_600, fuelCents: 108_260, tollCents: 0, miscCents: 0, fixedCents: 76_762, netCents: 212_778, gallonsMilli: 243_041 },
+  { unit: "3", truckClass: "tolson_owned", grossCents: 855_000, milesHundredths: 285_200, deadheadHundredths: 22_100, mpg: "7.35", sheetMpg: "7.16", driverCents: 171_000, dispatchCents: 47_025, factoringCents: 14_963, managementCents: 85_500, fuelCents: 156_430, tollCents: 64_213, miscCents: 97_488, fixedCents: 67_041, netCents: 151_340, gallonsMilli: 388_027, defGallonsMilli: 10_297 },
+  { unit: "4", truckClass: "third_party", grossCents: 250_000, milesHundredths: 150_700, deadheadHundredths: 8_100, mpg: "8.44", sheetMpg: "8.29", driverCents: 68_125, dispatchCents: 0, factoringCents: 0, managementCents: 45_000, fuelCents: 106_556, tollCents: 0, miscCents: 227_502, fixedCents: 67_726, netCents: -264_909, gallonsMilli: 178_554, defGallonsMilli: 3_231 },
+  { unit: "5", truckClass: "third_party", grossCents: 720_000, milesHundredths: 258_839, deadheadHundredths: 28_839, mpg: "10.90", sheetMpg: "10.65", driverCents: 192_600, dispatchCents: 0, factoringCents: 0, managementCents: 129_600, fuelCents: 108_260, tollCents: 0, miscCents: 0, fixedCents: 76_762, netCents: 212_778, gallonsMilli: 237_467, defGallonsMilli: 5_574 },
   { unit: "6", truckClass: "third_party", grossCents: 200_000, milesHundredths: 69_880, deadheadHundredths: 2_987, mpg: null, driverCents: 53_500, dispatchCents: 0, factoringCents: 0, managementCents: 36_000, fuelCents: 116_586, tollCents: 0, miscCents: 0, fixedCents: 83_455, netCents: -89_541, gallonsMilli: 83_616, tripOpen: true },
-  { unit: "7", truckClass: "third_party", grossCents: 470_000, milesHundredths: 130_076, deadheadHundredths: 2_734, mpg: "7.42", driverCents: 128_075, dispatchCents: 0, factoringCents: 0, managementCents: 84_600, fuelCents: 158_464, tollCents: 3_647, miscCents: 10_598, fixedCents: 70_112, netCents: 14_504, gallonsMilli: 153_055, tripOpen: true },
+  { unit: "7", truckClass: "third_party", grossCents: 470_000, milesHundredths: 130_076, deadheadHundredths: 2_734, mpg: "7.42", driverCents: 128_075, dispatchCents: 0, factoringCents: 0, managementCents: 84_600, fuelCents: 158_464, tollCents: 3_647, miscCents: 10_598, fixedCents: 70_112, netCents: 14_504, gallonsMilli: 158_818, tripOpen: true },
   {
     unit: "8",
     truckClass: "third_party",
     grossCents: 790_000,
     milesHundredths: 265_000,
     deadheadHundredths: 24_100,
-    mpg: "7.04",
-    statementMpg: "9.39",
+    mpg: "9.82",
+    sheetMpg: "7.04",
     driverCents: 211_325,
     dispatchCents: 0,
     factoringCents: 0,
@@ -65,7 +68,8 @@ const TRUCKS: Spec[] = [
     miscCents: 33_420,
     fixedCents: 80_462,
     netCents: 160_116,
-    gallonsMilli: 282_210,
+    gallonsMilli: 269_857,
+    defGallonsMilli: 12_353,
     fuelLogMilli: 254_757,
     heldInSheet: { milesHundredths: 266_000, deadheadHundredths: 25_100, tollCents: 4_861 },
   },
@@ -167,8 +171,13 @@ function weekReport(spec: Spec): string[][] {
   grid[28]![2] = dollars(spec.fuelCents);
   grid[29]![13] = "Toll Fees";
   grid[29]![14] = dollars(shown.tollCents);
-  if (spec.mpg) grid[30]![2] = spec.mpg;
+  const sheetMpg = spec.sheetMpg === undefined ? spec.mpg : spec.sheetMpg;
+  if (sheetMpg) grid[30]![2] = sheetMpg;
   if (spec.gallonsMilli > 0) grid[27]![2] = gallonText(spec.gallonsMilli);
+  if ((spec.defGallonsMilli ?? 0) > 0) {
+    grid[26]![1] = "DEF gallons";
+    grid[26]![2] = gallonText(spec.defGallonsMilli ?? 0);
+  }
   return grid;
 }
 
@@ -347,7 +356,7 @@ describe("owner PDF and dashboard parity", () => {
         mpg: row.mpg ?? null,
       })),
     );
-    expect(report.fleetChart.mpg).toBe("7.08");
+    expect(report.fleetChart.mpg).toBe("8.81");
     expect(report.fleetChart.mpg).toBe(figures.mpg);
     expect(report.fleetChart.mpg).toBe(
       fleetMpgFromTrucks(
@@ -388,8 +397,8 @@ describe("owner PDF and dashboard parity", () => {
   });
 
   it("uses truck miles over diesel gallons for fleet MPG", () => {
-    expect(fleetMpgFromTrucks([{ truckMilesHundredths: 1_159_695, gallonsMilli: 1_637_860 }])).toBe("7.08");
-    expect(fleetMpgFromTrucks([{ truckMilesHundredths: 1_160_695, gallonsMilli: 1_637_860 }])).toBe("7.09");
+    expect(fleetMpgFromTrucks([{ truckMilesHundredths: 1_159_695, gallonsMilli: 1_316_339 }])).toBe("8.81");
+    expect(fleetMpgFromTrucks([{ truckMilesHundredths: 1_160_695, gallonsMilli: 1_316_339 }])).toBe("8.82");
   });
 
   it("renders week 41 PDF and statement MPG, and the shared-trip footnote only for a shared trip", async () => {
@@ -406,13 +415,22 @@ describe("owner PDF and dashboard parity", () => {
     const aligned = alignPdfDetails(baitSource(built, TRUCKS), built);
     const statement = prepareWeeklyReport(aligned);
     const note = "Shared trip. Each row shows its own loaded miles. The total counts the trip once.";
+    expect(mpgOf(statement, "3")).toBe("7.35");
+    expect(mpgOf(statement, "4")).toBe("8.44");
+    expect(mpgOf(statement, "5")).toBe("10.90");
     expect(mpgOf(statement, "6")).toBe("Not stored");
     expect(mpgOf(statement, "7")).toBe("7.42");
-    expect(mpgOf(statement, "8")).toBe("9.39");
+    expect(mpgOf(statement, "8")).toBe("9.82");
     expect(statement.units.find((unit) => unit.unitNumber === "8")?.fuelSummary.find((row) => row.label === "Diesel gallons")?.value).toBe(
-      "282.210",
+      "269.857",
     );
-    expect(statement.fleetChart.mpg).toBe("7.08");
+    expect(statement.units.find((unit) => unit.unitNumber === "8")?.fuelSummary.find((row) => row.label === "DEF gallons")?.value).toBe(
+      "12.353",
+    );
+    expect(statement.units.find((unit) => unit.unitNumber === "8")?.fuelSummary.find((row) => row.label === "Discounted fuel (booked)")?.value).toBe(
+      "$1,588.16",
+    );
+    expect(statement.fleetChart.mpg).toBe("8.81");
     expect(statement.units.find((unit) => unit.unitNumber === "3")?.loadNote).toBeNull();
     expect(statement.units.find((unit) => unit.unitNumber === "4")?.loadNote).toBeNull();
     expect(statement.units.find((unit) => unit.unitNumber === "7")?.loadNote).toBe(note);
@@ -423,15 +441,21 @@ describe("owner PDF and dashboard parity", () => {
     expect(sliceUnit(fleetPdf, "7")).toContain("7.42");
     expect(sliceUnit(fleetPdf, "7")).not.toContain("8.32");
     expect(sliceUnit(fleetPdf, "7")).toContain(note);
-    expect(sliceUnit(fleetPdf, "8")).toContain("9.39");
-    expect(sliceUnit(fleetPdf, "8")).toContain("282.210");
+    expect(sliceUnit(fleetPdf, "3")).toContain("7.35");
+    expect(sliceUnit(fleetPdf, "4")).toContain("8.44");
+    expect(sliceUnit(fleetPdf, "5")).toContain("10.90");
+    expect(sliceUnit(fleetPdf, "8")).toContain("9.82");
+    expect(sliceUnit(fleetPdf, "8")).toContain("269.857");
+    expect(sliceUnit(fleetPdf, "8")).toContain("12.353");
     expect(sliceUnit(fleetPdf, "8")).not.toContain("9.46");
     expect(sliceUnit(fleetPdf, "8")).not.toContain("7.04");
+    expect(sliceUnit(fleetPdf, "8")).not.toContain("254.757");
     expect(sliceUnit(fleetPdf, "3")).not.toContain(note);
     expect(sliceUnit(fleetPdf, "4")).not.toContain(note);
     const fleetPage = fleetPdf.slice(fleetPdf.indexOf("Fleet totals"));
-    expect(fleetPage).toContain("7.08");
+    expect(fleetPage).toContain("8.81");
     expect(fleetPage).not.toContain("8.28");
+    expect(fleetPage).not.toContain("7.08");
 
     for (const unit of ["3", "4", "6", "7", "8"] as const) {
       const one = pdfText(await weeklyStatementPdf(perTruck(aligned, unit)));
@@ -439,7 +463,7 @@ describe("owner PDF and dashboard parity", () => {
       expect(mpgOf(prepareWeeklyReport(perTruck(aligned, unit)), unit)).toBe(mpgOf(statement, unit));
       if (unit === "6") expect(one).not.toContain("8.00");
       if (unit === "7") expect(one).toContain("7.42");
-      if (unit === "8") expect(one).toContain("9.39");
+      if (unit === "8") expect(one).toContain("9.82");
       if (unit === "3" || unit === "4") expect(one).not.toContain(note);
       if (unit === "7") expect(one).toContain(note);
     }

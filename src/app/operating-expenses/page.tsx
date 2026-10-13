@@ -5,6 +5,7 @@ import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { currentMonthUtc, parseMonth } from "@/lib/legacy/expenses";
 import { loadTolsonWeek } from "@/lib/legacy/tolson-payments";
+import { listTruckDocuments } from "@/lib/documents/store";
 import { listOperatingExpenses } from "@/lib/operating-expenses/queries";
 import { resolveWeekStart } from "@/lib/statements/queries";
 
@@ -21,11 +22,20 @@ function PageSkeleton() {
 
 async function OperatingExpensesContent({ month, week }: { month: string; week?: string }) {
   const weekStart = resolveWeekStart(week);
-  const [list, tolson] = await Promise.all([listOperatingExpenses(month), loadTolsonWeek(weekStart)]);
+  const [list, tolson, documents] = await Promise.all([
+    listOperatingExpenses(month),
+    loadTolsonWeek(weekStart),
+    listTruckDocuments(),
+  ]);
   return (
     <div className="space-y-8">
+      {documents.ready ? null : (
+        <p className="text-sm text-[var(--color-fg-muted)]" role="status">
+          Expense receipt photos need migration supabase/migrations/20261013180000_v41_truck_documents.sql before they can be saved.
+        </p>
+      )}
       <TolsonPayments balance={tolson} />
-      <OperatingExpensesClient list={list} month={month} />
+      <OperatingExpensesClient list={list} month={month} documents={documents.rows} />
     </div>
   );
 }

@@ -1,14 +1,18 @@
-import { googleSheetHref } from "@/lib/trucks/fields";
+import { googleSheetHref, needsSheetLink, NEEDS_SHEET_LINK } from "@/lib/trucks/fields";
 
 type Props = {
   url: string | null;
+  unitNumber?: string;
   compact?: boolean;
   label?: string;
 };
 
-export function GoogleSheetLink({ url, compact = false, label }: Props) {
+export function GoogleSheetLink({ url, unitNumber, compact = false, label }: Props) {
   const href = googleSheetHref(url);
   if (!href) {
+    if (unitNumber && needsSheetLink(unitNumber, url)) {
+      return <span className="font-medium text-[var(--color-warn-fg)]">{NEEDS_SHEET_LINK}</span>;
+    }
     return <span className="text-[var(--color-fg-muted)]">—</span>;
   }
   return (

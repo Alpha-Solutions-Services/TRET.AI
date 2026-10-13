@@ -12,6 +12,7 @@ import {
   type TruckWeekInsOuts,
 } from "@/lib/sheets/ins-outs";
 import { weeklyExpensesCandidates } from "@/lib/sheets/weekly-expenses";
+import { missingSheetLinkNote } from "@/lib/trucks/fields";
 import {
   authFailureFromError,
   missingGoogleServiceAccountEnv,
@@ -417,7 +418,7 @@ export async function loadTruckWeekInsOuts(
           loadLedger: null,
           mgmtExpenses: null,
           weeklyExpenses: null,
-          note: "No Google Sheet link. Paste it on Trucks.",
+          note: missingSheetLinkNote(truck.unitNumber),
         });
       }
       const spreadsheetId = spreadsheetIdFromUrl(truck.googleSheetUrl);
@@ -678,7 +679,7 @@ export async function loadTruckWorkbook(
 ): Promise<TruckWorkbook> {
   const fetchImpl = opts?.fetchImpl ?? fetch;
   const env = opts?.env ?? process.env;
-  if (!truck.googleSheetUrl) return emptyWorkbook("No Google Sheet link. Paste it on Trucks.");
+  if (!truck.googleSheetUrl) return emptyWorkbook(missingSheetLinkNote(truck.unitNumber));
   const spreadsheetId = spreadsheetIdFromUrl(truck.googleSheetUrl);
   if (!spreadsheetId) return emptyWorkbook("Google Sheet link must be a docs.google.com spreadsheet URL.");
   const apiKey = readEnv("GOOGLE_SHEETS_API_KEY", env);

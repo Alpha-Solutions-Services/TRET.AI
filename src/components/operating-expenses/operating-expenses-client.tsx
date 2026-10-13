@@ -7,7 +7,9 @@ import {
   deleteOperatingExpenseAction,
   updateOperatingExpenseAction,
 } from "@/app/operating-expenses/actions";
+import { DocumentPhotos, ReceiptUpload } from "@/components/documents/attach-document";
 import { Button } from "@/components/ui/button";
+import type { TruckDocumentRow } from "@/lib/documents/store";
 import { useConfirm } from "@/components/ui/confirm";
 import { SidePanel } from "@/components/ui/side-panel";
 import { useToast } from "@/components/ui/toast";
@@ -23,9 +25,10 @@ type Props = {
   list: OperatingExpenseList;
   month: string;
   embedded?: boolean;
+  documents?: TruckDocumentRow[];
 };
 
-export function OperatingExpensesClient({ list, month, embedded = false }: Props) {
+export function OperatingExpensesClient({ list, month, embedded = false, documents = [] }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -180,7 +183,17 @@ export function OperatingExpensesClient({ list, month, embedded = false }: Props
                   <td className="px-4 py-2">{row.expense_date}</td>
                   <td className="px-4 py-2">{row.category}</td>
                   <td className="px-4 py-2">${centsToDollarString(row.amount_cents)}</td>
-                  <td className="px-4 py-2">{row.note ?? ""}</td>
+                  <td className="px-4 py-2">
+                    {row.note ?? ""}
+                    <DocumentPhotos documents={documents.filter((doc) => doc.expenseId === row.id)} />
+                    <ReceiptUpload
+                      kind="expense_receipt"
+                      label="Attach expense receipt"
+                      truckUnit="fleet"
+                      expenseId={row.id}
+                      weekStart={row.expense_date}
+                    />
+                  </td>
                   <td className="px-4 py-2">
                     <div className="flex flex-wrap gap-2">
                       <Button variant="secondary" disabled={pending} onClick={() => openEdit(row)}>

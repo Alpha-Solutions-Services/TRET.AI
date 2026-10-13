@@ -237,7 +237,7 @@ describe("weekly statement PDF", () => {
     warn.mockRestore();
   });
 
-  it("uses sheet MPG and gallons, and each shared-trip row's own miles", () => {
+  it("uses diesel gallons for a delivered trip and keeps each shared-trip row's own miles", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const aligned = alignPdfDetails(source, [
       {
@@ -255,7 +255,8 @@ describe("weekly statement PDF", () => {
     ]);
     const report = prepareWeeklyReport(aligned);
     const owned = report.units.find((unit) => unit.unitNumber === "02");
-    expect(owned?.performance.find((row) => row.label === "MPG")?.value).toBe("7.16");
+    expect(owned?.performance.find((row) => row.label === "MPG")?.value).toBe("1.12");
+    expect(owned?.performance.find((row) => row.label === "MPG")?.value).not.toBe("7.16");
     expect(owned?.fuelSummary.find((row) => row.label === "Diesel gallons")?.value).toBe("398.320");
     expect(owned?.fuelSummary.find((row) => row.label === "DEF gallons")?.value).toBe("12.500");
     expect(owned?.loads.map((load) => load.loaded)).toEqual(["332.00", "180.00"]);

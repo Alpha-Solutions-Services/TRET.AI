@@ -3,6 +3,7 @@ import { sheetLoadsForWeek } from "@/app/loads/sheet-action";
 import { LoadsClient } from "@/components/loads/loads-client";
 import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
+import { listTruckDocuments } from "@/lib/documents/store";
 import { lastFinishedWeekStart } from "@/lib/reports/delivery";
 import { createClient } from "@/lib/supabase/server";
 
@@ -39,10 +40,17 @@ async function LoadsContent() {
 
   const truckUnits = [...new Set((trucks ?? []).map((t) => t.unit_number))];
   const weekStart = lastFinishedWeekStart();
-  const sheet = await sheetLoadsForWeek(weekStart);
+  const [sheet, documents] = await Promise.all([sheetLoadsForWeek(weekStart), listTruckDocuments()]);
 
   return (
-    <LoadsClient loads={loads ?? []} truckUnits={truckUnits} initialWeek={weekStart} initialSheet={sheet} />
+    <LoadsClient
+      loads={loads ?? []}
+      truckUnits={truckUnits}
+      initialWeek={weekStart}
+      initialSheet={sheet}
+      documents={documents.rows}
+      documentsReady={documents.ready}
+    />
   );
 }
 

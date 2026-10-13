@@ -2,6 +2,8 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { sheetLoadsForWeek } from "@/app/loads/sheet-action";
+import { DocumentPhotos, ReceiptUpload, TonuRateConUpload } from "@/components/documents/attach-document";
+import type { TruckDocumentRow } from "@/lib/documents/store";
 import { canonicalLoadId } from "@/lib/loads/load-id";
 import { ReportWeekLabel } from "@/components/reports/report-week";
 import { weekBoundsForDate } from "@/lib/fee-engine";
@@ -31,15 +33,16 @@ export type LoadListRow = {
   truck_unit_number: string | null;
   source_manifest_ref?: string | null;
   status?: LoadWeekStatus;
+  tonuConfirmed?: boolean;
 };
 
 function dollars(cents: number): string {
   return `$${centsToDollarString(cents)}`;
 }
 
-export function loadRateLabel(row: Pick<LoadListRow, "rate_cents" | "status">): string {
+export function loadRateLabel(row: Pick<LoadListRow, "rate_cents" | "status" | "tonuConfirmed">): string {
   const amount = dollars(row.rate_cents);
-  if (row.status === "TONU") return `${amount} unconfirmed`;
+  if (row.status === "TONU" && !row.tonuConfirmed) return `${amount} unconfirmed`;
   return amount;
 }
 
@@ -84,11 +87,15 @@ export function LoadsClient({
   truckUnits,
   initialWeek,
   initialSheet,
+  documents = [],
+  documentsReady = true,
 }: {
   loads: LoadListRow[];
   truckUnits: string[];
   initialWeek: string;
   initialSheet: { rows: LoadListRow[]; error: string | null };
+  documents?: TruckDocumentRow[];
+  documentsReady?: boolean;
 }) {
   const [weekStart, setWeekStart] = useState(initialWeek);
   const [truck, setTruck] = useState("");
@@ -228,6 +235,11 @@ export function LoadsClient({
         </p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-field)]">
+          {documentsReady ? null : (
+            <p className="border-b border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-fg-muted)]" role="status">
+              Receipt photos and TONU rate confirmations need migration supabase/migrations/20261013180000_v41_truck_documents.sql before they can be saved.
+            </p>
+          )}
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-fg-muted)]">
               <tr>
@@ -270,6 +282,31 @@ export function LoadsClient({
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 num">{loadRateLabel(row)}</td>
                     <td className="whitespace-nowrap px-3 py-2">{row.status ?? "Delivered"}</td>
+                  </tr>
+                  <tr className="border-b border-[var(--color-border)]">
+                    <td className="px-3 py-2" colSpan={11}>
+                      <DocumentPhotos
+                        documents={documents.filter(
+                          (doc) => doc.loadId != null && canonicalLoadId(doc.loadId) === canonicalLoadId(row.load_id ?? ""),
+                        )}
+                      />
+                      {row.status === "TONU" && !row.tonuConfirmed && row.load_id ? (
+                        <TonuRateConUpload
+                          loadId={canonicalLoadId(row.load_id)}
+                          truckUnit={row.truck_unit_number ?? ""}
+                          freightCents={row.rate_cents}
+                        />
+                      ) : null}
+                      {row.load_id ? (
+                        <ReceiptUpload
+                          kind="fuel_receipt"
+                          label="Attach fuel receipt"
+                          truckUnit={row.truck_unit_number ?? ""}
+                          loadId={canonicalLoadId(row.load_id)}
+                          weekStart={weekStart}
+                        />
+                      ) : null}
+                    </td>
                   </tr>
                 </Fragment>
               ))}

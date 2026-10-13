@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.0.41 — 2026-10-13
+
+- One MPG function for the dashboard, the owner PDF, and the statement. It uses diesel gallons only. DEF stays in the fuel cost and on the fuel summary, and it is not in the MPG denominator. A shared trip counts once, and only after every load on it has a delivery date on or before that week's Sunday. Today's date is not used. An open trip shows Week Report C31, or stays blank. Week 41: Truck 3 is 7.35, Truck 4 is 8.44, Truck 5 is 10.90, Truck 6 is blank, Truck 7 is 7.42, Truck 8 is 9.82, and the fleet is 8.81.
+- A held TONU can take a rate confirmation upload. The file is read, with a photo sent through the Gemini gateway. A written TONU fee replaces the "TONU rate unconfirmed" flag and the placeholder amount. The week's gross is unchanged.
+- A fuel receipt photo can be attached on a load, and an expense receipt photo on an operating expense. The photo is shown on that row. A photo is read through the same Gemini gateway.
+- Trucks 1, 2, 9, and 10 with no sheet URL show Needs sheet link on the truck list and the truck page. The Google Sheet field is the place to paste the link.
+- Migration `supabase/migrations/20261013180000_v41_truck_documents.sql` adds `truck_documents` with row level security. It is not applied from this branch.
+
 ## v0.0.0.40 — 2026-10-12
 
 - Owner PDF and statement MPG follow the trip. While the trip is open, Week Report C31 is shown, and a blank cell stays blank. Truck 6 week 41 is blank. Truck 7 is 7.42. A delivered trip is truck miles divided by diesel gallons. Truck 8 is 9.39, from 2,650 miles and 282.21 gallons. Fleet MPG is every truck's miles divided by every truck's diesel gallons, 7.08 from 11,596.95 miles and 1,637.86 gallons, including Truck 6.

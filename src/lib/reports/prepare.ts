@@ -5,11 +5,10 @@ import { truckClassLabel } from "@/lib/fees/kinds";
 import { reportDeliveryLabel } from "@/lib/reports/delivery";
 import { expectedNetCents, miscOwnerCents, ownerDeductionCents } from "@/lib/statements/engine";
 import type { FleetStatement, StatementLine, UnitStatement } from "@/lib/statements/types";
-import { fleetMpgFromTrucks, sheetMpgText } from "@/lib/reports/trip-metrics";
+import { fleetMpgFromTrucks, weekMpg } from "@/lib/reports/trip-metrics";
 import {
   centsPerLoad,
   centsPerLoadedMile,
-  formatDieselMpg,
   formatGallonsMilli,
   formatMilesHundredths,
   formatStatementDollars,
@@ -254,20 +253,27 @@ function prepareUnit(unit: UnitStatement, source: WeeklyReportSource): PreparedU
   };
 }
 
-/**
- * Owner PDF and statement MPG.
- * An open trip uses Week Report C31, or stays blank when that cell is empty.
- * A delivered trip is truck miles divided by the diesel gallons on the statement.
- */
+/** Owner PDF and statement MPG. Same function as the dashboard. Diesel gallons only. */
 function unitMpg(unit: UnitStatement, source: WeeklyReportSource, dieselMilli: number): string | null {
   const sheet = source.sheetUnits?.find(
     (row) => unitNumberFromRaw(row.unitNumber) === unitNumberFromRaw(unit.unitNumber),
   );
-  if (sheet?.tripOpen === true) {
-    return sheet.mpgFromSheet ? sheetMpgText(sheet.mpg) : null;
-  }
-  const truckMiles = unit.loadedMilesHundredths + unit.deadheadMilesHundredths;
-  return formatDieselMpg(truckMiles, dieselMilli);
+  const loads =
+    sheet?.mpgLoads && sheet.mpgLoads.length > 0
+      ? sheet.mpgLoads
+      : sheet?.tripOpen
+        ? [
+            { tripRef: "open", deliveryDay: source.weekStart },
+            { tripRef: "open", deliveryDay: null },
+          ]
+        : [];
+  return weekMpg({
+    loads,
+    weekEnd: source.weekEnd,
+    truckMilesHundredths: unit.loadedMilesHundredths + unit.deadheadMilesHundredths,
+    dieselGallonsMilli: dieselMilli,
+    sheetMpg: sheet?.mpgFromSheet ? sheet.mpg : null,
+  });
 }
 
 function sharedTripNote(loads: readonly ReportLoadRow[]): string | null {

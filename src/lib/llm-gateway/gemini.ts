@@ -77,6 +77,66 @@ export async function geminiJson(
   return { ok: false, busy: true };
 }
 
+/** Reads a rate confirmation or a receipt photo. The key stays in the header. */
+export async function geminiDocumentText(
+  input: { mimeType: string; base64: string; ask: string },
+  env: Record<string, string | undefined>,
+  fetchImpl: typeof fetch = fetch,
+  sleep?: Sleep,
+): Promise<{ ok: true; text: string } | { ok: false; busy: boolean }> {
+  const pause = sleep ?? defaultSleep;
+  const key = env.GEMINI_API_KEY?.trim();
+  if (!key) return { ok: false, busy: false };
+  const model = env.GEMINI_MODEL?.trim() || GEMINI_DEFAULT_MODEL;
+  const url = `${ENDPOINT}/${encodeURIComponent(model)}:generateContent`;
+  const attempts = GEMINI_BUSY_BACKOFF_MS.length + 1;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    let response: Response;
+    try {
+      response = await fetchImpl(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-goog-api-key": key,
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: input.ask },
+                { inline_data: { mime_type: input.mimeType, data: input.base64 } },
+              ],
+            },
+          ],
+          generationConfig: { responseMimeType: "application/json" },
+        }),
+      });
+    } catch {
+      return { ok: false, busy: false };
+    }
+    if (response.status === 503 || response.status === 429) {
+      const wait = GEMINI_BUSY_BACKOFF_MS[attempt];
+      if (wait == null) return { ok: false, busy: true };
+      await pause(wait);
+      continue;
+    }
+    if (!response.ok) return { ok: false, busy: false };
+    const body = (await response.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+    };
+    const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return { ok: false, busy: false };
+    try {
+      const parsed = JSON.parse(text) as { text?: unknown };
+      if (typeof parsed.text !== "string" || !parsed.text.trim()) return { ok: false, busy: false };
+      return { ok: true, text: parsed.text };
+    } catch {
+      return { ok: false, busy: false };
+    }
+  }
+  return { ok: false, busy: true };
+}
+
 const FUEL_FIELDS = ["card", "tranDate", "invoice", "unit", "city", "state", "item", "qty", "amt"] as const;
 const TOLL_FIELDS = [
   "transactionId",

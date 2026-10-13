@@ -320,11 +320,7 @@ export function TruckDetailClient({
           </p>
           <p className="mt-2 text-sm">
             <span className="text-[var(--color-fg-muted)]">Google Sheet: </span>
-            {truck.google_sheet_url ? (
-              <GoogleSheetLink url={truck.google_sheet_url} />
-            ) : (
-              <span className="text-[var(--color-fg-muted)]">None yet</span>
-            )}
+            <GoogleSheetLink url={truck.google_sheet_url} unitNumber={truck.unit_number} />
           </p>
           {!googleSheetReady ? (
             <p className="mt-2 text-xs text-[var(--color-fg-muted)]" role="status">
