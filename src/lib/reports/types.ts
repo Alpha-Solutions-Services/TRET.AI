@@ -56,6 +56,8 @@ export type WeeklyReportSource = {
     mpgKnown: boolean;
     mpgFromSheet?: boolean;
     tripOpen?: boolean;
+    /** Every load on the truck's trips, including one that delivers after Sunday. */
+    mpgLoads?: ReadonlyArray<{ tripRef: string | null; deliveryDay: string | null }>;
   }>;
 };
 

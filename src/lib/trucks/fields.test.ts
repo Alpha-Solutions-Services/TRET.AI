@@ -191,6 +191,15 @@ describe("truck sheet markup", () => {
       createElement(GoogleSheetLink, { url: "javascript:alert(1)" }),
     );
     expect(blocked).not.toContain("href=");
+
+    const needs = renderToStaticMarkup(
+      createElement(GoogleSheetLink, { url: null, unitNumber: "9" }),
+    );
+    expect(needs).toContain("Needs sheet link");
+    const other = renderToStaticMarkup(
+      createElement(GoogleSheetLink, { url: null, unitNumber: "4" }),
+    );
+    expect(other).not.toContain("Needs sheet link");
   });
 });
 

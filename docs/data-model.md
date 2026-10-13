@@ -148,9 +148,15 @@ v0.0.0.9 does not add a table. The PDF is built when the owner downloads it. A l
 
 v0.0.0.10 does not add a table. Overview and the management P&L are computed when the page loads. `resolve_issue` updates one open Warn or Block row in `issues` and writes `change_log` with `entity_type` `issue`. It does not change imported rows.
 
+## truck_documents (v0.0.0.41)
+
+Migration `20261013180000_v41_truck_documents.sql` is not applied until the owner says go.
+
+One row is an uploaded TONU rate confirmation, a fuel receipt photo, or an expense receipt photo. The file is stored as base64. `kind` is `tonu_rate_con`, `fuel_receipt`, or `expense_receipt`. A confirmed TONU row has `confirmed` true and `amount_cents` set to the fee that replaced the unconfirmed flag. Row Level Security allows a signed-in allowed user to read, insert, and delete.
+
 ## Access (RLS)
 
-`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, `mgmt_operating_expenses`, `legacy_org_settings`, `legacy_truck_week_fees`, `legacy_load_fees`, `vektor_fuel_staging`, `vektor_toll_staging`, `fuel_transactions`, `toll_transactions`, `truck_fuel_cards`, `truck_plates`, `truck_toll_tags`, `fuel_file_imports`, `toll_file_imports`, `file_import_queue`, `weekly_statements`, `weekly_statement_lines`, `week_closes`, `load_field_decisions`, and `load_field_acceptances` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Statement rows are inserted only by `lock_week`. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`. `resolve_issue` is security definer, checks `allowed_users`, and is the only app path that marks an issue resolved.
+`trucks`, `fee_contracts`, `fee_rules`, `change_log`, `import_settings`, `import_runs`, `vektor_loads_staging`, `loads`, `issues`, `truck_fixed_expenses`, `truck_fixed_expense_overrides`, `mgmt_operating_expenses`, `legacy_org_settings`, `legacy_truck_week_fees`, `legacy_load_fees`, `vektor_fuel_staging`, `vektor_toll_staging`, `fuel_transactions`, `toll_transactions`, `truck_fuel_cards`, `truck_plates`, `truck_toll_tags`, `fuel_file_imports`, `toll_file_imports`, `file_import_queue`, `weekly_statements`, `weekly_statement_lines`, `week_closes`, `load_field_decisions`, `load_field_acceptances`, and `truck_documents` have Row Level Security on. Only a signed-in user whose email is in `allowed_users` can read. Statement rows are inserted only by `lock_week`. Fixed-expense and operating-expense writes go through the functions above, which still check `allowed_users`. Rate-version RPCs are security definer and still check `allowed_users`. `resolve_issue` is security definer, checks `allowed_users`, and is the only app path that marks an issue resolved.
 
 `vektor_mcp_connection` and `vektor_oauth_pending` have Row Level Security on and no policies. `anon` and `authenticated` have no table grants. Allowed users touch ciphertext only through security-definer functions. The encryption key stays in server env.
 

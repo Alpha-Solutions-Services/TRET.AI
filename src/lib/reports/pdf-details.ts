@@ -44,6 +44,10 @@ export function alignPdfDetails(
       mpgKnown: Boolean(row.readable || row.mpgFromSheet || row.tripOpen || (row.mpg != null && row.mpg.trim() !== "")),
       mpgFromSheet: row.mpgFromSheet === true,
       tripOpen: row.tripOpen === true,
+      mpgLoads: (row.weekLoads ?? []).map((load) => ({
+        tripRef: (load.tripGroup || load.manifestId || "").trim() || null,
+        deliveryDay: load.deliveryDay?.trim() || null,
+      })),
     })),
   };
 }

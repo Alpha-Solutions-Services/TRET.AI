@@ -9,7 +9,7 @@ import {
   type OwnerWeekLoad,
 } from "@/lib/reports/owner-week";
 import {
-  displayedTruckMpg,
+  weekMpg,
   mainTripMilesHundredths,
   tripMilesHundredths,
   tripRpmCents,
@@ -494,11 +494,17 @@ export function buildTruckWeekInsOuts(input: {
           rpmCents: owner.rpmCents,
         }
       : {}),
-    mpg: displayedTruckMpg({
+    mpg: weekMpg({
+      loads: owner.loads.map((load) => ({
+        tripRef: load.tripGroup || load.manifestId,
+        deliveryDay: load.deliveryDay || null,
+      })),
+      weekEnd: input.weekEnd,
+      truckMilesHundredths: owner.milesFromAllocated
+        ? owner.milesHundredths
+        : tripMiles.loadedMilesHundredths + tripMiles.deadheadMilesHundredths,
+      dieselGallonsMilli: reportGallons.dieselMilli ?? logGallons.dieselMilli,
       sheetMpg: owner.mpg,
-      mpgFromSheet: owner.mpg != null,
-      tripOpen: owner.tripOpen,
-      computedMpg: tripMiles.mpg,
     }),
     mpgFromSheet: owner.mpg != null,
     tripOpen: owner.tripOpen,

@@ -4,6 +4,22 @@ import { centsToDollarString, tryDollarStringToCents } from "@/lib/money/cents";
 import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { isTolsonPayableType, type TolsonPayableType } from "@/lib/trucks/tolson";
 
+/** Trucks 1, 2, 9, and 10 are in the fleet and still need a sheet link pasted. */
+const SHEET_LINK_UNITS = new Set(["1", "2", "9", "10"]);
+
+export const NEEDS_SHEET_LINK = "Needs sheet link";
+
+export function needsSheetLink(unitNumber: string, url: string | null | undefined): boolean {
+  const digits = unitNumber.replace(/\D/g, "").replace(/^0+/, "");
+  return SHEET_LINK_UNITS.has(digits) && !url?.trim();
+}
+
+export function missingSheetLinkNote(unitNumber: string): string {
+  return needsSheetLink(unitNumber, null)
+    ? "Needs sheet link. Paste it on Trucks."
+    : "No Google Sheet link. Paste it on Trucks.";
+}
+
 export const GOOGLE_SHEET_MIGRATION_MESSAGE =
   "Google Sheet links need migration 20261007170000_truck_google_sheet_url.sql. It has not been applied yet.";
 

@@ -41,6 +41,7 @@ export async function sheetLoadsForWeek(weekStart: string): Promise<{ rows: Load
         truck_unit_number: truck.unitNumber,
         source_manifest_ref: load.tripGroup ?? load.manifestId,
         status: load.status,
+        tonuConfirmed: load.status === "TONU" && load.reason == null,
       });
     }
   }

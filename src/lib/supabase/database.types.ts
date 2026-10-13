@@ -1460,6 +1460,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      truck_documents: {
+        Row: {
+          id: string;
+          truck_unit: string;
+          load_id: string | null;
+          expense_id: string | null;
+          kind: "tonu_rate_con" | "fuel_receipt" | "expense_receipt";
+          file_name: string;
+          content_type: string;
+          file_base64: string;
+          amount_cents: number | null;
+          vendor: string | null;
+          note: string | null;
+          confirmed: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          truck_unit: string;
+          load_id?: string | null;
+          expense_id?: string | null;
+          kind: "tonu_rate_con" | "fuel_receipt" | "expense_receipt";
+          file_name: string;
+          content_type: string;
+          file_base64: string;
+          amount_cents?: number | null;
+          vendor?: string | null;
+          note?: string | null;
+          confirmed?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          truck_unit?: string;
+          load_id?: string | null;
+          expense_id?: string | null;
+          kind?: "tonu_rate_con" | "fuel_receipt" | "expense_receipt";
+          file_name?: string;
+          content_type?: string;
+          file_base64?: string;
+          amount_cents?: number | null;
+          vendor?: string | null;
+          note?: string | null;
+          confirmed?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
