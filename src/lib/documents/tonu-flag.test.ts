@@ -19,13 +19,13 @@ describe("confirmed TONU rate", () => {
       weeklyExpenses: [["Week Start Date", "Fuel"], ["10/05/2026", "$0.00"]],
       note: null,
     });
-    expect(row.pending.some((item) => item.reason === TONU_RATE_NOTE)).toBe(true);
+    expect(row.pending?.some((item) => item.reason === TONU_RATE_NOTE)).toBe(true);
     const gross = row.insCents;
     const next = applyTonuConfirmations([row], { "TBH--1201": 25_000 })[0]!;
     const tonu = next.weekLoads?.find((load) => load.loadId === "TBH--1201");
     expect(tonu?.rateCents).toBe(25_000);
     expect(tonu?.reason).toBeNull();
-    expect(next.pending.some((item) => item.reason === TONU_RATE_NOTE)).toBe(false);
+    expect(next.pending?.some((item) => item.reason === TONU_RATE_NOTE)).toBe(false);
     expect(next.insCents).toBe(gross);
   });
 });

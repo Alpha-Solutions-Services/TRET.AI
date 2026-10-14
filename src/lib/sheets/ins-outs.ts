@@ -13,7 +13,6 @@ import {
   mainTripMilesHundredths,
   tripMilesHundredths,
   tripRpmCents,
-  truckMpg,
   type MetricLoad,
 } from "@/lib/reports/trip-metrics";
 import { inWeek, sheetAmountToCents, sheetDay, columnIndex as sheetColumnIndex, findHeaderRow } from "@/lib/sheets/cell";
@@ -461,11 +460,7 @@ export function buildTruckWeekInsOuts(input: {
   }
   const logGallons = fuelLogGallons(input.fuelLog ?? null, input.weekStart, input.weekEnd);
   const reportGallons = weekReportGallons(input.weekReport ?? null);
-  const tripMiles = milesForLoads(
-    ins?.loads ?? [],
-    logGallons.dieselMilli,
-    input.loadLedger ? parseLoadLedger(input.loadLedger).rows : ins?.loads ?? [],
-  );
+  const tripMiles = milesForLoads(ins?.loads ?? [], logGallons.dieselMilli);
   const owner = buildOwnerTruckWeek({
     ledger: input.loadLedger,
     weekly: input.weeklyExpenses ?? null,
@@ -473,6 +468,7 @@ export function buildTruckWeekInsOuts(input: {
     weekStart: input.weekStart,
     weekEnd: input.weekEnd,
     unitNumber: input.unitNumber,
+    truckClass: input.truckClass,
     feeRates: input.feeRates,
     fallbackOutsCents: useWeekly ? 0 : (outs?.outsCents ?? 0),
     fallbackCategories: useWeekly ? [] : (outs?.categories ?? []),
@@ -495,11 +491,7 @@ export function buildTruckWeekInsOuts(input: {
         }
       : {}),
     mpg: weekMpg({
-      loads: owner.loads.map((load) => ({
-        tripRef: load.tripGroup || load.manifestId,
-        deliveryDay: load.deliveryDay || null,
-      })),
-      weekEnd: input.weekEnd,
+      tripOpen: owner.tripOpen,
       truckMilesHundredths: owner.milesFromAllocated
         ? owner.milesHundredths
         : tripMiles.loadedMilesHundredths + tripMiles.deadheadMilesHundredths,
@@ -541,19 +533,16 @@ function toMetric(load: LedgerLoadRef): MetricLoad {
     deadheadMilesHundredths: load.deadheadMilesHundredths ?? 0,
     tripRef: load.tripGroup || load.manifestId,
     sheetPrimary: load.sheetPrimary,
-    delivered: Boolean(load.deliveryDay),
   };
 }
 
 function milesForLoads(
   loads: LedgerLoadRef[],
   dieselGallonsMilli: number,
-  allLoads: LedgerLoadRef[],
 ): {
   loadedMilesHundredths: number;
   deadheadMilesHundredths: number;
   rpmCents: number | null;
-  mpg: string | null;
   dieselGallonsMilli: number;
 } {
   const counted = loads.map(toMetric);
@@ -563,7 +552,6 @@ function milesForLoads(
     loadedMilesHundredths: loaded,
     deadheadMilesHundredths: Math.max(0, total - loaded),
     rpmCents: tripRpmCents(counted),
-    mpg: truckMpg(counted, allLoads.map(toMetric), dieselGallonsMilli),
     dieselGallonsMilli,
   };
 }
