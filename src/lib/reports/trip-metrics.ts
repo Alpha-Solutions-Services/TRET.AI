@@ -8,8 +8,6 @@ export type MetricLoad = {
   deadheadMilesHundredths: number;
   tripRef: string | null;
   sheetPrimary?: boolean | null;
-  /** False while the trip has not delivered. MPG stays blank until it does. */
-  delivered: boolean;
 };
 
 export type LoadRpm = {
@@ -85,29 +83,6 @@ export function tripRpmCents(loads: readonly MetricLoad[]): number | null {
   return centsPerLoadedMile(rate, miles);
 }
 
-export function loadRpmsAddUp(loads: readonly MetricLoad[]): boolean {
-  const trip = tripRpmCents(loads);
-  const parts = assignLoadRpms(loads);
-  if (trip == null) return parts.every((part) => part.rpmCents == null);
-  const sum = parts.reduce((total, part) => total + (part.rpmCents ?? 0), 0);
-  return sum === trip;
-}
-
-/** Blank when any trip that has a counted load is still undelivered. Uses main trip miles. */
-export function truckMpg(
-  counted: readonly MetricLoad[],
-  allLoads: readonly MetricLoad[],
-  dieselGallonsMilli: number,
-): string | null {
-  const trips = new Set(counted.map((load) => load.tripRef).filter((ref): ref is string => Boolean(ref)));
-  for (const trip of trips) {
-    const members = allLoads.filter((load) => load.tripRef === trip);
-    if (members.some((load) => !load.delivered)) return null;
-  }
-  if (counted.some((load) => !load.delivered)) return null;
-  return formatDieselMpg(mainTripMilesHundredths(counted), dieselGallonsMilli);
-}
-
 /** Week Report C31, or blank. A 0 cell is blank. */
 export function sheetMpgText(mpg: string | null | undefined): string | null {
   const text = mpg?.trim() ?? "";
@@ -143,19 +118,17 @@ export function tripOpenAtSunday(loads: readonly WeekMpgLoad[], weekEnd: string)
 
 /**
  * The one MPG figure for the dashboard, the owner PDF, and the statement.
- * Gallons are diesel only. A shared trip counts once, and only after every load
- * on it has a delivery date on or before weekEnd. Until then the figure is Week
- * Report C31, or blank when that cell is empty.
+ * Gallons are diesel only. Miles are already counted once per trip.
+ * While the trip is open, the figure is Week Report C31, or blank when that cell is empty.
  */
 export function weekMpg(input: {
-  loads: readonly WeekMpgLoad[];
-  weekEnd: string;
+  tripOpen: boolean;
   /** Truck miles already counted once per trip. */
   truckMilesHundredths: number;
   dieselGallonsMilli: number;
   sheetMpg?: string | null;
 }): string | null {
-  if (tripOpenAtSunday(input.loads, input.weekEnd)) return sheetMpgText(input.sheetMpg);
+  if (input.tripOpen) return sheetMpgText(input.sheetMpg);
   return formatDieselMpg(input.truckMilesHundredths, input.dieselGallonsMilli);
 }
 

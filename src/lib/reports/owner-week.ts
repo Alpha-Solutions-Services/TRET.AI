@@ -1,11 +1,10 @@
-import {
-  managementFeeSplit,
-  seededFeeRates,
-  type FeeRatePair,
-  type FeeSplit,
-} from "@/lib/fees/two-lines";
-import { roundHalfUpDivide } from "@/lib/fee-engine/money";
-import { centsPerLoadedMile } from "@/lib/reports/format";
+import type { TruckClass } from "@/lib/fee-engine";
+import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
+import type { FeeRatePair, FeeSplit } from "@/lib/fees/two-lines";
+import { centsPerLoadedMile, formatDollarsPerMile, formatPositiveDecimal } from "@/lib/reports/format";
+import { tripOpenAtSunday } from "@/lib/reports/trip-metrics";
+import { percentFeeStatement } from "@/lib/statements/engine";
+import type { UnitStatement } from "@/lib/statements/types";
 import { gallonsStringToMilli } from "@/lib/fuel-tolls/quantity";
 import { tonuHoldWeekStart } from "@/lib/loads/tonu";
 import { inWeek, normalizeHeader, sheetAmountToCents } from "@/lib/sheets/cell";
@@ -97,7 +96,13 @@ export function buildOwnerTruckWeek(input: {
   fallbackCategories?: readonly OwnerCategory[];
   /** Blank uses the truck seed. Trucks 1 to 10 are seeded. A new truck is Legacy 10 percent and Tolson 8 percent. */
   unitNumber?: string;
+  truckClass?: TruckClass;
   feeRates?: FeeRatePair;
+  /**
+   * When a statement was already built, its fee lines and class are the fee.
+   * Sheet-only callers omit this and the same engine builds the unit.
+   */
+  statement?: UnitStatement;
 }): OwnerTruckWeek {
   const parsed = input.ledger ? parseLoadLedger(input.ledger) : null;
   const counted: LedgerLoadRow[] = [];
@@ -193,42 +198,49 @@ export function buildOwnerTruckWeek(input: {
   const heldTollCents = tonuHeld.reduce((sum, row) => sum + row.tollCents, 0);
   const arrivingTollCents = tonuCounted.reduce((sum, row) => sum + row.tollCents, 0);
   const chosenTollCents = categories.find((row) => row.category === "Toll fees")?.cents ?? 0;
-  const tollCents = withCountedTonu(
-    withoutHeldTonu(chosenTollCents, countedTollCents, heldTollCents),
-    countedTollCents,
-    arrivingTollCents,
-  );
+  const tollCents = adjustForTonu(chosenTollCents, countedTollCents, heldTollCents, arrivingTollCents);
   if (tollCents !== chosenTollCents) replaceCategory(categories, "Toll fees", tollCents);
   miscCents = categories.find((row) => row.category === "Misc")?.cents ?? 0;
-  const rates = input.feeRates ?? seededFeeRates(input.unitNumber ?? "");
-  const fees = managementFeeSplit(grossCents, rates);
-  const sheetManagement = categories.find((row) => row.category === "Management fee")?.cents ?? null;
-  const sheetFeeDiffers = sheetManagement != null && sheetManagement !== fees.managementFeeCents;
-  if (sheetManagement != null) replaceCategory(categories, "Management fee", fees.managementFeeCents);
-  expenseCents = categories.reduce((sum, row) => sum + row.cents, 0);
   const countedDeadhead = parsed?.allocatedDeadheadColumn ? allocatedMilesOnce(counted, "deadhead") : 0;
   const heldDeadhead = deadheadOf(tonuHeld, parsed);
   const arrivingDeadhead = deadheadOf(tonuCounted, parsed);
   const deadheadBase = report.deadheadHundredths ?? countedDeadhead;
-  const deadheadHundredths = withCountedTonu(
-    withoutHeldTonu(deadheadBase, countedDeadhead, heldDeadhead),
-    countedDeadhead,
-    arrivingDeadhead,
-  );
+  const deadheadHundredths = adjustForTonu(deadheadBase, countedDeadhead, heldDeadhead, arrivingDeadhead);
   const deadheadKnown =
     report.deadheadHundredths != null || parsed?.allocatedDeadheadColumn === true || arrivingDeadhead > 0;
   const countedMiles = parsed?.allocatedColumn ? allocatedMilesOnce(counted, "allocated") : 0;
   const heldMiles = tonuTruckMiles(tonuHeld, parsed);
   const arrivingMiles = tonuTruckMiles(tonuCounted, parsed);
   const milesBefore = milesHundredths;
-  milesHundredths = withCountedTonu(
-    withoutHeldTonu(milesHundredths, countedMiles, heldMiles),
-    countedMiles,
-    arrivingMiles,
-  );
+  milesHundredths = adjustForTonu(milesHundredths, countedMiles, heldMiles, arrivingMiles);
   if (milesHundredths !== milesBefore) milesFromAllocated = true;
-  const tripOpen = countedTripStillOpen(counted, loads);
+  const tripOpen = tripOpenAtSunday(
+    loads.map((load) => ({
+      tripRef: load.tripGroup || load.manifestId,
+      deliveryDay: load.deliveryDay?.trim() || null,
+    })),
+    input.weekEnd,
+  );
   const mpg = report.mpg ?? weekReportMpg(input.weekReport);
+  const sheetManagement = categories.find((row) => row.category === "Management fee")?.cents ?? null;
+  const statement =
+    input.statement ??
+    percentFeeStatement({
+      unitNumber: input.unitNumber ?? "",
+      truckClass: input.truckClass,
+      grossCents,
+      weekStart: input.weekStart,
+      legacyFeeBp: input.feeRates?.legacyFeeBp,
+      tolsonLeaseFeeBp: input.feeRates?.tolsonLeaseFeeBp,
+    });
+  const fees = feeSplitFromUnit(statement);
+  const sheetFeeDiffers = sheetManagement != null && sheetManagement !== fees.managementFeeCents;
+  if (sheetManagement != null) replaceCategory(categories, "Management fee", fees.managementFeeCents);
+  expenseCents = categories.reduce((sum, row) => sum + row.cents, 0);
+  const netCents =
+    input.statement && input.statement.grossCents === grossCents
+      ? input.statement.netCents
+      : grossCents - expenseCents;
   return {
     loadCount,
     grossCents,
@@ -240,7 +252,7 @@ export function buildOwnerTruckWeek(input: {
     tripOpen,
     miscCents,
     expenseCents,
-    netCents: grossCents - expenseCents,
+    netCents,
     deadheadHundredths,
     deadheadKnown,
     categories,
@@ -252,17 +264,33 @@ export function buildOwnerTruckWeek(input: {
   };
 }
 
-/** Take a held TONU out of this week when the sheet total still sits above the counted rows. */
-function withoutHeldTonu(shown: number, counted: number, held: number): number {
-  if (held <= 0) return shown;
-  const stripped = shown - held;
-  return stripped >= counted ? stripped : shown;
+/**
+ * Take a held TONU out of this week when the sheet total still sits above the counted rows,
+ * then put a counted TONU's miles or toll into this week, once.
+ */
+function adjustForTonu(shown: number, counted: number, held: number, arriving: number): number {
+  const stripped = held > 0 && shown - held >= counted ? shown - held : shown;
+  if (arriving <= 0) return stripped;
+  return stripped >= counted + arriving ? stripped : stripped + arriving;
 }
 
-/** Put a TONU's miles or toll into the week it is counted, once. */
-function withCountedTonu(shown: number, counted: number, arriving: number): number {
-  if (arriving <= 0) return shown;
-  return shown >= counted + arriving ? shown : shown + arriving;
+/** The statement unit's two fee lines. The total replaces the sheet Management Fee cell. */
+function feeSplitFromUnit(unit: UnitStatement): FeeSplit {
+  const legacyFeeCents = unit.legacyRetainedCents;
+  const managementFeeCents = ownerPaysManagementTotal(unit.truckClass)
+    ? unit.managementFeeCents
+    : unit.tolsonPayableCents;
+  return {
+    legacyFeeBp: lineRate(unit, "LEGACY_RETAINED"),
+    tolsonLeaseFeeBp: lineRate(unit, "TOLSON_PAYABLE"),
+    legacyFeeCents,
+    tolsonLeaseFeeCents: managementFeeCents - legacyFeeCents,
+    managementFeeCents,
+  };
+}
+
+function lineRate(unit: UnitStatement, code: string): number {
+  return unit.lines.find((line) => line.lineCode === code)?.rateBp ?? 0;
 }
 
 function deadheadOf(rows: readonly LedgerLoadRow[], parsed: { allocatedDeadheadColumn: boolean } | null): number {
@@ -279,20 +307,6 @@ function tonuTruckMiles(rows: readonly LedgerLoadRow[], parsed: { allocatedColum
     if (allocated > 0) return allocated;
   }
   return rows.reduce((sum, row) => sum + (row.allocatedDeadheadHundredths ?? row.deadheadMilesHundredths ?? 0), 0);
-}
-
-/** A counted load whose trip also has a row that delivers later. The Week Report MPG is still used when that cell is filled. */
-function countedTripStillOpen(counted: readonly LedgerLoadRow[], loads: readonly OwnerWeekLoad[]): boolean {
-  const openKeys = new Set<string>();
-  for (const row of loads) {
-    if (row.status !== "Pending") continue;
-    const trip = (row.tripGroup || row.manifestId || "").trim();
-    if (trip) openKeys.add(trip);
-  }
-  return counted.some((row) => {
-    const trip = (row.tripGroup || row.manifestId || "").trim();
-    return trip !== "" && openKeys.has(trip);
-  });
 }
 
 function weekLoad(row: LedgerLoadRow, status: OwnerLoadStatus, reason: string | null): OwnerWeekLoad {
@@ -442,11 +456,11 @@ export function weekReportMpg(grid: SheetGrid | null | undefined): string | null
     for (let index = 0; index < row.length; index += 1) {
       const label = normalizeHeader(row[index] ?? "");
       if (label !== "mpg" && label !== "diesel mpg" && label !== "miles per gallon") continue;
-      const labeled = mpgLabel(row[index + 1] ?? "") ?? mpgLabel(row[index + 2] ?? "");
+      const labeled = mpgText(row[index + 1] ?? "") ?? mpgText(row[index + 2] ?? "");
       if (labeled) return labeled;
     }
   }
-  return mpgLabel(grid[30]?.[2] ?? "");
+  return mpgText(grid[30]?.[2] ?? "");
 }
 
 function isTonu(status: string | null): boolean {
@@ -484,7 +498,7 @@ function allocatedMilesOnce(rows: readonly LedgerLoadRow[], field: "allocated" |
 function rpmLabelFromReport(grid: SheetGrid | null | undefined, grossCents: number, milesHundredths: number): string | null {
   const shown = readShownRpm(grid);
   if (shown) return shown;
-  return rpmFourDecimals(grossCents, milesHundredths);
+  return formatDollarsPerMile(grossCents, milesHundredths, 4);
 }
 
 function readShownRpm(grid: SheetGrid | null | undefined): string | null {
@@ -494,40 +508,15 @@ function readShownRpm(grid: SheetGrid | null | undefined): string | null {
     for (let index = 0; index < row.length; index += 1) {
       if (!labels.has(normalizeHeader(row[index] ?? ""))) continue;
       for (let next = index + 1; next < row.length; next += 1) {
-        const shown = fourDecimals(row[next] ?? "");
+        const shown = formatPositiveDecimal(row[next] ?? "", 4);
         if (shown) return shown;
       }
     }
   }
-  return fourDecimals(grid[6]?.[5] ?? "");
+  return formatPositiveDecimal(grid[6]?.[5] ?? "", 4);
 }
 
-function rpmFourDecimals(grossCents: number, milesHundredths: number): string | null {
-  if (milesHundredths <= 0) return null;
-  const scaled = Number(roundHalfUpDivide(BigInt(grossCents) * BigInt(10000), BigInt(milesHundredths)));
-  const whole = Math.floor(scaled / 10000);
-  const frac = String(scaled % 10000).padStart(4, "0");
-  return `${whole}.${frac}`;
-}
-
-function fourDecimals(raw: string): string | null {
-  const cleaned = raw.replace(/[$,]/g, "").trim();
-  if (!/^\d+(\.\d+)?$/.test(cleaned)) return null;
-  const [whole = "0", frac = ""] = cleaned.split(".");
-  const digits = (frac + "00000").slice(0, 5);
-  let scaled = Number.parseInt(whole, 10) * 10000 + Number.parseInt(digits.slice(0, 4), 10);
-  if ((digits[4] ?? "0") >= "5") scaled += 1;
-  if (scaled <= 0) return null;
-  return `${Math.floor(scaled / 10000)}.${String(scaled % 10000).padStart(4, "0")}`;
-}
-
-function mpgLabel(raw: string): string | null {
-  const cleaned = raw.replace(/[$,]/g, "").trim();
-  if (!/^\d+(\.\d+)?$/.test(cleaned)) return null;
-  const [whole = "0", frac = ""] = cleaned.split(".");
-  const digits = (frac + "000").slice(0, 3);
-  let hundredths = Number.parseInt(whole, 10) * 100 + Number.parseInt(digits.slice(0, 2), 10);
-  if ((digits[2] ?? "0") >= "5") hundredths += 1;
-  if (hundredths <= 0 || hundredths > 10_000) return null;
-  return `${Math.floor(hundredths / 100)}.${String(hundredths % 100).padStart(2, "0")}`;
+/** Week Report MPG text. A figure above 100.00 is blank. */
+function mpgText(raw: string): string | null {
+  return formatPositiveDecimal(raw, 2, 10_000);
 }

@@ -1,6 +1,6 @@
 import { assertInteger, assertNonNegativeInteger } from "@/lib/fee-engine/money";
 import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
-import { expectedNetCents } from "@/lib/statements/engine";
+import { linesMatchNet } from "@/lib/statements/engine";
 import type { TruckClass } from "@/lib/fee-engine";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { unitKey } from "@/lib/sheets/mismatch";
@@ -194,8 +194,8 @@ function snapshotRow(unit: UnitStatement): SnapshotRow {
     throw new Error(`Unit ${unit.unitNumber} has an unknown truck class`);
   }
   const feesCents = ownerFeeCents(unit);
-  if (unit.netCents !== expectedNetCents(unit)) {
-    throw new Error(`Unit ${unit.unitNumber} net does not match gross minus owner deductions`);
+  if (!linesMatchNet(unit)) {
+    throw new Error(`Unit ${unit.unitNumber} net does not match the statement lines`);
   }
   const row: SnapshotRow = {
     unitNumber: unit.unitNumber,
