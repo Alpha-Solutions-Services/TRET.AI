@@ -6,7 +6,7 @@ import { useMemo, useState, useTransition } from "react";
 import { runFuelAndTollsImportAction } from "@/app/imports/fuel-toll-actions";
 import { previewLoadsCsvAction, runVektorImportAction } from "@/app/imports/actions";
 import { loadsPreviewCounts } from "@/components/motion/counts";
-import { Waveform } from "@/components/motion/waveform";
+import { WorkSkeleton } from "@/components/motion/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { weekBoundsForDate } from "@/lib/fee-engine";
@@ -14,7 +14,7 @@ import { lastFinishedWeekStart } from "@/lib/reports/delivery";
 import { formatUtcStamp } from "@/lib/format-stamp";
 
 const DataFlow = dynamic(() => import("@/components/motion/data-flow").then((mod) => mod.DataFlow), {
-  loading: () => <div className="h-80" aria-hidden="true" />,
+  loading: () => <WorkSkeleton label="Loading import flow" />,
 });
 
 const Pipeline = dynamic(() => import("@/components/motion/pipeline").then((mod) => mod.Pipeline), {
@@ -136,7 +136,7 @@ export function ImportsClient({
       </div>
       <DataFlow counts={counts} />
       <Pipeline pending={pending} />
-      {pending ? <Waveform label="Import working" /> : null}
+      {pending ? <WorkSkeleton label="Import working" /> : null}
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] p-4">
         <label className="text-sm">

@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.0.0.42 — 2026-10-13
+
+- Connection cards and the dashboard Hub pulse a status dot only while that check is connected or busy. A missing check stays still. Cards and the New, Duplicate, and Flagged counters take one accent border on hover and scale slightly on press.
+- The import diagram draws Vektor, Fuel, and Tolls into TRET and on to Google Sheets. One accent mark travels those lines. The import steps move that mark only while a job is running. The counters show the current number at once and move only after the number changes.
+- Checking AI status, loading imports, and a running import or AI check use a skeleton shaped like that content. The bar-wave loader is gone.
+- No migration. MPG and the report rules are unchanged.
+
 ## v0.0.0.41 — 2026-10-13
 
 - The asset report fuel economy uses that same `weekMpg`. Miles are the truck miles already counted once. Gallons are the fuel-log gallons, or the import diesel gallons when the sheet fuel cell is blank. An open trip shows the sheet MPG, or n/a when that cell is blank. The asset-report fixtures that used fuel-log odometer miles now show 15.00, 28.17, and 11.09.

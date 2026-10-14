@@ -2,10 +2,11 @@
 
 import dynamic from "next/dynamic";
 import type { AiStatus } from "@/lib/llm-gateway/gemini";
+import { ConnectionsSkeleton } from "@/components/motion/page-skeletons";
 import { geminiTone, toneCaption, type ConnectionTone } from "@/components/motion/tones";
 
 const OriginMap = dynamic(() => import("@/components/motion/origin").then((mod) => mod.OriginMap), {
-  loading: () => <div className="h-24" aria-hidden="true" />,
+  loading: () => <ConnectionsSkeleton />,
 });
 
 export function ConnectionMap({

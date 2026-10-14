@@ -1,12 +1,12 @@
 "use client";
 
 import type { HubFeed } from "@/lib/overview/hub-feeds";
-import { StatusDot, type StatusTone } from "@/components/ui/status-dot";
+import { StatusDot, statusDotIsLive, type StatusTone } from "@/components/ui/status-dot";
 import type { ConnectionTone } from "@/components/motion/tones";
 
 /**
  * Connection status for the week. Labels stay fully visible.
- * One border. No inner scrollbar, glow, or looping motion.
+ * A live check pulses. One accent on hover. No inner scrollbar or glow.
  */
 export function HubFlow({ feeds }: { feeds: HubFeed[] }) {
   return (
@@ -17,10 +17,10 @@ export function HubFlow({ feeds }: { feeds: HubFeed[] }) {
         {feeds.map((feed) => (
           <li
             key={feed.label}
-            className="min-w-[8.5rem] flex-1 rounded-xl border border-[var(--color-border)] px-3 py-2 text-center"
+            className="press-card min-w-[8.5rem] flex-1 rounded-xl border border-[var(--color-border)] px-3 py-2 text-center"
           >
             <p className="flex items-center justify-center gap-2 text-sm font-medium">
-              <StatusDot tone={dotTone(feed.tone)} />
+              <StatusDot tone={dotTone(feed.tone)} live={statusDotIsLive(feed.tone)} />
               {feed.label}
             </p>
             <p className="mt-1 text-xs text-[var(--color-fg-muted)]">{feed.caption}</p>
@@ -28,9 +28,11 @@ export function HubFlow({ feeds }: { feeds: HubFeed[] }) {
         ))}
       </ul>
       <div className="mt-3 flex justify-center" aria-hidden="true">
-        <div className="h-4 w-px bg-[var(--color-border)]" />
+        <div className="h-4 w-px bg-[var(--color-accent)]" />
       </div>
-      <p className="mx-auto mt-2 w-fit rounded-full border border-[var(--color-accent)] px-6 py-2 text-sm font-semibold">TRET</p>
+      <p className="press-card mx-auto mt-2 w-fit rounded-full border border-[var(--color-accent)] px-6 py-2 text-sm font-semibold">
+        TRET
+      </p>
     </section>
   );
 }

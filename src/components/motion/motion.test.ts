@@ -1,14 +1,31 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { DataFlow } from "@/components/motion/data-flow";
 import { filePreviewCounts, loadsPreviewCounts } from "@/components/motion/counts";
 import { OriginMap } from "@/components/motion/origin";
+import { Pipeline } from "@/components/motion/pipeline";
+import { IntegrationsSkeleton } from "@/components/motion/page-skeletons";
 import { SignalHeader } from "@/components/motion/signal";
 import { geminiTone, quickbooksFileTone, sheetsTone, vektorTone } from "@/components/motion/tones";
+import { statusDotIsLive } from "@/components/ui/status-dot";
 import { DEFAULT_THEME_ID, THEMES } from "@/lib/theme";
 import { emptyFileAccountNames } from "@/lib/quickbooks/file-journal";
+
+function walk(dir: string): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const path = join(dir, entry);
+    if (statSync(path).isDirectory()) {
+      found.push(...walk(path));
+      continue;
+    }
+    if (path.endsWith(".ts") || path.endsWith(".tsx")) found.push(path);
+  }
+  return found;
+}
 
 describe("motion counts and connection tones", () => {
   it("keeps preview counts at zero until rows exist", () => {
@@ -59,7 +76,23 @@ describe("motion counts and connection tones", () => {
     expect(flow).toContain("Vektor");
     expect(flow).toContain("Google Sheets");
     expect(flow).toContain("No preview yet.");
+    expect(flow).toContain("animateMotion");
+    expect(flow).toContain("var(--color-accent)");
+    expect(flow).not.toContain("drop-shadow");
+    expect(flow).not.toContain("rv-pulse");
     expect(flow).not.toContain("Product 1");
+    const moving = renderToStaticMarkup(
+      createElement(DataFlow, {
+        counts: { rowsNew: 4, duplicate: 1, flagged: 2, caption: "Preview ready." },
+      }),
+    );
+    expect(moving.match(/rv-pulse/g)).toHaveLength(3);
+    expect(moving).toContain(">4<");
+    const idleSteps = renderToStaticMarkup(createElement(Pipeline, { pending: false }));
+    expect(idleSteps).not.toContain("animateMotion");
+    const busySteps = renderToStaticMarkup(createElement(Pipeline, { pending: true }));
+    expect(busySteps).toContain("animateMotion");
+    expect(busySteps).toContain("var(--color-accent)");
     const signal = renderToStaticMarkup(createElement(SignalHeader, { count: 0 }));
     expect(signal).toContain("0 trucks connected");
     expect(signal).not.toContain("animateMotion");
@@ -75,7 +108,42 @@ describe("motion counts and connection tones", () => {
     );
     expect(origin).toContain("Gemini AI");
     expect(origin).toContain("Busy");
+    expect(origin.match(/rv-pulse/g)).toHaveLength(2);
+    expect(origin).not.toContain("rv-particle");
     expect(origin).not.toContain("GEMINI_API_KEY");
+  });
+
+  it("pulses a live check and keeps a missing check still", () => {
+    expect(statusDotIsLive("connected")).toBe(true);
+    expect(statusDotIsLive("busy")).toBe(true);
+    expect(statusDotIsLive("ok")).toBe(true);
+    expect(statusDotIsLive("warn")).toBe(true);
+    expect(statusDotIsLive("not_set")).toBe(false);
+    expect(statusDotIsLive("danger")).toBe(false);
+  });
+
+  it("loads with skeletons and does not render the bar-wave loader", () => {
+    expect(existsSync("src/components/motion/waveform.tsx")).toBe(false);
+    const offenders: string[] = [];
+    for (const path of walk("src")) {
+      if (path.endsWith("motion.test.ts")) continue;
+      const text = readFileSync(path, "utf8");
+      if (text.includes("motion/waveform") || text.includes("Waveform")) offenders.push(path);
+    }
+    expect(offenders).toEqual([]);
+    const integrations = readFileSync("src/app/integrations/page.tsx", "utf8");
+    expect(integrations).toContain("IntegrationsSkeleton");
+    const skeleton = renderToStaticMarkup(createElement(IntegrationsSkeleton));
+    expect(skeleton).toContain("Checking AI status");
+    expect(skeleton).toContain("skeleton-shimmer");
+    expect(skeleton).not.toContain("animateMotion");
+    const flowSource = readFileSync("src/components/motion/data-flow.tsx", "utf8");
+    expect(flowSource).toContain("if (from === value) return");
+    expect(flowSource).toContain("prefers-reduced-motion");
+    const css = readFileSync("src/app/globals.css", "utf8");
+    expect(css).toContain(".press-card:hover");
+    expect(css).toContain(".skeleton-shimmer");
+    expect(css).not.toContain("drop-shadow");
   });
 
   it("keeps every theme selectable and boots Vibe Black by default", () => {
