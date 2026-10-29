@@ -22,5 +22,5 @@ comment on column public.loads.tarp_cents is
   'Tarps amount in integer cents. Zero when the load is not tarped. A tarped load with no amount uses tarp_cents_per_load, and a saved rate of 0 is $0.';
 
 insert into public.import_settings (key, value_int, note) values
-  ('tarp_cents_per_load', 5000, 'Default tarps amount in cents for a tarped load entered in TRET with no sheet amount. Default is $50. Sheet Tarps cells are stored on loads.tarp_cents and are not overwritten here.')
+  ('tarp_cents_per_load', 5000, 'Default tarps amount in cents for a tarped load entered in TRET when loads.tarp_cents is still zero. A saved value of 0 is $0. This setting does not write loads.tarp_cents.')
 on conflict (key) do nothing;

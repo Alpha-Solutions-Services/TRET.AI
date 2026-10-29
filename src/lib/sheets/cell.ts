@@ -1,5 +1,4 @@
 import { canonicalLoadId } from "@/lib/loads/load-id";
-import { dollarStringToCents } from "@/lib/money/cents";
 
 /** Collapse odd spaces from sheet cells. */
 export function cleanCell(raw: string): string {
@@ -25,12 +24,14 @@ export function sheetAmountToCents(raw: string): number | null {
   const negative = trimmed.startsWith("-") || /^\(.*\)$/.test(trimmed);
   const cleaned = trimmed.replace(/[$,\s]/g, "").replace(/[()]/g, "").replace(/^-/, "");
   if (!cleaned) return null;
-  try {
-    const cents = dollarStringToCents(cleaned);
-    return negative ? -cents : cents;
-  } catch {
-    return null;
-  }
+  const match = /^(\d{1,10})(?:\.(\d+))?$/.exec(cleaned);
+  if (!match) return null;
+  const whole = Number.parseInt(match[1] ?? "0", 10);
+  const frac = match[2] ?? "";
+  const digits = (frac + "000").slice(0, 3);
+  let cents = whole * 100 + Number.parseInt(digits.slice(0, 2), 10);
+  if (digits[2]! >= "5") cents += 1;
+  return negative ? -cents : cents;
 }
 
 /**

@@ -21,7 +21,7 @@ type ExpenseCategoryTotal = {
  */
 export const WEEKLY_EXPENSE_LINES = [
   { label: "Driver compensation", names: ["driver compensation"] },
-  { label: "Management fee", names: ["management fee"] },
+  { label: "Management fee", names: ["management fee", "total fees (legacy+tolson)", "total fees (legacy + tolson)"] },
   { label: "Truck payments", names: ["truck pymts", "truck payments"] },
   { label: "Trailer payments", names: ["trailer pymts", "trailer payments"] },
   { label: "Dispatch fee", names: ["dispatch fee"] },
@@ -36,6 +36,7 @@ export const WEEKLY_EXPENSE_LINES = [
   { label: "Toll fees", names: ["toll fees", "toll charges"] },
   { label: "Permit fees", names: ["permit fees", "permits"] },
   { label: "Misc", names: ["misc", "miscellaneous", "receipts", "receipt"] },
+  { label: "Other (manual)", names: ["other (manual)", "other manual"] },
 ] as const;
 
 export const WEEKLY_EXPENSE_LABELS = WEEKLY_EXPENSE_LINES.map((line) => line.label);

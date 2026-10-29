@@ -12,7 +12,10 @@ function cents(row: TruckWeekInsOuts, category: string): number {
 export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): UnitStatement {
   if (!row.readable || !row.outsFromWeekly) return unit;
   const driver = cents(row, "Driver compensation");
-  const management = row.managementFeeCents ?? cents(row, "Management fee");
+  const tarps = (row.weekLoads ?? [])
+    .filter((load) => load.status === "Delivered")
+    .reduce((sum, load) => sum + (load.tarpCents ?? 0), 0);
+  const management = cents(row, "Management fee");
   const legacy = row.legacyFeeCents ?? 0;
   const tolson = row.tolsonLeaseFeeCents ?? 0;
   const dispatch = cents(row, "Dispatch fee");
@@ -61,6 +64,10 @@ export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): Unit
     }),
   };
   next.netCents = expectedNetCents(next);
+  if (tarps > 0) {
+    const driverLine = next.lines.find((line) => line.lineCode === "DRIVER_PAY");
+    if (driverLine) driverLine.label = "Driver pay (20% + tarps)";
+  }
   return next;
 }
 

@@ -202,10 +202,12 @@ export function buildOwnerTruckWeek(input: {
   if (report.fuelCents != null) replaceCategory(categories, "Fuel", report.fuelCents);
   if (report.tollCents != null) replaceCategory(categories, "Toll fees", report.tollCents);
   const countedTollCents = counted.reduce((sum, row) => sum + row.tollCents, 0);
-  const heldTollCents = tonuHeld.reduce((sum, row) => sum + row.tollCents, 0);
   const arrivingTollCents = tonuCounted.reduce((sum, row) => sum + row.tollCents, 0);
+  const tollFromSheet = categories.some((row) => row.category === "Toll fees");
   const chosenTollCents = categories.find((row) => row.category === "Toll fees")?.cents ?? 0;
-  const tollCents = adjustForTonu(chosenTollCents, countedTollCents, heldTollCents, arrivingTollCents);
+  const tollCents = tollFromSheet
+    ? chosenTollCents
+    : adjustForTonu(0, countedTollCents, 0, arrivingTollCents);
   if (tollCents !== chosenTollCents) replaceCategory(categories, "Toll fees", tollCents);
   miscCents = categories.find((row) => row.category === "Misc")?.cents ?? 0;
   const countedDeadhead = parsed?.allocatedDeadheadColumn ? allocatedMilesOnce(counted, "deadhead") : 0;
@@ -242,7 +244,6 @@ export function buildOwnerTruckWeek(input: {
     });
   const fees = feeSplitFromUnit(statement);
   const sheetFeeDiffers = sheetManagement != null && sheetManagement !== fees.managementFeeCents;
-  if (sheetManagement != null) replaceCategory(categories, "Management fee", fees.managementFeeCents);
   // Sheet and Week Report driver pay already include Tarps. Do not add that column again.
   expenseCents = categories.reduce((sum, row) => sum + row.cents, 0);
   const netCents = grossCents - expenseCents;
@@ -447,9 +448,9 @@ export function readWeekReportMoney(grid: SheetGrid | null | undefined): WeekRep
     expenseCents: reportMoney(grid, ["total expenses", "total weekly expense"], 3, 5),
     milesHundredths: reportMoney(grid, ["total miles"], 18, 2),
     dispatchCents: reportMoney(grid, ["dispatch fee"], 21, 2),
-    factoringCents: reportMoney(grid, ["factoring fee"], 22, 2),
+    factoringCents: reportMoney(grid, ["factoring fee", "factoring fee (rounded to cents)"], 22, 2),
     driverCents: reportMoney(grid, ["driver pay", "driver compensation"], 23, 2),
-    managementCents: reportMoney(grid, ["management fee"], 24, 2),
+    managementCents: reportMoney(grid, ["management fee", "total fees (legacy+tolson)", "total fees (legacy + tolson)"], 24, 2),
     fuelCents: reportMoney(grid, ["fuel total cost", "fuel total"], 28, 2),
     tollCents: reportMoney(grid, ["toll fees"], 29, 14),
     miscCents: reportMoney(grid, ["misc expenses", "misc expenses (1-5)"], 25, 14),

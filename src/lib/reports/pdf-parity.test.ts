@@ -38,7 +38,7 @@ type Spec = {
   fuelLogMilli?: number;
   /** Owner PDF MPG when it is not the dashboard C31 figure. */
   statementMpg?: string | null;
-  /** Sheet cells that still include a held TONU. Week 41 leaves those miles and that toll out. */
+  /** Sheet cells that still include a held TONU. Miles move to the count week. The toll cell stays as written. */
   heldInSheet?: { milesHundredths: number; deadheadHundredths: number; tollCents: number };
   tripOpen?: boolean;
 };
@@ -64,10 +64,10 @@ const TRUCKS: Spec[] = [
     factoringCents: 0,
     managementCents: 142_200,
     fuelCents: 158_816,
-    tollCents: 3_661,
+    tollCents: 4_861,
     miscCents: 33_420,
     fixedCents: 80_462,
-    netCents: 160_116,
+    netCents: 158_916,
     gallonsMilli: 269_857,
     defGallonsMilli: 12_353,
     fuelLogMilli: 254_757,
@@ -115,7 +115,7 @@ function ledger(spec: Spec): string[][] {
     tonu[2] = "$2,000.00";
     tonu[3] = "TONU";
     tonu[15] = miles(sheet.milesHundredths - spec.milesHundredths);
-    tonu[44] = dollars(sheet.tollCents - spec.tollCents);
+    tonu[44] = "$12.00";
     tonu[47] = miles(sheet.deadheadHundredths - spec.deadheadHundredths);
     rows.push(tonu);
   }
@@ -133,7 +133,7 @@ function ledger(spec: Spec): string[][] {
 function weekly(spec: Spec): string[][] {
   const toll = spec.heldInSheet?.tollCents ?? spec.tollCents;
   return [
-    ["Week Start Date", "Driver Compensation", "Management Fee", "Dispatch Fee", "Factoring Fee", "Fuel", "Toll Fees", "Insurance", "Misc"],
+    ["Week Start Date", "Driver Compensation", "Total Fees (Legacy+Tolson)", "Dispatch Fee", "Factoring Fee", "Fuel", "Toll Fees", "Insurance", "Misc"],
     [
       "10/05/2026",
       dollars(spec.driverCents),
@@ -163,7 +163,7 @@ function weekReport(spec: Spec): string[][] {
   grid[22]![2] = dollars(spec.factoringCents);
   grid[23]![1] = "Driver Pay";
   grid[23]![2] = dollars(spec.driverCents);
-  grid[24]![1] = "Management Fee";
+  grid[24]![1] = "Total Fees (Legacy+Tolson)";
   grid[24]![2] = dollars(spec.managementCents);
   grid[25]![13] = "Misc Expenses (1-5)";
   grid[25]![14] = dollars(spec.miscCents);
@@ -340,11 +340,11 @@ describe("owner PDF and dashboard parity", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const report = prepareWeeklyReport(sourceFor(rows, TRUCKS, false));
     const fleet = statementsFor(rows, TRUCKS).fleet;
-    expect(fleet.tollsCents).toBe(71_521);
-    expect(fleet.netCents).toBe(-106_614);
+    expect(fleet.tollsCents).toBe(72_721);
+    expect(fleet.netCents).toBe(-107_814);
     expect(rows.reduce((sum, row) => sum + (row.deadheadMilesHundredths ?? 0), 0)).toBe(88_860);
     expect(rows.reduce((sum, row) => sum + (row.truckMilesHundredths ?? 0), 0)).toBe(1_159_695);
-    expect(rows.reduce((sum, row) => sum + row.outsCents, 0)).toBe(3_391_614);
+    expect(rows.reduce((sum, row) => sum + row.outsCents, 0)).toBe(3_392_814);
     expect(report.totalsHeading).toBe("Fleet totals");
     expect(report.fleetChart.summary).toContain("the fleet earned");
     const figures = fleetFromTrucks(

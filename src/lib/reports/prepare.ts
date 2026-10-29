@@ -421,7 +421,6 @@ const NOT_FIXED = new Set([
   "FUEL",
   "TOLLS",
   "MISC",
-  "TARPS",
   "DRIVER_PAY",
   "MANAGEMENT_FEE",
   "DISPATCH_FEE",

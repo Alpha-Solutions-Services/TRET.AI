@@ -187,6 +187,7 @@ describe("statement tarps", () => {
     const bare = buildWeekStatements(weekInput(0, rules)).units[0]!;
     expect(statement.driverPayCents).toBe(25_000);
     expect(statement.lines.find((line) => line.lineCode === "DRIVER_PAY")?.amountCents).toBe(25_000);
+    expect(statement.lines.find((line) => line.lineCode === "DRIVER_PAY")?.label).toBe("Driver pay (20% + tarps)");
     expect(statement.lines.some((line) => line.lineCode === "TARPS")).toBe(false);
     expect(statement.netCents).toBe(bare.netCents - 5_000);
     expect(linesMatchNet(statement)).toBe(true);
