@@ -29,9 +29,32 @@ export function centsInputError(value: number): string | null {
   }
 }
 
-/** "10.10" → 1010. "0.29" → 29. Rejects more than two decimal places. */
-export function dollarStringToCents(input: string): number {
+export type DollarCentsOptions = {
+  /** Round a third decimal half up, matching the sheet ROUND. The default rejects more than two decimal places. */
+  roundHalfUp?: boolean;
+};
+
+/**
+ * "10.10" → 1010. "0.29" → 29.
+ * Rejects more than two decimal places unless `roundHalfUp` is set.
+ */
+export function dollarStringToCents(input: string, options?: DollarCentsOptions): number {
   const trimmed = input.trim();
+  if (options?.roundHalfUp) {
+    if (!/^\d{1,10}(\.\d+)?$/.test(trimmed)) {
+      throw new Error("Enter a dollar amount");
+    }
+    const [wholePart, fracPart = ""] = trimmed.split(".");
+    const digits = (fracPart + "000").slice(0, 3);
+    let whole = Number.parseInt(wholePart ?? "0", 10);
+    let frac = Number.parseInt(digits.slice(0, 2), 10);
+    if ((digits[2] ?? "0") >= "5") frac += 1;
+    if (frac === 100) {
+      whole += 1;
+      frac = 0;
+    }
+    return dollarStringToCents(`${whole}.${String(frac).padStart(2, "0")}`);
+  }
   if (!DOLLAR_RE.test(trimmed)) {
     throw new Error("Enter a dollar amount with up to 2 decimal places");
   }

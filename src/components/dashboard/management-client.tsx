@@ -1,23 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { AreaChart, BarChart, ChartCard, DonutChart } from "@/components/charts/charts";
 import { ManagementCards } from "@/components/dashboard/management-summary";
 import { LegacyEarningsPanel } from "@/components/ins-outs/legacy-earnings";
 import { OperatingExpensesClient } from "@/components/operating-expenses/operating-expenses-client";
 import { ReportWeekLabel } from "@/components/reports/report-week";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { shiftWeek } from "@/lib/fee-engine";
 import { expensesByCategory, expensesByMonth } from "@/lib/legacy/expenses";
 import type { LegacyEarnings } from "@/lib/legacy/fees";
 import type { ManagementCardSummary } from "@/lib/legacy/summary";
 import type { OperatingExpenseList } from "@/lib/operating-expenses/queries";
 import type { OverviewPageData } from "@/lib/overview/queries";
-
-function shiftWeek(weekStart: string, delta: number): string {
-  const date = new Date(`${weekStart}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + delta * 7);
-  return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
-}
 
 export function ManagementClient({
   data,
@@ -36,7 +29,6 @@ export function ManagementClient({
   cards: ManagementCardSummary;
   expenses: OperatingExpenseList;
 }) {
-  const router = useRouter();
   const month = data.weekStart.slice(0, 7);
   const feeBars = earnings.trucks.map((truck) => ({
     label: truck.unitNumber,
@@ -47,10 +39,6 @@ export function ManagementClient({
     values: { expenses: point.cents },
   }));
   const slices = expensesByCategory(data.operatingExpenses, month);
-
-  function openWeek(next: string) {
-    router.push(`/management?week=${next}`);
-  }
 
   return (
     <div className="space-y-10">
@@ -63,26 +51,24 @@ export function ManagementClient({
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <button
-          type="button"
-          onClick={() => openWeek(shiftWeek(data.weekStart, -1))}
-          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm font-medium"
+        <a
+          href={`/management?week=${encodeURIComponent(shiftWeek(data.weekStart, -1))}`}
+          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-fg)] no-underline"
         >
           Previous week
-        </button>
+        </a>
         <div>
           <ReportWeekLabel weekStart={data.weekStart} />
           <p className="text-sm text-[var(--color-fg-muted)]">
             Week {data.weekStart} through {data.weekEnd}. Expense month {month}.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => openWeek(shiftWeek(data.weekStart, 1))}
-          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm font-medium"
+        <a
+          href={`/management?week=${encodeURIComponent(shiftWeek(data.weekStart, 1))}`}
+          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-fg)] no-underline"
         >
           Next week
-        </button>
+        </a>
       </div>
 
       <ManagementCards summary={cards} />

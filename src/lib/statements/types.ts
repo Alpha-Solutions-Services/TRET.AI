@@ -48,6 +48,8 @@ export type StatementLoad = {
   grossCents: number;
   loadedMilesHundredths: number;
   deadheadMilesHundredths: number;
+  /** Sheet Tarps column, or the fee-settings rate for a tarped load entered in TRET. */
+  tarpCents?: number;
 };
 
 export type StatementFuel = {

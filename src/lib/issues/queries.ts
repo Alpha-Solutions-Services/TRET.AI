@@ -93,6 +93,16 @@ export async function loadIssuesPage(weekRaw: string | undefined): Promise<Issue
   const weekStart = resolveWeekStart(weekRaw);
   const bounds = weekBoundsForDate(weekStart);
   const sheets = await loadActiveTruckInsOuts(bounds.start, bounds.end);
+  if (sheets.confirmationError) {
+    return {
+      weekStart: bounds.start,
+      weekEnd: bounds.end,
+      rows: [],
+      error: sheets.confirmationError,
+      issuesReady: true,
+      statementsReady: false,
+    };
+  }
   if (!sheets.error) {
     const refs = sheetLedgerRefs(sheets.rows);
     await syncSheetMismatches({

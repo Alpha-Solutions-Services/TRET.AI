@@ -148,6 +148,12 @@ v0.0.0.9 does not add a table. The PDF is built when the owner downloads it. A l
 
 v0.0.0.10 does not add a table. Overview and the management P&L are computed when the page loads. `resolve_issue` updates one open Warn or Block row in `issues` and writes `change_log` with `entity_type` `issue`. It does not change imported rows.
 
+## loads tarps (v0.0.0.42)
+
+Migration `supabase/migrations/20261029120000_v42_load_tarps.sql` is not applied until the owner says go. It does not add a table. `loads` already has row level security.
+
+`loads.tarped` is true when a load entered in TRET was tarped. `loads.tarp_cents` is the Tarps amount in integer cents. The sheet Load Ledger is the source: column BC, or column BG on truck 3, and only when that header says Tarps. Confirmed by Legacy Accounting from the 10/28 sheet exports. A blank cell or any other header is not tarped. `import_settings.tarp_cents_per_load` is the default, 5000 cents ($50), and it applies only when `tarped` is true and `tarp_cents` is still zero. A saved rate of 0 is $0. Tarps stay inside driver pay. The migration does not update existing load rows. Confirmed TONU amounts for TBH--1201 and TBH--1221 are in `supabase/data/v42-confirmed-tonus.sql`, which is not run by migrations.
+
 ## truck_documents (v0.0.0.41)
 
 Migration `20261013180000_v41_truck_documents.sql` is not applied until the owner says go.

@@ -8,6 +8,8 @@ import {
   parseFeeForm,
   type FeeFormInput,
 } from "@/lib/fees/fee-settings";
+import { TARP_SETTING_KEY } from "@/lib/loads/tarps";
+import { tryDollarStringToCents } from "@/lib/money/cents";
 import { createClient } from "@/lib/supabase/server";
 import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 
@@ -56,5 +58,27 @@ export async function saveFeeSettingsAction(rows: FeeSaveRow[]): Promise<{ ok: t
   revalidatePath("/fee-settings");
   revalidatePath("/trucks");
   revalidatePath("/statements");
+  return { ok: true };
+}
+
+export async function saveTarpRateAction(dollars: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await gate();
+  if (!auth.ok) return auth;
+  const trimmed = dollars.trim();
+  if (trimmed.startsWith("-")) return { ok: false, error: "The tarps amount cannot be negative." };
+  const parsed = tryDollarStringToCents(trimmed);
+  if (!parsed.ok || parsed.cents < 0) return { ok: false, error: "Enter the tarps amount in dollars, such as 50.00." };
+  const saved = await auth.supabase.from("import_settings").upsert({
+    key: TARP_SETTING_KEY,
+    value_int: parsed.cents,
+    note: "Default tarps amount in cents added to driver pay for each tarped load.",
+  });
+  if (saved.error) return { ok: false, error: saved.error.message };
+  revalidatePath("/fee-settings");
+  revalidatePath("/");
+  revalidatePath("/ins-outs");
+  revalidatePath("/loads");
+  revalidatePath("/statements");
+  revalidatePath("/management");
   return { ok: true };
 }

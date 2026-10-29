@@ -9,6 +9,7 @@ import {
 } from "@/lib/fee-engine";
 import { assertInteger, assertNonNegativeInteger } from "@/lib/fee-engine/money";
 import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
+import { bpToPercentString } from "@/lib/fees/percent";
 import { compareUnitNumbers, managementFeeSplit, seededFeeRates } from "@/lib/fees/two-lines";
 import { FIXED_EXPENSE_KINDS, FIXED_EXPENSE_LABELS } from "@/lib/fixed-expenses/kinds";
 import { lookupWeeklyFixedExpense } from "@/lib/fixed-expenses/lookup";
@@ -73,6 +74,45 @@ export function ownerDeductionCents(unit: UnitStatement): number {
     miscOwnerCents(unit) +
     unit.fixedOwnerCents
   );
+}
+
+/**
+ * Tarps are part of driver pay and are never a separate owner deduction.
+ * Sheet driver pay already includes them, so this is only for a driver-pay line
+ * TRET computed from the rate. No driver-pay line, as on the percent-fee path, charges nothing.
+ */
+export function includeTarpInDriverPay(
+  unit: UnitStatement,
+  tarpCents: number,
+): { unit: UnitStatement; warning: StatementBlocker | null } {
+  const tarp = tarpCents > 0 ? tarpCents : 0;
+  if (tarp === 0) return { unit, warning: null };
+  const driver = unit.lines.find((line) => line.lineCode === "DRIVER_PAY");
+  if (!driver) return { unit, warning: null };
+  if (driver.rateBp == null) {
+    return {
+      unit,
+      warning: {
+        rule: "tarp_skipped",
+        message: `Truck ${unit.unitNumber}: tarp skipped because driver pay has no rate.`,
+        ref: unit.unitNumber,
+      },
+    };
+  }
+  const rateBp = driver.rateBp;
+  const lines = unit.lines.map((line) => {
+    if (line.lineCode !== "DRIVER_PAY") return line;
+    return {
+      ...line,
+      label: `Driver pay (${bpToPercentString(rateBp)}% + tarps)`,
+      amountCents: line.amountCents + tarp,
+      chargedTo: "owner" as const,
+      ownerVisible: true,
+    };
+  });
+  const next: UnitStatement = { ...unit, driverPayCents: unit.driverPayCents + tarp, lines };
+  next.netCents = expectedNetCents(next);
+  return { unit: next, warning: null };
 }
 
 export function expectedNetCents(unit: UnitStatement): number {
@@ -140,6 +180,7 @@ export function buildWeekStatements(input: WeekStatementInput): WeekStatements {
     });
   }
   const warnings = rowCountWarnings(input);
+  const tarpWarnings: StatementBlocker[] = [];
 
   const units: UnitStatement[] = [];
   const trucks = [...input.trucks].sort((a, b) => compareUnitNumbers(a.unitNumber, b.unitNumber));
@@ -154,7 +195,7 @@ export function buildWeekStatements(input: WeekStatementInput): WeekStatements {
       continue;
     }
     seen.add(truck.id);
-    const built = buildUnit(truck, input, weekLoads, blockers);
+    const built = buildUnit(truck, input, weekLoads, blockers, tarpWarnings);
     if (built) units.push(built);
   }
 
@@ -183,7 +224,7 @@ export function buildWeekStatements(input: WeekStatementInput): WeekStatements {
     units,
     fleet,
     blockers,
-    warnings,
+    warnings: [...warnings, ...tarpWarnings],
     closeAllowed: blockers.length === 0,
   };
 }
@@ -316,6 +357,7 @@ function buildUnit(
   input: WeekStatementInput,
   weekLoads: StatementLoad[],
   blockers: StatementBlocker[],
+  tarpWarnings: StatementBlocker[],
 ): UnitStatement | null {
   const loads = weekLoads.filter((load) => load.truckId === truck.id);
   const fuelCents = sumMatching(input.fuel, truck.unitNumber, input.weekStart);
@@ -461,7 +503,10 @@ function buildUnit(
   };
   unit.netCents = expectedNetCents(unit);
   assertInteger(unit.netCents, `net for ${truck.unitNumber}`);
-  return unit;
+  const tarp = loads.reduce((sum, load) => sum + (load.tarpCents ?? 0), 0);
+  const applied = includeTarpInDriverPay(unit, tarp);
+  if (applied.warning) tarpWarnings.push(applied.warning);
+  return applied.unit;
 }
 
 type ResolvedFees = {
@@ -501,7 +546,11 @@ function resolveFees(
       return {
         ok: false,
         blocker: {
-          rule: message.startsWith("No fee contract") ? "missing_fee_contract" : "fee_contract_error",
+          rule: message.startsWith("No fee contract")
+            ? "missing_fee_contract"
+            : message.includes("driver pay has no rate")
+              ? "missing_driver_rate"
+              : "fee_contract_error",
           message: `Truck ${truck.unitNumber}: ${message}`,
           ref: truck.unitNumber,
         },
@@ -551,6 +600,9 @@ function feesFromContract(
     if (day.id !== contract.id) {
       throw new Error(`Rates change inside week ${weekStart} (contracts ${contract.id} and ${day.id})`);
     }
+  }
+  if (full.rules.some((rule) => rule.kind === "DRIVER_PAY" && rule.rateBp == null)) {
+    throw new Error("driver pay has no rate");
   }
   const calculated = calculateFeeLines({
     grossCents,

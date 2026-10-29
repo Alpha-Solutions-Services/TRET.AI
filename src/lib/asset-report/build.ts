@@ -10,7 +10,6 @@ import {
 } from "@/lib/reports/format";
 import { buildOwnerTruckWeek } from "@/lib/reports/owner-week";
 import { weekMpg } from "@/lib/reports/trip-metrics";
-import { percentFeeStatement } from "@/lib/statements/engine";
 import {
   columnIndex,
   columnIndexes,
@@ -28,6 +27,8 @@ export type SheetGrid = string[][];
 export type AssetExpenseLine = {
   label: string;
   cents: number;
+  /** Owner-week category this line copies. Detail lines have none. */
+  category?: string;
   /** Shown on the PDF. Left out of the expense total so the management fee is not added twice. */
   detail?: boolean;
 };
@@ -104,6 +105,8 @@ export type AssetReport = {
   eldCompliance: string;
   summary: string;
   notes: string[];
+  /** Close and the asset PDF stay blocked while this list is not empty. */
+  exportBlockers: string[];
 };
 
 /** Shown when no dispatcher is stored on the truck or the sheet. */
@@ -424,13 +427,10 @@ function columnTotal(header: string[], rows: string[][], names: readonly string[
   return sum;
 }
 
-function feeBreakdown(unitNumber: string, grossCents: number, weekStart: string): AssetExpenseLine[] {
-  const unit = percentFeeStatement({ unitNumber, grossCents, weekStart });
-  const legacy = unit.legacyRetainedCents;
-  const total = unit.managementFeeCents > 0 ? unit.managementFeeCents : unit.tolsonPayableCents;
+function feeBreakdown(split: { legacyFeeCents: number; tolsonFeeCents: number }): AssetExpenseLine[] {
   return [
-    { label: "Legacy fee", cents: legacy, detail: true },
-    { label: "Tolson lease fee", cents: total - legacy, detail: true },
+    { label: "Legacy fee", cents: split.legacyFeeCents, detail: true },
+    { label: "Tolson lease fee", cents: split.tolsonFeeCents, detail: true },
   ];
 }
 
@@ -529,6 +529,7 @@ export function buildAssetReport(input: {
   fuelLog: SheetGrid | null;
   fleet: SheetGrid | null;
   weekReport?: SheetGrid | null;
+  confirmedCentsByLoadId?: Readonly<Record<string, number>>;
   sheetNote: string | null;
   dbFuelCents?: number;
   dbGallonsMilli?: number;
@@ -617,9 +618,17 @@ export function buildAssetReport(input: {
     weekStart: input.weekStart,
     weekEnd: input.weekEnd,
     unitNumber: input.unitNumber,
+    confirmedCentsByLoadId: input.confirmedCentsByLoadId,
   });
   if (input.ledger) grossCents = owner.grossCents;
-  if (owner.sheetFeeDiffers) notes.push("sheet fee differs");
+  for (const warning of owner.warnings) notes.push(warning);
+  const exportBlockers = [
+    ...owner.unreadExpenses.map(
+      (label) =>
+        `Weekly Expenses ${label} could not be read or is over the cap. Net leaves that line out until it is fixed.`,
+    ),
+    ...owner.tonuReportBlocks.map((block) => block.message),
+  ];
   if (owner.milesFromAllocated) {
     dispatchMilesHundredths = owner.milesHundredths;
   }
@@ -643,45 +652,46 @@ export function buildAssetReport(input: {
       dispatchMilesHundredths = input.importTotals.dispatchMilesHundredths;
     }
   }
-  const lines = {
-    driver: read(["driver compensation"]),
-    management: read(["management fee"]),
-    dispatch: read(["dispatch fee"]),
-    factoring: read(["factoring fee"]),
-    fuel: fuelCents,
-    insurance: read(["insurance"]),
-    escrow: read(["maintenance escrow weekly", "weekly escrow"]),
-    escrowBalance: readOptional(weekly, ["escrow balance", "maintenance escrow balance", "running escrow"]),
-    eld: read(["eld fee"]),
-    yard: read(["yard fee", "yard parking"]),
-    gps: read(["gps tracker"]),
-    tollPass: read(["toll pass"]),
-    tolls: tollCents,
-    permits: read(["permit fees", "permits"]),
-  };
+  const categoryCents = (name: string) => owner.categories.find((row) => row.category === name)?.cents;
+  const expenseLine = (category: string, label: string, fallback = 0): AssetExpenseLine => ({
+    category,
+    label,
+    cents: categoryCents(category) ?? fallback,
+  });
+  const fuelLine = input.weekly ? (categoryCents("Fuel") ?? 0) : fuelCents;
+  const tollLine = input.weekly ? (categoryCents("Toll fees") ?? 0) : tollCents;
+  const escrowBalance = readOptional(weekly, ["escrow balance", "maintenance escrow balance", "running escrow"]);
   const leftExpenses: AssetExpenseLine[] = [
-    { label: percentLabel("Driver Compensation", "20%", weekly, ["driver compensation %", "driver compensation percent"]), cents: lines.driver },
-    { label: percentLabel("Management Fee", "10%", weekly, ["management fee %", "management fee percent", "mgmt fee %"]), cents: owner.fees.managementFeeCents },
-    ...feeBreakdown(input.unitNumber, owner.grossCents, input.weekStart),
-    { label: "Dispatch Fee", cents: lines.dispatch },
-    { label: percentLabel("Factoring Fee", "1.75%", weekly, ["factoring fee %", "factoring fee percent"]), cents: lines.factoring },
-    { label: "Fuel (Diesel + DEF)", cents: lines.fuel },
-    { label: "Insurance", cents: lines.insurance },
+    expenseLine(
+      "Driver compensation",
+      percentLabel("Driver Compensation", "20%", weekly, ["driver compensation %", "driver compensation percent"]),
+    ),
+    expenseLine(
+      "Management fee",
+      percentLabel("Management Fee", "10%", weekly, ["management fee %", "management fee percent", "mgmt fee %"]),
+    ),
+    ...feeBreakdown(owner.feeSplit),
+    expenseLine("Dispatch fee", "Dispatch Fee"),
+    expenseLine("Factoring fee", percentLabel("Factoring Fee", "1.75%", weekly, ["factoring fee %", "factoring fee percent"])),
+    { category: "Fuel", label: "Fuel (Diesel + DEF)", cents: fuelLine },
+    expenseLine("Insurance", "Insurance"),
   ];
   const rightExpenses: AssetExpenseLine[] = [
-    { label: "Maintenance Escrow Weekly", cents: lines.escrow },
-    { label: "ELD Fee", cents: lines.eld },
-    { label: "Yard Parking", cents: lines.yard },
-    { label: "GPS Tracker", cents: lines.gps },
-    { label: "Toll Pass", cents: lines.tollPass },
-    { label: "Toll Charges", cents: lines.tolls },
-    { label: "Permits", cents: lines.permits },
+    expenseLine("Maintenance Escrow Weekly", "Maintenance Escrow Weekly"),
+    expenseLine("ELD fee", "ELD Fee"),
+    expenseLine("Yard fee", "Yard Parking"),
+    expenseLine("GPS tracker", "GPS Tracker"),
+    expenseLine("Toll pass", "Toll Pass"),
+    { category: "Toll fees", label: "Toll Charges", cents: tollLine },
+    expenseLine("Permit fees", "Permits"),
   ];
-  const truckPay = read(["truck pymts", "truck payments"]);
-  const trailerPay = read(["trailer pymts", "trailer payments"]);
-  if (truckPay !== 0) rightExpenses.push({ label: "Truck payments", cents: truckPay });
-  if (trailerPay !== 0) rightExpenses.push({ label: "Trailer payments", cents: trailerPay });
-  if (owner.miscCents !== 0) rightExpenses.push({ label: "Misc", cents: owner.miscCents });
+  const placed = new Set(
+    [...leftExpenses, ...rightExpenses].map((line) => line.category).filter((name): name is string => Boolean(name)),
+  );
+  for (const row of owner.categories) {
+    if (placed.has(row.category)) continue;
+    rightExpenses.push({ category: row.category, label: row.category, cents: row.cents });
+  }
   const expenseCents = [...leftExpenses, ...rightExpenses].reduce(
     (sum, line) => sum + (line.detail ? 0 : line.cents),
     0,
@@ -769,10 +779,10 @@ export function buildAssetReport(input: {
     loads,
     leftExpenses,
     rightExpenses,
-    escrowWeekCents: lines.escrow,
-    escrowBalanceCents: lines.escrowBalance,
-    escrowCents: lines.escrowBalance ?? lines.escrow,
-    escrowCardLabel: lines.escrowBalance == null ? "Escrow Balance (this week)" : "Escrow Balance",
+    escrowWeekCents: categoryCents("Maintenance Escrow Weekly") ?? 0,
+    escrowBalanceCents: escrowBalance,
+    escrowCents: escrowBalance ?? (categoryCents("Maintenance Escrow Weekly") ?? 0),
+    escrowCardLabel: escrowBalance == null ? "Escrow Balance (this week)" : "Escrow Balance",
     fuelGallonsLabel: gallonsMilli > 0 ? formatGallonsMilli(gallonsMilli) : "0.000",
     fuelCostCents: fuelCents,
     fuelUnitPriceCents:
@@ -859,6 +869,7 @@ export function buildAssetReport(input: {
     ),
     summary: `Truck ${input.unitNumber} delivered ${loads.length} loads for ${dollars(grossCents)} gross. Owner expenses were ${dollars(expenseCents)}. Net owner earnings were ${dollars(netCents)}.`,
     notes,
+    exportBlockers,
   };
 }
 

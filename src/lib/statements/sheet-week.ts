@@ -2,7 +2,7 @@ import { compareUnitNumbers } from "@/lib/fees/two-lines";
 import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { expectedNetCents } from "@/lib/statements/engine";
-import type { FleetStatement, StatementLine, UnitStatement, WeekStatements } from "@/lib/statements/types";
+import type { FleetStatement, StatementBlocker, StatementLine, UnitStatement, WeekStatements } from "@/lib/statements/types";
 
 function cents(row: TruckWeekInsOuts, category: string): number {
   return row.categories.find((item) => item.category === category)?.cents ?? 0;
@@ -12,9 +12,12 @@ function cents(row: TruckWeekInsOuts, category: string): number {
 export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): UnitStatement {
   if (!row.readable || !row.outsFromWeekly) return unit;
   const driver = cents(row, "Driver compensation");
-  const management = row.managementFeeCents ?? cents(row, "Management fee");
-  const legacy = row.legacyFeeCents ?? 0;
-  const tolson = row.tolsonLeaseFeeCents ?? 0;
+  const tarps = (row.weekLoads ?? [])
+    .filter((load) => load.status === "Delivered")
+    .reduce((sum, load) => sum + (load.tarpCents ?? 0), 0);
+  const management = cents(row, "Management fee");
+  const legacy = row.feeSplit.legacyFeeCents;
+  const tolsonPart = row.feeSplit.tolsonFeeCents;
   const dispatch = cents(row, "Dispatch fee");
   const factoring = cents(row, "Factoring fee");
   const fuel = cents(row, "Fuel");
@@ -30,7 +33,7 @@ export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): Unit
     grossCents: row.insCents,
     driverPayCents: driver,
     managementFeeCents: paysTotal ? management : 0,
-    tolsonPayableCents: paysTotal ? tolson : management,
+    tolsonPayableCents: paysTotal ? tolsonPart : management,
     legacyRetainedCents: legacy,
     dispatchFeeCents: dispatch,
     factoringFeeCents: factoring,
@@ -48,7 +51,7 @@ export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): Unit
     lines: syncSheetLines(unit.lines, {
       driver,
       management: paysTotal ? management : 0,
-      tolson: paysTotal ? tolson : management,
+      tolson: paysTotal ? tolsonPart : management,
       legacy,
       dispatch,
       factoring,
@@ -61,6 +64,10 @@ export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): Unit
     }),
   };
   next.netCents = expectedNetCents(next);
+  if (tarps > 0) {
+    const driverLine = next.lines.find((line) => line.lineCode === "DRIVER_PAY");
+    if (driverLine) driverLine.label = "Driver pay (incl. tarps)";
+  }
   return next;
 }
 
@@ -83,7 +90,7 @@ type SheetLineAmounts = {
 function syncSheetLines(existing: readonly StatementLine[], amounts: SheetLineAmounts): StatementLine[] {
   const lines = existing.map((line) => ({ ...line }));
   putLine(lines, "DRIVER_PAY", "Driver pay", amounts.driver, 10, true);
-  putLine(lines, "MANAGEMENT_FEE", "Management fee", amounts.management, 20, amounts.chargeManagement);
+  putLine(lines, "MANAGEMENT_FEE", "Management fee", amounts.management, 20, amounts.chargeManagement, amounts.management > 0);
   putLine(lines, "TOLSON_PAYABLE", "Tolson lease fee", amounts.tolson, 21, amounts.chargeTolson);
   putLine(lines, "LEGACY_RETAINED", "Legacy fee", amounts.legacy, 22, false);
   putLine(lines, "DISPATCH_FEE", "Dispatch fee", amounts.dispatch, 30, true);
@@ -121,6 +128,7 @@ function putLine(
   cents: number,
   sortOrder: number,
   charge: boolean,
+  visible = true,
 ): void {
   const line = lines.find((row) => row.lineCode === code);
   const next: StatementLine = {
@@ -130,11 +138,43 @@ function putLine(
     rateBp: line?.rateBp ?? null,
     basePctBp: line?.basePctBp ?? null,
     chargedTo: charge && cents > 0 ? "owner" : null,
-    ownerVisible: true,
+    ownerVisible: visible,
     sortOrder,
   };
   if (line) Object.assign(line, next);
   else lines.push(next);
+}
+
+/** Close and the PDF stay blocked while a labeled Week Report counts a confirmed TONU in the wrong week. */
+export function tonuReportBlockers(rows: readonly TruckWeekInsOuts[]): StatementBlocker[] {
+  const blockers: StatementBlocker[] = [];
+  for (const row of rows) {
+    if (!row.readable) continue;
+    for (const block of row.tonuReportBlocks) {
+      blockers.push({
+        rule: "tonu_week_mismatch",
+        message: `Truck ${row.unitNumber}: ${block.message}`,
+        ref: block.loadId,
+      });
+    }
+  }
+  return blockers;
+}
+
+/** Close and the PDF stay blocked while a filled Weekly Expenses cell cannot be read. */
+export function unreadExpenseBlockers(rows: readonly TruckWeekInsOuts[]): StatementBlocker[] {
+  const blockers: StatementBlocker[] = [];
+  for (const row of rows) {
+    if (!row.readable) continue;
+    for (const label of row.unreadExpenses) {
+      blockers.push({
+        rule: "sheet_cell_unreadable",
+        message: `Truck ${row.unitNumber}: Weekly Expenses ${label} could not be read or is over the cap. Net leaves that line out until it is fixed.`,
+        ref: row.unitNumber,
+      });
+    }
+  }
+  return blockers;
 }
 
 export function overlaySheetStatements(

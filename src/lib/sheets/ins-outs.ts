@@ -96,10 +96,12 @@ export type TruckWeekInsOuts = {
   /** Owner PDF DEF gallons when the Week Report or Fuel Log splits them. */
   reportDefGallonsMilli?: number;
   categories: ExpenseCategoryTotal[];
-  /** Sheet Management Fee cell, split into the two fee lines. */
-  legacyFeeCents?: number;
-  tolsonLeaseFeeCents?: number;
-  managementFeeCents?: number;
+  /** Weekly Expenses labels that could not be read. Empty when every filled cell was read. */
+  unreadExpenses: string[];
+  /** Labeled Week Report gross counted a confirmed TONU in the wrong week. Close and the PDF stay blocked. */
+  tonuReportBlocks: { loadId: string | null; message: string }[];
+  /** The Legacy and Tolson lines for this week. Sheet AN and AO when they add up to H, otherwise the calculated split. */
+  feeSplit: { legacyFeeCents: number; tolsonFeeCents: number };
   /** True when Outs came from the Weekly Expenses tab. */
   outsFromWeekly: boolean;
   /** Easy-language cause when the sheet could not be read, a tab was missing, or a header did not parse. */
@@ -405,6 +407,7 @@ export function buildTruckWeekInsOuts(input: {
   note: string | null;
   noteDetail?: string | null;
   feeRates?: FeeRatePair;
+  confirmedCentsByLoadId?: Readonly<Record<string, number>>;
 }): TruckWeekInsOuts {
   const noteDetail = input.noteDetail ?? null;
   const truckClass = input.truckClass ?? "legacy_owned";
@@ -420,6 +423,9 @@ export function buildTruckWeekInsOuts(input: {
     netCents: 0,
     loadCount: 0,
     categories: [] as ExpenseCategoryTotal[],
+    unreadExpenses: [] as string[],
+    tonuReportBlocks: [] as { loadId: string | null; message: string }[],
+    feeSplit: { legacyFeeCents: 0, tolsonFeeCents: 0 },
     outsFromWeekly: false,
     ledgerLoads: [] as LedgerLoadRef[],
     recentWeeks: [] as WeekMoney[],
@@ -459,7 +465,6 @@ export function buildTruckWeekInsOuts(input: {
     };
   }
   const logGallons = fuelLogGallons(input.fuelLog ?? null, input.weekStart, input.weekEnd);
-  const reportGallons = weekReportGallons(input.weekReport ?? null);
   const tripMiles = milesForLoads(ins?.loads ?? [], logGallons.dieselMilli);
   const owner = buildOwnerTruckWeek({
     ledger: input.loadLedger,
@@ -470,9 +475,11 @@ export function buildTruckWeekInsOuts(input: {
     unitNumber: input.unitNumber,
     truckClass: input.truckClass,
     feeRates: input.feeRates,
+    confirmedCentsByLoadId: input.confirmedCentsByLoadId,
     fallbackOutsCents: useWeekly ? 0 : (outs?.outsCents ?? 0),
     fallbackCategories: useWeekly ? [] : (outs?.categories ?? []),
   });
+  const reportGallons = weekReportGallons(owner.appliedWeekReport);
   const grossCents = input.loadLedger ? owner.grossCents : (ins?.insCents ?? 0);
   const expenseCents = owner.expenseCents;
   if (owner.sheetFeeDiffers) notes.push(SHEET_FEE_DIFFERS);
@@ -507,10 +514,10 @@ export function buildTruckWeekInsOuts(input: {
     miscCents: owner.miscCents,
     weekLoads: owner.loads,
     pending: owner.pending,
-    legacyFeeCents: owner.fees.legacyFeeCents,
-    tolsonLeaseFeeCents: owner.fees.tolsonLeaseFeeCents,
-    managementFeeCents: owner.fees.managementFeeCents,
+    feeSplit: owner.feeSplit,
     categories: owner.categories,
+    unreadExpenses: owner.unreadExpenses,
+    tonuReportBlocks: owner.tonuReportBlocks,
     outsFromWeekly: useWeekly,
     ledgerLoads: ins?.loads ?? [],
     recentWeeks: recentWeeksFromGrids(
@@ -519,7 +526,7 @@ export function buildTruckWeekInsOuts(input: {
       input.mgmtExpenses,
       input.weeklyExpenses ?? null,
     ),
-    note: notes.length ? notes.join(" ") : null,
+    note: [...notes, ...owner.warnings].join(" ") || null,
     noteDetail,
     readable: true,
   };

@@ -6,6 +6,7 @@ import {
   columnIndexes,
   findHeaderRow,
   isEmptyCell,
+  normalizeHeader,
   sheetAmountToCents,
   sheetDay,
 } from "@/lib/sheets/cell";
@@ -57,6 +58,10 @@ const TOLL_EXPENSE_INDEX = 44;
 /** Load Ledger column M. A=0. */
 const LEDGER_M_INDEX = 12;
 const STATUS = ["status", "load status", "order status", "trip status"];
+const TARP = ["tarps", "tarp amount", "tarp"];
+/** Column BC. A=0. Truck 3's Tarps column is BG because Order Status sits in BF. */
+export const TARP_COLUMN_BC = 54;
+export const TARP_COLUMN_TRUCK_3 = 58;
 /** Load Ledger columns AM through AQ. Misc receipts live here. */
 const MISC_START = 38;
 const MISC_END = 42;
@@ -90,6 +95,8 @@ export type LedgerLoadRow = {
   miscCents: number;
   /** Toll expense for this load, in cents. Zero when that cell is blank. */
   tollCents: number;
+  /** Load Ledger Tarps column, in cents. Zero when the cell is blank. */
+  tarpCents: number;
   status: string | null;
   /** order: the delivery column. fallback: Destination Datetime. */
   deliverySource: "column" | "fallback" | null;
@@ -109,6 +116,11 @@ export type ParsedLoadLedger = {
   /** True when Alloc Deadhead or column AV was on the header row. */
   allocatedDeadheadColumn: boolean;
 };
+
+function positiveCents(raw: string): number {
+  const cents = sheetAmountToCents(raw);
+  return cents != null && cents > 0 ? cents : 0;
+}
 
 function cell(row: string[], index: number): string {
   if (index < 0) return "";
@@ -154,9 +166,20 @@ function neighbor(grid: SheetGrid, label: string): string | null {
   return null;
 }
 
+/**
+ * Load Ledger Tarps is column BC, or column BG on truck 3.
+ * Confirmed by Legacy Accounting from the 10/28 sheet exports.
+ * Read that cell only when its header says Tarps. Any other header reads 0.
+ */
+export function tarpColumnIndex(header: string[], unitNumber?: string | null): number {
+  const unit = (unitNumber ?? "").replace(/\D/g, "").replace(/^0+/, "");
+  const index = unit === "3" ? TARP_COLUMN_TRUCK_3 : TARP_COLUMN_BC;
+  return TARP.includes(normalizeHeader(header[index] ?? "")) ? index : -1;
+}
+
 export function parseLoadLedger(
   grid: SheetGrid,
-  opts?: { keepUndated?: boolean; deliveryFallback?: string[] },
+  opts?: { keepUndated?: boolean; deliveryFallback?: string[]; unitNumber?: string | null },
 ): ParsedLoadLedger {
   const headerIndex = findHeaderRow(grid, [DELIVERY, LOAD_ID, RATE]);
   if (headerIndex < 0) {
@@ -194,6 +217,7 @@ export function parseLoadLedger(
   const allocatedCol = allocatedColumnIndex(header);
   const deadheadAllocCol = allocatedDeadheadColumnIndex(header);
   const tollCol = tollExpenseColumnIndex(header);
+  const tarpCol = tarpColumnIndex(header, opts?.unitNumber);
   const statusCols = columnIndexes(header, STATUS);
   const rows: LedgerLoadRow[] = [];
   for (const row of grid.slice(headerIndex + 1)) {
@@ -202,8 +226,8 @@ export function parseLoadLedger(
     const primaryDay = sheetDay(cell(row, dateCol));
     const fallbackDay = primaryDay ? null : sheetDay(cell(row, fallbackCol));
     const tonu = rowIsTonu(row, statusCols);
-    let deliveryDay = primaryDay || fallbackDay || "";
-    if (!deliveryDay && tonu) deliveryDay = firstDay(row);
+    // A TONU delivery is the delivery column only. Column A on the live row is the pickup.
+    const deliveryDay = tonu ? primaryDay || "" : primaryDay || fallbackDay || "";
     if (!deliveryDay && !opts?.keepUndated && !tonu) continue;
     rows.push({
       loadId,
@@ -226,11 +250,12 @@ export function parseLoadLedger(
       allocatedDeadheadHundredths: deadheadAllocCol >= 0 ? milesToHundredths(cell(row, deadheadAllocCol)) : null,
       miscCents: miscColumnsCents(row),
       tollCents: tollCol >= 0 ? (sheetAmountToCents(cell(row, tollCol)) ?? 0) : 0,
+      tarpCents: tarpCol >= 0 ? positiveCents(cell(row, tarpCol)) : 0,
       status: tonu ? "TONU" : textOrNull(statusCols.map((index) => cell(row, index)).join(" ")),
-      deliverySource: primaryDay ? "column" : fallbackDay ? "fallback" : deliveryDay ? "fallback" : null,
+      deliverySource: primaryDay ? "column" : !tonu && fallbackDay ? "fallback" : null,
     });
   }
-  rows.push(...recoverTonuRows(grid, rows));
+  rows.push(...recoverTonuRows(grid, rows, dateCol));
   return {
     headerFound: true,
     rows,
@@ -301,14 +326,6 @@ function loadIdInRow(row: readonly string[]): string {
   return "";
 }
 
-function firstDay(row: readonly string[]): string {
-  for (const value of row) {
-    const day = sheetDay(value ?? "");
-    if (day) return day;
-  }
-  return "";
-}
-
 function dollarAmounts(row: readonly string[]): number[] {
   const found: number[] = [];
   for (const value of row) {
@@ -330,10 +347,15 @@ function tonuRateCents(row: readonly string[], rateCell: string): number | null 
 }
 
 /**
- * A TONU can sit above the detected header (Load Ledger row 11) or in columns
- * the header names do not cover. Keep it when the row says TONU and has a load id.
+ * A TONU can sit above the detected header (Load Ledger row 11).
+ * Keep it when the row says TONU and has a load id.
+ * The delivery date is that header's delivery column. A blank cell stays blank.
  */
-function recoverTonuRows(grid: SheetGrid, existing: readonly LedgerLoadRow[]): LedgerLoadRow[] {
+function recoverTonuRows(
+  grid: SheetGrid,
+  existing: readonly LedgerLoadRow[],
+  dateCol: number,
+): LedgerLoadRow[] {
   const seen = new Set(existing.map((row) => canonicalLoadId(row.loadId)));
   const extra: LedgerLoadRow[] = [];
   for (const row of grid) {
@@ -341,9 +363,10 @@ function recoverTonuRows(grid: SheetGrid, existing: readonly LedgerLoadRow[]): L
     const loadId = loadIdInRow(row);
     if (!loadId || seen.has(loadId)) continue;
     seen.add(loadId);
+    const deliveryDay = dateCol >= 0 ? sheetDay(cell(row, dateCol)) || "" : "";
     extra.push({
       loadId,
-      deliveryDay: firstDay(row),
+      deliveryDay,
       pickupDay: null,
       rateCents: tonuRateCents(row, ""),
       loadedMilesHundredths: null,
@@ -362,8 +385,9 @@ function recoverTonuRows(grid: SheetGrid, existing: readonly LedgerLoadRow[]): L
       allocatedDeadheadHundredths: null,
       miscCents: 0,
       tollCents: 0,
+      tarpCents: 0,
       status: "TONU",
-      deliverySource: firstDay(row) ? "fallback" : null,
+      deliverySource: deliveryDay ? "column" : null,
     });
   }
   return extra;

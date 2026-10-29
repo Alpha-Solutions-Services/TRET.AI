@@ -18,6 +18,7 @@ import {
   sheetDay,
 } from "@/lib/sheets/ins-outs";
 import { inWeek } from "@/lib/sheets/cell";
+import { dollarStringToCents } from "@/lib/money/cents";
 import { InsOutsClient } from "@/components/ins-outs/ins-outs-client";
 import { loadTruckWeekInsOuts } from "@/lib/sheets/read";
 
@@ -47,6 +48,18 @@ describe("sheet Ins and Outs", () => {
     expect(sheetAmountToCents("$2,750.00")).toBe(275_000);
     expect(sheetAmountToCents("")).toBeNull();
     expect(sheetAmountToCents("$0.00")).toBe(0);
+    expect(sheetAmountToCents("$")).toBe(0);
+    expect(sheetAmountToCents("$-")).toBe(0);
+    expect(sheetAmountToCents("$ -")).toBe(0);
+    expect(sheetAmountToCents("-")).toBeNull();
+    expect(sheetAmountToCents("188.125")).toBe(18_813);
+    expect(sheetAmountToCents("133.875")).toBe(13_388);
+    expect(sheetAmountToCents("188.124")).toBe(18_812);
+    expect(sheetAmountToCents("0")).toBe(0);
+    expect(sheetAmountToCents("21474836.47")).toBe(2_147_483_647);
+    expect(sheetAmountToCents("21474836.48")).toBeNull();
+    expect(dollarStringToCents("188.125", { roundHalfUp: true })).toBe(18_813);
+    expect(() => dollarStringToCents("188.125")).toThrow(/2 decimal places/);
   });
 
   it("sums Rate by delivery date and management expenses by date", () => {
@@ -174,6 +187,10 @@ describe("sheet Ins and Outs", () => {
     );
     expect(html).toContain("Legacy Inc income and outgoing");
     expect(html).toContain("Showing 2026-10-05 through 2026-10-11");
+    expect(html).toContain('href="/ins-outs?week=2026-09-28"');
+    expect(html).toContain('href="/ins-outs?week=2026-10-12"');
+    expect(html).toContain('action="/ins-outs"');
+    expect(html).toContain('name="week"');
     expect(html).toContain("Spare Expense 5");
     expect(html).toContain("Vektor Fee");
     expect(html).toContain("John Reed");
@@ -556,5 +573,26 @@ describe("sheet dates", () => {
       "unit 3 Load Ledger",
     );
     expect(pickLoadLedgerTitle(titles, "13")).toBeNull();
+  });
+});
+
+describe("week report gallons", () => {
+  it("ignores gallons on a report whose revenue is another week", () => {
+    const row = buildTruckWeekInsOuts({
+      unitNumber: "8",
+      truckName: "Truck 8",
+      weekStart: "2026-10-12",
+      weekEnd: "2026-10-18",
+      loadLedger: [
+        ["Delivery Date", "Load ID", "Rate"],
+        ["10/13/2026", "TBH--1", "$100.00"],
+      ],
+      mgmtExpenses: null,
+      weeklyExpenses: [["Week Start Date", "Driver Compensation"], ["10/12/2026", "$0.00"]],
+      fuelLog: [["Date", "Gallons", "Item"], ["10/13/2026", "10", "ULSD"]],
+      weekReport: [["Total Revenue", "$9,999.00"], ["Diesel Gallons", "99"]],
+      note: null,
+    });
+    expect(row.reportDieselGallonsMilli).toBe(10_000);
   });
 });

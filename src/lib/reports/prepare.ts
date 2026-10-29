@@ -71,7 +71,10 @@ export function prepareWeeklyReport(source: WeeklyReportSource): PreparedReport 
       ? `Locked${source.closedAt ? ` ${source.closedAt.slice(0, 10)}` : ""}`
       : "Computed, not locked",
     units,
-    fleetRows: fleetRows(source.fleet, source.units.reduce((sum, unit) => sum + miscOwnerCents(unit), 0)),
+    fleetRows: fleetRows(
+      source.fleet,
+      source.units.reduce((sum, unit) => sum + miscOwnerCents(unit), 0),
+    ),
     fleetNote: FLEET_NOTE,
     deliveryLabel: reportDeliveryLabel(source.weekStart),
     fleetChart: buildFleetChart(source, perTruck),
@@ -377,11 +380,13 @@ function presentEarning(line: StatementLine): PreparedPair {
 }
 
 function fleetRows(fleet: FleetStatement, miscCents: number): PreparedPair[] {
-  return [
+  const rows: PreparedPair[] = [
     { label: "Units", value: String(fleet.unitCount) },
     { label: "Loads", value: String(fleet.loadCount) },
     { label: "Gross", value: formatStatementDollars(fleet.grossCents) },
     { label: "Driver pay", value: formatStatementDollars(fleet.driverPayCents) },
+  ];
+  rows.push(
     { label: "Management fee", value: formatStatementDollars(fleet.managementFeeCents) },
     { label: "Tolson lease fee", value: formatStatementDollars(fleet.tolsonPayableCents) },
     { label: "Legacy fee", value: formatStatementDollars(fleet.legacyRetainedCents) },
@@ -393,7 +398,8 @@ function fleetRows(fleet: FleetStatement, miscCents: number): PreparedPair[] {
     { label: "Fixed expenses (owner)", value: formatStatementDollars(fleet.fixedOwnerCents) },
     { label: "Fixed expenses (management, not in net)", value: formatStatementDollars(fleet.fixedManagementCents) },
     { label: "Net to owner", value: formatStatementDollars(fleet.netCents) },
-  ];
+  );
+  return rows;
 }
 
 function requireLine(unit: UnitStatement, code: string, amount: number): void {

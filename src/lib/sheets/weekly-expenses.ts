@@ -3,6 +3,7 @@ import {
   columnIndexes,
   findHeaderRow,
   inWeek,
+  isEmptyCell,
   sheetAmountToCents,
   sheetDay,
 } from "@/lib/sheets/cell";
@@ -21,14 +22,14 @@ type ExpenseCategoryTotal = {
  */
 export const WEEKLY_EXPENSE_LINES = [
   { label: "Driver compensation", names: ["driver compensation"] },
-  { label: "Management fee", names: ["management fee"] },
+  { label: "Management fee", names: ["management fee", "total fees (legacy+tolson)", "total fees (legacy + tolson)"] },
   { label: "Truck payments", names: ["truck pymts", "truck payments"] },
   { label: "Trailer payments", names: ["trailer pymts", "trailer payments"] },
   { label: "Dispatch fee", names: ["dispatch fee"] },
   { label: "Factoring fee", names: ["factoring fee"] },
   { label: "Fuel", names: ["fuel"] },
   { label: "Insurance", names: ["insurance"] },
-  { label: "Maintenance Escrow Weekly", names: ["maintenance escrow weekly", "weekly escrow", "escrow balance"] },
+  { label: "Maintenance Escrow Weekly", names: ["maintenance escrow weekly", "weekly escrow"] },
   { label: "ELD fee", names: ["eld fee"] },
   { label: "Yard fee", names: ["yard fee", "yard parking"] },
   { label: "GPS tracker", names: ["gps tracker"] },
@@ -36,6 +37,7 @@ export const WEEKLY_EXPENSE_LINES = [
   { label: "Toll fees", names: ["toll fees", "toll charges"] },
   { label: "Permit fees", names: ["permit fees", "permits"] },
   { label: "Misc", names: ["misc", "miscellaneous", "receipts", "receipt"] },
+  { label: "Other (manual)", names: ["other (manual)", "other manual"] },
 ] as const;
 
 export const WEEKLY_EXPENSE_LABELS = WEEKLY_EXPENSE_LINES.map((line) => line.label);
@@ -60,6 +62,16 @@ export type WeeklyExpenseOuts = {
   categories: ExpenseCategoryTotal[];
   headerFound: boolean;
   rowFound: boolean;
+  /** Column AN. Null when that header is absent. Not added on top of column H. */
+  legacyFeeCents: number | null;
+  /** Column AO. Null when that header is absent. Not added on top of column H. */
+  tolsonFeeCents: number | null;
+  /** Filled cells that could not be read, or that are over the cap. Net leaves those lines out until they are fixed. */
+  warnings: string[];
+  /** Labels of those filled cells. Close and the PDF stay blocked while this list is not empty. */
+  unreadable: string[];
+  /** Column H, including a real zero. Null when that header is absent. */
+  managementFeeCents: number | null;
 };
 
 export function weeklyExpensesCandidates(unitNumber: string): string[] {
@@ -77,11 +89,40 @@ export function weeklyExpensesCandidates(unitNumber: string): string[] {
   ];
 }
 
-function lineCents(header: string[], row: string[], names: readonly string[]): number {
-  return columnIndexes(header, names).reduce(
-    (sum, index) => sum + (sheetAmountToCents(row[index] ?? "") ?? 0),
-    0,
-  );
+function lineRead(
+  header: string[],
+  row: string[],
+  label: string,
+  names: readonly string[],
+): { cents: number; warnings: string[] } {
+  const warnings: string[] = [];
+  let cents = 0;
+  for (const index of columnIndexes(header, names)) {
+    const raw = row[index] ?? "";
+    if (isEmptyCell(raw)) continue;
+    const value = sheetAmountToCents(raw);
+    if (value == null) {
+      warnings.push(
+        `Weekly Expenses ${label} could not be read or is over the cap. Net leaves that line out until it is fixed.`,
+      );
+      continue;
+    }
+    cents += value;
+  }
+  return { cents, warnings };
+}
+
+/** Null when the header is missing or a filled cell could not be read. Zero is a real cell. */
+function optionalLineCents(
+  header: string[],
+  row: string[],
+  label: string,
+  names: readonly string[],
+): { cents: number | null; warnings: string[] } {
+  if (columnIndexes(header, names).length === 0) return { cents: null, warnings: [] };
+  const read = lineRead(header, row, label, names);
+  if (read.warnings.length > 0) return { cents: null, warnings: read.warnings };
+  return { cents: read.cents, warnings: [] };
 }
 
 /** The Weekly Expenses row for this Monday, or another row dated inside the week. */
@@ -111,26 +152,54 @@ export function outsFromWeeklyExpenses(
 ): WeeklyExpenseOuts {
   const headerIndex = findHeaderRow(grid, [["week start date", "date"], ["driver compensation"]]);
   if (headerIndex < 0) {
-    return { outsCents: 0, categories: [], headerFound: false, rowFound: false };
+    return { outsCents: 0, categories: [], headerFound: false, rowFound: false, legacyFeeCents: null, tolsonFeeCents: null, warnings: [], unreadable: [], managementFeeCents: null };
   }
   const found = findWeeklyExpenseRow(grid, weekStart, weekEnd);
   if (!found) {
-    return { outsCents: 0, categories: [], headerFound: true, rowFound: false };
+    return { outsCents: 0, categories: [], headerFound: true, rowFound: false, legacyFeeCents: null, tolsonFeeCents: null, warnings: [], unreadable: [], managementFeeCents: null };
   }
   const categories: ExpenseCategoryTotal[] = [];
+  const warnings: string[] = [];
+  const unreadable: string[] = [];
   let outsCents = 0;
   for (const line of WEEKLY_EXPENSE_LINES) {
-    const cents = lineCents(found.header, found.row, line.names);
-    if (cents === 0) continue;
-    categories.push({ category: line.label, cents });
-    outsCents += cents;
+    const read = lineRead(found.header, found.row, line.label, line.names);
+    warnings.push(...read.warnings);
+    if (read.warnings.length > 0) unreadable.push(line.label);
+    if (read.cents === 0) continue;
+    categories.push({ category: line.label, cents: read.cents });
+    outsCents += read.cents;
   }
   const receipts = receiptRows(grid, weekStart, weekEnd, found.row);
   for (const line of receipts) {
     categories.push(line);
     outsCents += line.cents;
   }
-  return { outsCents, categories, headerFound: true, rowFound: true };
+  const legacy = optionalLineCents(found.header, found.row, "Legacy Fee", ["legacy fee"]);
+  const tolson = optionalLineCents(found.header, found.row, "Tolson Fee", ["tolson fee"]);
+  warnings.push(...legacy.warnings, ...tolson.warnings);
+  if (legacy.warnings.length > 0) unreadable.push("Legacy Fee");
+  if (tolson.warnings.length > 0) unreadable.push("Tolson Fee");
+  const management = optionalLineCents(found.header, found.row, "Management fee", [
+    "management fee",
+    "total fees (legacy+tolson)",
+    "total fees (legacy + tolson)",
+  ]);
+  for (const warning of management.warnings) {
+    if (!warnings.includes(warning)) warnings.push(warning);
+  }
+  if (management.warnings.length > 0 && !unreadable.includes("Management fee")) unreadable.push("Management fee");
+  return {
+    outsCents,
+    categories,
+    headerFound: true,
+    rowFound: true,
+    legacyFeeCents: legacy.cents,
+    tolsonFeeCents: tolson.cents,
+    warnings,
+    unreadable,
+    managementFeeCents: management.cents,
+  };
 }
 
 /** Extra Misc or receipt rows under the weekly summary. The summary row itself is not counted twice. */

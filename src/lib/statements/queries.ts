@@ -2,6 +2,8 @@ import { compareUnitNumbers } from "@/lib/fees/two-lines";
 import { SHEET_FEE_DIFFERS } from "@/lib/reports/owner-week";
 import { weekBoundsForDate, type FeeRuleKind, type TruckClass } from "@/lib/fee-engine";
 import { canonicalLoadId } from "@/lib/loads/load-id";
+import { readTarpCentsPerLoad } from "@/lib/loads/tarp-rate";
+import { resolveTarpCents } from "@/lib/loads/tarps";
 import { loadActiveTruckInsOuts } from "@/lib/sheets/load-week";
 import { statementMiscCents } from "@/lib/sheets/weekly-expenses";
 import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
@@ -11,7 +13,7 @@ import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { buildWeekStatements, lockPayload } from "./engine";
-import { overlaySheetStatements } from "./sheet-week";
+import { overlaySheetStatements, tonuReportBlockers, unreadExpenseBlockers } from "./sheet-week";
 import { milesValueToHundredths } from "./miles";
 import type {
   CloseImportRun,
@@ -161,29 +163,13 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
     loadStatementTrucks(supabase),
     supabase.from("fee_contracts").select("id, truck_id, effective_from, effective_to"),
     supabase.from("fee_rules").select("contract_id, kind, rate_bp, base_pct_bp"),
-    Promise.all([
-      supabase
-        .from("loads")
-        .select(
-          "id, load_id, truck_id, truck_unit_number, delivery_date, week_start, rate_cents, loaded_distance_mi, deadhead_miles",
-        )
-        .eq("week_start", weekStart),
-      supabase
-        .from("loads")
-        .select(
-          "id, load_id, truck_id, truck_unit_number, delivery_date, week_start, rate_cents, loaded_distance_mi, deadhead_miles",
-        )
-        .gte("delivery_date", bounds.start)
-        .lte("delivery_date", bounds.end),
-    ]).then(([byWeek, byDelivery]) => {
-      if (byWeek.error) return byWeek;
-      if (byDelivery.error) return byDelivery;
-      const merged = new Map<string, NonNullable<typeof byWeek.data>[number]>();
-      for (const row of [...(byWeek.data ?? []), ...(byDelivery.data ?? [])]) {
-        merged.set(row.id, row);
-      }
-      return { data: [...merged.values()], error: null };
-    }),
+    supabase
+      .from("loads")
+      .select(
+        "id, load_id, truck_id, truck_unit_number, delivery_date, week_start, rate_cents, loaded_distance_mi, deadhead_miles",
+      )
+      .gte("delivery_date", bounds.start)
+      .lte("delivery_date", bounds.end),
     supabase
       .from("fuel_transactions")
       .select("unit_number, week_start, amount_cents")
@@ -197,7 +183,8 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
       .select("id, truck_id, kind, weekly_amount_cents, charged_to, effective_from, effective_to"),
     supabase
       .from("truck_fixed_expense_overrides")
-      .select("id, truck_id, kind, week_start, amount_cents, charged_to"),
+      .select("id, truck_id, kind, week_start, amount_cents, charged_to")
+      .eq("week_start", weekStart),
     supabase
       .from("import_runs")
       .select("kind, status, range_from, range_to, rows_fetched, finished_at")
@@ -245,20 +232,40 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
 
   const contracts = groupContracts(contractsRes.data ?? [], rulesRes.data ?? []);
   const trucks = (trucksRes.data ?? []).map(mapStatementTruck);
-  const sheets = await loadActiveTruckInsOuts(bounds.start, bounds.end).catch(() => ({
+  const sheets = await loadActiveTruckInsOuts(bounds.start, bounds.end).catch((err: unknown) => ({
     rows: [],
-    error: "Sheets were not read.",
+    error: null as string | null,
+    confirmationError: err instanceof Error ? err.message : "TONU confirmations could not be loaded.",
   }));
-  const baseLoads = (loadsRes.error ? [] : (loadsRes.data ?? [])).map((load) => ({
-    id: load.id,
-    truckId: load.truck_id,
-    unitNumber: load.truck_unit_number,
-    deliveryDate: load.delivery_date,
-    storedWeekStart: load.week_start,
-    grossCents: load.rate_cents,
-    loadedMilesHundredths: milesValueToHundredths(load.loaded_distance_mi),
-    deadheadMilesHundredths: milesValueToHundredths(load.deadhead_miles),
-  }));
+  const tarpRate = await readTarpCentsPerLoad();
+  const storedTarps = await loadStoredTarps(supabase, bounds.start);
+  const sheetTarps = new Map<string, number>();
+  for (const row of sheets.rows) {
+    for (const load of row.weekLoads ?? []) {
+      if (load.status !== "Delivered") continue;
+      sheetTarps.set(canonicalLoadId(load.loadId), load.tarpCents ?? 0);
+    }
+  }
+  const baseLoads = (loadsRes.error ? [] : (loadsRes.data ?? [])).map((load) => {
+    const id = canonicalLoadId(load.load_id ?? "");
+    const stored = storedTarps.get(id);
+    return {
+      id: load.id,
+      truckId: load.truck_id,
+      unitNumber: load.truck_unit_number,
+      deliveryDate: load.delivery_date,
+      storedWeekStart: load.week_start,
+      grossCents: load.rate_cents,
+      loadedMilesHundredths: milesValueToHundredths(load.loaded_distance_mi),
+      deadheadMilesHundredths: milesValueToHundredths(load.deadhead_miles),
+      tarpCents: resolveTarpCents({
+        sheetCents: sheetTarps.has(id) ? (sheetTarps.get(id) ?? 0) : null,
+        storedCents: stored?.cents ?? null,
+        rateCents: tarpRate,
+        storedTarped: stored?.tarped ?? false,
+      }),
+    };
+  });
   const seenLoads = new Set(
     (loadsRes.error ? [] : (loadsRes.data ?? [])).map(
       (load) => `${unitNumberFromRaw(load.truck_unit_number ?? "")}:${canonicalLoadId(load.load_id ?? "")}`,
@@ -281,6 +288,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
         grossCents: load.rateCents,
         loadedMilesHundredths: load.loadedMilesHundredths ?? 0,
         deadheadMilesHundredths: load.deadheadMilesHundredths ?? 0,
+        tarpCents: sheetTarps.get(canonicalLoadId(load.loadId)) ?? 0,
       });
     }
   }
@@ -340,6 +348,14 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
     live = overlaySheetStatements(buildWeekStatements(input), sheets.rows);
   } catch (err) {
     return failed(bounds, err instanceof Error ? err.message : "Could not compute this week.");
+  }
+  live.blockers.push(...unreadExpenseBlockers(sheets.rows), ...tonuReportBlockers(sheets.rows));
+  if (sheets.confirmationError) {
+    live.blockers.push({
+      rule: "tonu_confirmations_unread",
+      message: sheets.confirmationError,
+      ref: null,
+    });
   }
   live.blockers.push(...schemaNotes);
   live.closeAllowed = live.blockers.length === 0;
@@ -477,6 +493,25 @@ function failed(
     closeAllowed: false,
     pending: [],
   };
+}
+
+async function loadStoredTarps(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  weekStart: string,
+): Promise<Map<string, { cents: number; tarped: boolean }>> {
+  const map = new Map<string, { cents: number; tarped: boolean }>();
+  const bounds = weekBoundsForDate(weekStart);
+  const { data, error } = await supabase
+    .from("loads")
+    .select("load_id, tarped, tarp_cents")
+    .gte("delivery_date", bounds.start)
+    .lte("delivery_date", bounds.end);
+  if (error || !data) return map;
+  for (const row of data) {
+    if (!row.load_id) continue;
+    map.set(canonicalLoadId(row.load_id), { cents: row.tarp_cents ?? 0, tarped: row.tarped === true });
+  }
+  return map;
 }
 
 function pageWarnings(

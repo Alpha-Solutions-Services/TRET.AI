@@ -1,7 +1,7 @@
 import { createSign } from "node:crypto";
 import { parseCsv } from "@/lib/fuel-tolls/csv";
 import { readEnv } from "@/lib/env";
-import type { TruckClass } from "@/lib/fee-engine";
+import { weekBoundsForDate, type TruckClass } from "@/lib/fee-engine";
 import type { FeeRatePair } from "@/lib/fees/two-lines";
 import {
   buildTruckWeekInsOuts,
@@ -50,15 +50,21 @@ type CachedTabs = {
 const sheetCache = new Map<string, CachedTabs>();
 const sheetInflight = new Map<string, Promise<TabGrids>>();
 
-function freshCache(spreadsheetId: string): TabGrids | null {
-  const hit = sheetCache.get(spreadsheetId);
+/** Sheet reads are cached per spreadsheet and week so one week cannot be served as another. */
+export function sheetCacheKey(spreadsheetId: string, weekStart: string): string {
+  const week = weekStart.trim() || "unscoped";
+  return `${week}:${spreadsheetId}`;
+}
+
+function freshCache(spreadsheetId: string, weekStart: string): TabGrids | null {
+  const hit = sheetCache.get(sheetCacheKey(spreadsheetId, weekStart));
   if (!hit) return null;
   if (Date.now() - hit.at > SHEET_CACHE_MS) return null;
   return hit.tabs;
 }
 
-function staleCache(spreadsheetId: string, note: string): TabGrids | null {
-  const hit = sheetCache.get(spreadsheetId);
+function staleCache(spreadsheetId: string, weekStart: string, note: string): TabGrids | null {
+  const hit = sheetCache.get(sheetCacheKey(spreadsheetId, weekStart));
   if (!hit) return null;
   const prefix = "Showing the last good read. Google Sheets was busy.";
   return { ...hit.tabs, note: hit.tabs.note ? `${prefix} ${hit.tabs.note}` : `${prefix} ${note}` };
@@ -77,16 +83,17 @@ function tabsHaveCells(tabs: TabGrids): boolean {
   );
 }
 
-function storeCache(spreadsheetId: string, tabs: TabGrids): void {
+function storeCache(spreadsheetId: string, weekStart: string, tabs: TabGrids): void {
   if (!tabsHaveCells(tabs)) return;
-  sheetCache.set(spreadsheetId, { at: Date.now(), tabs });
+  sheetCache.set(sheetCacheKey(spreadsheetId, weekStart), { at: Date.now(), tabs });
 }
 
 /** Retry a Google 429 or 503. Truck sheets have hit quota. */
 async function fetchSheet(fetchImpl: FetchLike, url: string | URL, init?: RequestInit): Promise<Response> {
+  const request: RequestInit = { ...init, cache: "no-store" };
   let last: Response | null = null;
   for (let attempt = 0; attempt <= SHEET_BACKOFF_MS.length; attempt += 1) {
-    last = await fetchImpl(url, init);
+    last = await fetchImpl(url, request);
     if (last.status !== 429 && last.status !== 503) return last;
     const wait = SHEET_BACKOFF_MS[attempt];
     if (wait == null) return last;
@@ -202,26 +209,28 @@ async function readWithToken(
   apiKey: string,
   fetchImpl: FetchLike,
   useCache = true,
+  weekStart = "",
 ): Promise<TabGrids> {
+  const key = sheetCacheKey(spreadsheetId, weekStart);
   if (useCache) {
-    const cached = freshCache(spreadsheetId);
+    const cached = freshCache(spreadsheetId, weekStart);
     if (cached && tabsHaveCells(cached)) return cached;
-    const pending = sheetInflight.get(spreadsheetId);
+    const pending = sheetInflight.get(key);
     if (pending) return pending;
   }
   const run = (async () => {
-    const first = await readTabsOnce(spreadsheetId, unitNumber, accessToken, apiKey, fetchImpl);
+    const first = await readTabsOnce(spreadsheetId, unitNumber, accessToken, apiKey, fetchImpl, weekStart);
     const tabs = tabsHaveCells(first)
       ? first
-      : await readTabsOnce(spreadsheetId, unitNumber, accessToken, apiKey, fetchImpl);
-    if (useCache) storeCache(spreadsheetId, tabs);
+      : await readTabsOnce(spreadsheetId, unitNumber, accessToken, apiKey, fetchImpl, weekStart);
+    if (useCache) storeCache(spreadsheetId, weekStart, tabs);
     return tabs;
   })();
   if (!useCache) return run;
   const shared = run.finally(() => {
-    sheetInflight.delete(spreadsheetId);
+    sheetInflight.delete(key);
   });
-  sheetInflight.set(spreadsheetId, shared);
+  sheetInflight.set(key, shared);
   return shared;
 }
 
@@ -231,6 +240,7 @@ async function readTabsOnce(
   accessToken: string,
   apiKey: string,
   fetchImpl: FetchLike,
+  weekStart: string,
 ): Promise<TabGrids> {
   const metaUrl = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`);
   metaUrl.searchParams.set("fields", "sheets.properties.title");
@@ -240,7 +250,7 @@ async function readTabsOnce(
   });
   if (!metaResponse.ok) {
     const note = await googleErrorNote(metaResponse, "This Google Sheet is not readable");
-    return staleCache(spreadsheetId, note) ?? {
+    return staleCache(spreadsheetId, weekStart, note) ?? {
       loadLedger: null,
       mgmtExpenses: null,
       weeklyExpenses: null,
@@ -257,7 +267,7 @@ async function readTabsOnce(
   const expenseTitle = pickMgmtExpensesTitle(titles);
   const weeklyTitle = pickTitled(titles, /weekly expenses/i, unitNumber);
   const fuelTitle = pickTitled(titles, /fuel log/i, unitNumber);
-  const weekTitle = pickTitled(titles, /week report/i, unitNumber);
+  const weekTitle = pickWeekReportTitle(titles, unitNumber, weekStart);
   const wanted = [ledgerTitle, expenseTitle, weeklyTitle, fuelTitle, weekTitle].filter((title): title is string => Boolean(title));
   if (wanted.length === 0) {
     return {
@@ -281,7 +291,7 @@ async function readTabsOnce(
   });
   if (!batchResponse.ok) {
     const note = await googleErrorNote(batchResponse, "This Google Sheet is not readable");
-    return staleCache(spreadsheetId, note) ?? {
+    return staleCache(spreadsheetId, weekStart, note) ?? {
       loadLedger: null,
       mgmtExpenses: null,
       weeklyExpenses: null,
@@ -386,6 +396,7 @@ export async function loadTruckWeekInsOuts(
   opts?: {
     fetchImpl?: FetchLike;
     env?: Record<string, string | undefined>;
+    confirmedCentsByLoadId?: Readonly<Record<string, number>>;
   },
 ): Promise<TruckWeekInsOuts[]> {
   const fetchImpl = opts?.fetchImpl ?? fetch;
@@ -461,6 +472,7 @@ export async function loadTruckWeekInsOuts(
                 apiKey,
                 fetchImpl,
                 fetchImpl === fetch,
+                weekStart,
               )
             : await readPublicTabs(spreadsheetId, truck.unitNumber, fetchImpl, env);
         return buildTruckWeekInsOuts({
@@ -476,6 +488,7 @@ export async function loadTruckWeekInsOuts(
           fuelLog: tabs.fuelLog ?? null,
           weekReport: tabs.weekReport ?? null,
           note: tabs.note,
+          confirmedCentsByLoadId: opts?.confirmedCentsByLoadId,
         });
       } catch (err) {
         const failure = authFailureFromError(err);
@@ -514,6 +527,34 @@ export type TruckWorkbook = {
   note: string | null;
 };
 
+function weekDateStamps(weekStart: string): string[] {
+  if (!weekStart.trim()) return [];
+  try {
+    const bounds = weekBoundsForDate(weekStart);
+    return [bounds.start, bounds.end].flatMap((iso) => {
+      const [year, month, day] = iso.split("-");
+      if (!year || !month || !day) return [iso];
+      const shortYear = year.slice(2);
+      return [iso, `${Number(month)}/${Number(day)}/${year}`, `${month}/${day}/${year}`, `${Number(month)}/${Number(day)}/${shortYear}`];
+    });
+  } catch {
+    return [];
+  }
+}
+
+function titleMentionsWeek(title: string, weekStart: string): boolean {
+  const lower = title.toLowerCase();
+  return weekDateStamps(weekStart).some((stamp) => lower.includes(stamp.toLowerCase()));
+}
+
+function pickWeekReportTitle(titles: string[], unitNumber: string, weekStart: string): string | null {
+  const matches = titles.filter((title) => /week report/i.test(title));
+  if (matches.length === 0) return null;
+  const dated = matches.filter((title) => titleMentionsWeek(title, weekStart));
+  if (dated.length === 0) return pickTitled(titles, /week report/i, unitNumber);
+  return pickTitled(dated, /week report/i, unitNumber);
+}
+
 function pickTitled(titles: string[], pattern: RegExp, unitNumber: string | null): string | null {
   const matches = titles.filter((title) => pattern.test(title));
   if (matches.length === 0) return null;
@@ -538,6 +579,7 @@ async function readWorkbookWithToken(
   accessToken: string,
   apiKey: string,
   fetchImpl: FetchLike,
+  weekStart: string,
 ): Promise<TruckWorkbook> {
   const metaUrl = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`);
   metaUrl.searchParams.set("fields", "sheets.properties.title");
@@ -547,7 +589,7 @@ async function readWorkbookWithToken(
   });
   if (!metaResponse.ok) {
     const note = await googleErrorNote(metaResponse, "This Google Sheet is not readable");
-    const stale = staleCache(spreadsheetId, note);
+    const stale = staleCache(spreadsheetId, weekStart, note);
     return stale ? workbookFromTabs(stale) : emptyWorkbook(note);
   }
   const meta = (await metaResponse.json()) as {
@@ -562,7 +604,7 @@ async function readWorkbookWithToken(
     weeklyExpenses: pickTitled(titles, /weekly expenses/i, unitNumber),
     fuelLog: pickTitled(titles, /fuel log/i, unitNumber),
     fleetDirectory: pickTitled(titles, /fleet directory/i, null),
-    weekReport: pickTitled(titles, /week report/i, unitNumber),
+    weekReport: pickWeekReportTitle(titles, unitNumber, weekStart),
   };
   const wanted = [...new Set(Object.values(named).filter((title): title is string => Boolean(title)))];
   if (wanted.length === 0) {
@@ -580,7 +622,7 @@ async function readWorkbookWithToken(
   });
   if (!batchResponse.ok) {
     const note = await googleErrorNote(batchResponse, "This Google Sheet is not readable");
-    const stale = staleCache(spreadsheetId, note);
+    const stale = staleCache(spreadsheetId, weekStart, note);
     return stale ? workbookFromTabs(stale) : emptyWorkbook(note);
   }
   const batch = (await batchResponse.json()) as { valueRanges?: Array<{ values?: unknown }> };
@@ -600,7 +642,7 @@ async function readWorkbookWithToken(
     weekReport: named.weekReport ? (grids.get(named.weekReport) ?? null) : null,
     note: notes.length ? notes.join(" ") : null,
   };
-  storeCache(spreadsheetId, book);
+  storeCache(spreadsheetId, weekStart, book);
   return book;
 }
 
@@ -675,7 +717,7 @@ async function readPublicWorkbook(
 
 export async function loadTruckWorkbook(
   truck: { unitNumber: string; googleSheetUrl: string | null },
-  opts?: { fetchImpl?: FetchLike; env?: Record<string, string | undefined> },
+  opts?: { fetchImpl?: FetchLike; env?: Record<string, string | undefined>; weekStart?: string },
 ): Promise<TruckWorkbook> {
   const fetchImpl = opts?.fetchImpl ?? fetch;
   const env = opts?.env ?? process.env;
@@ -698,7 +740,14 @@ export async function loadTruckWorkbook(
     return emptyWorkbook(note);
   }
   if (accessToken || apiKey) {
-    return readWorkbookWithToken(spreadsheetId, truck.unitNumber, accessToken, apiKey, fetchImpl);
+    return readWorkbookWithToken(
+      spreadsheetId,
+      truck.unitNumber,
+      accessToken,
+      apiKey,
+      fetchImpl,
+      opts?.weekStart ?? "",
+    );
   }
   return readPublicWorkbook(spreadsheetId, truck.unitNumber, fetchImpl, env);
 }

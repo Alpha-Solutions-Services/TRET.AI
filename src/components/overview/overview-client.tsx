@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { categoryColor } from "@/lib/charts/palette";
 import { KpiCard } from "@/components/motion/kpi-card";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { shiftWeek } from "@/lib/fee-engine";
 import {
   formatGroupedInt,
   formatMilesHundredths,
@@ -24,7 +24,7 @@ import { ConnectionBanner } from "@/components/connection-banner";
 import { rereadSheetsAction } from "@/app/sheets/actions";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { PrepareReportButtons, ReportWeekLabel } from "@/components/reports/report-week";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClassName } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
 import { TruckCardGrid } from "@/components/dashboard/truck-cards";
 
@@ -61,12 +61,6 @@ function formatMpgCount(value: number): string {
   const whole = Math.floor(Math.abs(value) / 100);
   const frac = Math.abs(value) % 100;
   return `${whole}.${String(frac).padStart(2, "0")}`;
-}
-
-function shiftWeek(weekStart: string, delta: number): string {
-  const date = new Date(`${weekStart}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + delta * 7);
-  return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
 }
 
 export function OverviewClient({
@@ -106,8 +100,8 @@ export function OverviewClient({
   );
   const issueStatus = data.openIssueCount == null ? "warn" : data.openIssueCount > 0 ? "danger" : "ok";
 
-  function openWeek(next: string) {
-    router.push(`/?week=${next}`);
+  function weekHref(next: string): string {
+    return `/?week=${encodeURIComponent(next)}`;
   }
 
   return (
@@ -121,6 +115,11 @@ export function OverviewClient({
         </p>
       </div>
 
+      {data.insOutsError ? (
+        <div role="alert">
+          <CopyableError headline="This week could not be loaded." detail={data.insOutsError} />
+        </div>
+      ) : (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           label="Ins"
@@ -196,6 +195,7 @@ export function OverviewClient({
           status={issueStatus}
         />
       </div>
+      )}
 
       <ConnectionBanner feeds={hub} />
       <HubFlow feeds={hub} />
@@ -214,28 +214,27 @@ export function OverviewClient({
       ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
-        <Button variant="vivid" onClick={() => openWeek(shiftWeek(data.weekStart, -1))}>
+        <a href={weekHref(shiftWeek(data.weekStart, -1))} className={buttonClassName("vivid")}>
           Previous week
-        </Button>
-        <label className="text-sm">
-          <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
-          <input
-            type="date"
-            value={data.weekStart}
-            onChange={(event) => {
-              if (!event.target.value) return;
-              try {
-                openWeek(weekBoundsForDate(event.target.value).start);
-              } catch {
-                return;
-              }
-            }}
-            className="h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3"
-          />
-        </label>
-        <Button variant="vividAlt" onClick={() => openWeek(shiftWeek(data.weekStart, 1))}>
+        </a>
+        <form action="/" method="get" className="text-sm">
+          <label>
+            <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
+            <input
+              type="date"
+              name="week"
+              defaultValue={data.weekStart}
+              onChange={(event) => {
+                if (!event.target.value) return;
+                event.currentTarget.form?.requestSubmit();
+              }}
+              className="h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3"
+            />
+          </label>
+        </form>
+        <a href={weekHref(shiftWeek(data.weekStart, 1))} className={buttonClassName("vividAlt")}>
           Next week
-        </Button>
+        </a>
         <div className="space-y-1">
           <ReportWeekLabel weekStart={data.weekStart} />
           <p className="text-sm text-[var(--color-fg-muted)]">
@@ -283,31 +282,34 @@ export function OverviewClient({
       </div>
 
       <SheetsEnvBanner missing={data.sheetEnvMissing} />
-      <FleetCharts rows={data.insOuts} />
-      <TruckCardGrid rows={data.insOuts} />
-
-      {data.mismatchCount != null ? (
-        <Link
-          href={`/sheet-compare?week=${data.weekStart}`}
-          className="pressable material inline-flex rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline"
-        >
-          Sheet vs Vektor: {data.mismatchCount} open rate or missing-load checks
-        </Link>
-      ) : data.mismatchError ? (
-        <div role="status">
-          <CopyableError headline="Sheet comparison could not be loaded." detail={data.mismatchError} />
-        </div>
-      ) : null}
-
-      {data.error ? (
+      {data.error && data.error !== data.insOutsError ? (
         <div role="alert">
           <CopyableError headline="This week could not be loaded." detail={data.error} />
         </div>
       ) : null}
+      {data.insOutsError ? null : (
+        <>
+          <FleetCharts rows={data.insOuts} />
+          <TruckCardGrid rows={data.insOuts} />
 
-      {data.snapshot ? <SnapshotTable snapshot={data.snapshot} /> : null}
-      <InsOutsTable rows={data.insOuts} error={data.insOutsError} weekStart={data.weekStart} />
-      <ManagementSummaryTable summary={cards} />
+          {data.mismatchCount != null ? (
+            <Link
+              href={`/sheet-compare?week=${data.weekStart}`}
+              className="pressable material inline-flex rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline"
+            >
+              Sheet vs Vektor: {data.mismatchCount} open rate or missing-load checks
+            </Link>
+          ) : data.mismatchError ? (
+            <div role="status">
+              <CopyableError headline="Sheet comparison could not be loaded." detail={data.mismatchError} />
+            </div>
+          ) : null}
+
+          {data.snapshot ? <SnapshotTable snapshot={data.snapshot} /> : null}
+          <InsOutsTable rows={data.insOuts} error={data.insOutsError} weekStart={data.weekStart} />
+          <ManagementSummaryTable summary={cards} />
+        </>
+      )}
     </div>
   );
 }

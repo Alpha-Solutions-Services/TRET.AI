@@ -9,11 +9,10 @@ export function loadFixtureManifest(filename: string): VektorManifest {
     _lookups?: unknown;
     _comment?: string;
   };
-  const { _lookups: _l, _comment: _c, ...manifest } = raw as VektorManifest & {
-    _lookups?: unknown;
-    _comment?: string;
-  };
-  return manifest as VektorManifest;
+  const manifest = { ...raw };
+  delete manifest._lookups;
+  delete manifest._comment;
+  return manifest;
 }
 
 export function loadFixtureLookups(filename: string): LookupMaps {

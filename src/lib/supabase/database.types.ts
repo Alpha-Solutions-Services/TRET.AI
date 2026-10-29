@@ -361,6 +361,8 @@ export type Database = {
           source_manifest_ref: string | null;
           pickup_date_kind: string | null;
           delivery_date_kind: string | null;
+          tarped: boolean;
+          tarp_cents: number;
           created_at: string;
           updated_at: string;
         };
@@ -404,6 +406,8 @@ export type Database = {
           source_manifest_ref?: string | null;
           pickup_date_kind?: string | null;
           delivery_date_kind?: string | null;
+          tarped?: boolean;
+          tarp_cents?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -447,6 +451,8 @@ export type Database = {
           source_manifest_ref?: string | null;
           pickup_date_kind?: string | null;
           delivery_date_kind?: string | null;
+          tarped?: boolean;
+          tarp_cents?: number;
           created_at?: string;
           updated_at?: string;
         };

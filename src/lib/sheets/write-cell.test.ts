@@ -28,7 +28,7 @@ describe("sheet cell writes", () => {
   it("refuses a write when the account cannot edit", async () => {
     const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
     const pem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
-    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchImpl = (async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("oauth2.googleapis.com")) {
         return new Response(JSON.stringify({ access_token: "token" }));

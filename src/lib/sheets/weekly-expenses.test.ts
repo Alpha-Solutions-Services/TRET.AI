@@ -9,7 +9,7 @@ const TRUCK_8 = [
   [
     "Week Start Date",
     "Driver Compensation",
-    "Management Fee",
+    "Total Fees (Legacy+Tolson)",
     "Dispatch Fee",
     "Factoring Fee",
     "Fuel",
@@ -98,6 +98,7 @@ describe("weekly expense parsing", () => {
     expect(built.outsCents).toBe(461_177);
     expect(built.netCents).toBe(700_000 - 461_177);
     expect(built.sheetFeeDiffers).toBe(true);
+    expect(built.note).toContain("Sheet fee is $700.00");
     expect(built.categories.find((row) => row.category === "Fuel")?.cents).toBe(45_659);
     expect(built.categories.find((row) => row.category === "Vektor Fee")).toBeUndefined();
   });

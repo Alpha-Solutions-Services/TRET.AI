@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { saveFeeSettingsAction, type FeeSaveRow } from "@/app/fee-settings/actions";
+import { saveFeeSettingsAction, saveTarpRateAction, type FeeSaveRow } from "@/app/fee-settings/actions";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { FEE_CSV_HEADER, feeTotalLabel, parseFeeCsv, type FeeSettingView } from "@/lib/fees/fee-settings";
@@ -13,13 +13,15 @@ type Props = {
   ready: boolean;
   error: string | null;
   migrationMessage: string | null;
+  tarpDollars: string;
 };
 
-export function FeeSettingsClient({ rows, ready, error, migrationMessage }: Props) {
+export function FeeSettingsClient({ rows, ready, error, migrationMessage, tarpDollars }: Props) {
   const { toast } = useToast();
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState(rows);
   const [preview, setPreview] = useState<ReturnType<typeof parseFeeCsv> | null>(null);
+  const [tarp, setTarp] = useState(tarpDollars);
 
   function patch(truckId: string, key: keyof FeeSettingView, value: string) {
     setDraft((current) => current.map((row) => (row.truckId === truckId ? { ...row, [key]: value } : row)));
@@ -52,6 +54,28 @@ export function FeeSettingsClient({ rows, ready, error, migrationMessage }: Prop
 
   return (
     <div className="space-y-6">
+      <form
+        className="flex flex-wrap items-end gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          startTransition(async () => {
+            const result = await saveTarpRateAction(tarp);
+            if (!result.ok) {
+              toast(result.error, "error");
+              return;
+            }
+            toast("Tarps amount saved", "success");
+          });
+        }}
+      >
+        <label className="text-sm">
+          <span className="mb-1 block text-[var(--color-fg-muted)]">Tarps per tarped load</span>
+          <input className={field} value={tarp} onChange={(event) => setTarp(event.target.value)} inputMode="decimal" />
+        </label>
+        <Button type="submit" variant="secondary" disabled={pending}>
+          Save tarps amount
+        </Button>
+      </form>
       <div>
         <h1 className="text-2xl font-semibold">Fee settings</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--color-fg-muted)]">

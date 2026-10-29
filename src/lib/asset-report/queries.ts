@@ -7,6 +7,8 @@ import { manifestRefsByLoad } from "@/lib/asset-report/manifest-refs";
 import { loadTruckWorkbook } from "@/lib/sheets/read";
 import { createClient } from "@/lib/supabase/server";
 import { listTrucks } from "@/lib/trucks/queries";
+import { listConfirmedTonuRates } from "@/lib/documents/store";
+import { ReportBlockedError } from "@/lib/reports/prepare";
 
 export async function buildAssetReportPdf(weekStart: string, unitNumber: string): Promise<Uint8Array> {
   const bounds = weekBoundsForDate(weekStart);
@@ -15,14 +17,23 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
     (row) => row.unit_number === unitNumber || unitKey(row.unit_number) === unitKey(unitNumber),
   );
   if (!truck) throw new Error("That truck was not found.");
-  const book = await loadTruckWorkbook({
-    unitNumber: truck.unit_number,
-    googleSheetUrl: truck.google_sheet_url,
-  });
+  const book = await loadTruckWorkbook(
+    {
+      unitNumber: truck.unit_number,
+      googleSheetUrl: truck.google_sheet_url,
+    },
+    { weekStart: bounds.start },
+  );
   const extras = await loadDbFuelAndTolls(truck.unit_number, bounds.start);
   const imported = (await loadStoredWeekTotals(bounds.start)).find(
     (row) => unitKey(row.unitNumber) === unitKey(truck.unit_number),
   );
+  let confirmedCentsByLoadId: Record<string, number>;
+  try {
+    confirmedCentsByLoadId = await listConfirmedTonuRates();
+  } catch (err) {
+    throw new ReportBlockedError(err instanceof Error ? err.message : "TONU confirmations could not be loaded.");
+  }
   const report = buildAssetReport({
     weekStart: bounds.start,
     weekEnd: bounds.end,
@@ -39,6 +50,7 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
     dbGallonsMilli: extras.gallonsMilli,
     dbTollCents: extras.tollCents,
     manifestRefs: await loadManifestRefs(truck.unit_number),
+    confirmedCentsByLoadId,
     importTotals: imported
       ? {
           fuelCostCents: imported.fuelCostCents,
@@ -50,6 +62,11 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
         }
       : null,
   });
+  if (report.exportBlockers.length > 0) {
+    throw new ReportBlockedError(
+      report.exportBlockers.map((message) => `Truck ${truck.unit_number}: ${message}`).join(" "),
+    );
+  }
   return renderAssetReportPdf(report);
 }
 

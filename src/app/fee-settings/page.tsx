@@ -4,17 +4,24 @@ import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FEE_SETTINGS_MIGRATION } from "@/lib/fees/fee-settings";
 import { loadFeeSettings } from "@/lib/fees/load";
+import { readTarpCentsPerLoad } from "@/lib/loads/tarp-rate";
+import { centsToDollarString } from "@/lib/money/cents";
 
 export const dynamic = "force-dynamic";
 
+async function tarpDollars(): Promise<string> {
+  return centsToDollarString(await readTarpCentsPerLoad());
+}
+
 async function Content() {
-  const loaded = await loadFeeSettings();
+  const [loaded, tarp] = await Promise.all([loadFeeSettings(), tarpDollars()]);
   return (
     <FeeSettingsClient
       rows={loaded.rows}
       ready={loaded.ready}
       error={loaded.error}
       migrationMessage={loaded.ready ? null : FEE_SETTINGS_MIGRATION}
+      tarpDollars={tarp}
     />
   );
 }

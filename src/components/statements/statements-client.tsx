@@ -7,7 +7,7 @@ import { acknowledgeRowCountAction, closeWeekAction } from "@/app/statements/act
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
 import { useToast } from "@/components/ui/toast";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { shiftWeek, weekBoundsForDate } from "@/lib/fee-engine";
 import { bpToPercentString } from "@/lib/fees/percent";
 import { formatStatementDollars } from "@/lib/reports/format";
 import type { StatementsPageData } from "@/lib/statements/queries";
@@ -31,13 +31,6 @@ function managementTotal(unit: UnitStatement): number {
 function money(cents: number): string {
   return formatStatementDollars(cents);
 }
-
-function shiftWeek(weekStart: string, delta: number): string {
-  const date = new Date(`${weekStart}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + delta * 7);
-  return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
-}
-
 
 export function StatementsClient({ data }: { data: StatementsPageData }) {
   const router = useRouter();

@@ -13,10 +13,12 @@ export async function sheetLoadsForWeek(weekStart: string): Promise<{ rows: Load
     return { rows: [], error: "Week start must be a Monday." };
   }
   const bounds = weekBoundsForDate(weekStart);
-  const loaded = await loadActiveTruckInsOuts(bounds.start, bounds.end).catch(() => ({
+  const loaded = await loadActiveTruckInsOuts(bounds.start, bounds.end).catch((err: unknown) => ({
     rows: [],
-    error: "Sheets were not read.",
+    error: null as string | null,
+    confirmationError: err instanceof Error ? err.message : "TONU confirmations could not be loaded.",
   }));
+  if (loaded.confirmationError) return { rows: [], error: loaded.confirmationError };
   if (loaded.error) return { rows: [], error: loaded.error };
   const rows: LoadListRow[] = [];
   for (const truck of loaded.rows) {
@@ -42,6 +44,7 @@ export async function sheetLoadsForWeek(weekStart: string): Promise<{ rows: Load
         source_manifest_ref: load.tripGroup ?? load.manifestId,
         status: load.status,
         tonuConfirmed: load.status === "TONU" && load.reason == null,
+        tarpCents: load.tarpCents ?? 0,
       });
     }
   }

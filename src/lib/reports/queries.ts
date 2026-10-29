@@ -46,7 +46,11 @@ async function loadAlignedWeeklySource(weekStart: string): Promise<WeeklyReportS
     needsTolls,
   });
 
-  const sheets = await loadActiveTruckInsOuts(page.weekStart, page.weekEnd).catch(() => ({ rows: [], error: null }));
+  const sheets = await loadActiveTruckInsOuts(page.weekStart, page.weekEnd).catch((err: unknown) => {
+    throw new ReportBlockedError(err instanceof Error ? err.message : "TONU confirmations could not be loaded.");
+  });
+  if (sheets.confirmationError) throw new ReportBlockedError(sheets.confirmationError);
+  if (sheets.error) throw new ReportBlockedError(sheets.error);
   const overlaid = overlaySheetStatements(
     {
       weekStart: page.weekStart,

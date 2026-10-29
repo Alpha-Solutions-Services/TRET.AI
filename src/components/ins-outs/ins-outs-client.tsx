@@ -1,11 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { CopyableError } from "@/components/copyable-error";
 import { LegacyEarningsPanel } from "@/components/ins-outs/legacy-earnings";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import { ReportWeekLabel } from "@/components/reports/report-week";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { shiftWeek } from "@/lib/fee-engine";
 import type { LegacyEarnings } from "@/lib/legacy/fees";
 import { formatStatementDollars } from "@/lib/reports/format";
 import {
@@ -16,12 +15,6 @@ import {
 
 function money(cents: number): string {
   return formatStatementDollars(cents);
-}
-
-function shiftWeek(weekStart: string, delta: number): string {
-  const date = new Date(`${weekStart}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + delta * 7);
-  return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
 }
 
 function categoryCents(row: TruckWeekInsOuts, category: string): number {
@@ -52,21 +45,20 @@ export function InsOutsClient({
     orgFeeBp: number;
   } | null;
 }) {
-  const router = useRouter();
   const fleet = fleetInsOutsTotals(rows);
   const feeTotals = rows.filter((row) => row.readable).reduce(
     (sum, row) => ({
-      legacy: sum.legacy + (row.legacyFeeCents ?? 0),
-      tolson: sum.tolson + (row.tolsonLeaseFeeCents ?? 0),
-      management: sum.management + (row.managementFeeCents ?? 0),
+      legacy: sum.legacy + row.feeSplit.legacyFeeCents,
+      tolson: sum.tolson + row.feeSplit.tolsonFeeCents,
+      management: sum.management + (row.categories.find((item) => item.category === "Management fee")?.cents ?? 0),
     }),
     { legacy: 0, tolson: 0, management: 0 },
   );
   const columns = displayExpenseColumns(rows);
   const columnCount = 9 + columns.length;
 
-  function openWeek(next: string) {
-    router.push(`/ins-outs?week=${next}`);
+  function weekHref(next: string): string {
+    return `/ins-outs?week=${encodeURIComponent(next)}`;
   }
 
   return (
@@ -98,36 +90,33 @@ export function InsOutsClient({
       ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
-        <button
-          type="button"
-          onClick={() => openWeek(shiftWeek(weekStart, -1))}
-          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+        <a
+          href={weekHref(shiftWeek(weekStart, -1))}
+          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium text-[var(--color-fg)] no-underline hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Previous week
-        </button>
-        <label className="text-sm">
-          <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
-          <input
-            type="date"
-            value={weekStart}
-            onChange={(event) => {
-              if (!event.target.value) return;
-              try {
-                openWeek(weekBoundsForDate(event.target.value).start);
-              } catch {
-                return;
-              }
-            }}
-            className="h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3"
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => openWeek(shiftWeek(weekStart, 1))}
-          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+        </a>
+        <form action="/ins-outs" method="get" className="text-sm">
+          <label>
+            <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
+            <input
+              type="date"
+              name="week"
+              defaultValue={weekStart}
+              onChange={(event) => {
+                if (!event.target.value) return;
+                event.currentTarget.form?.requestSubmit();
+              }}
+              className="h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3"
+            />
+          </label>
+        </form>
+        <a
+          href={weekHref(shiftWeek(weekStart, 1))}
+          className="pressable inline-flex h-10 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium text-[var(--color-fg)] no-underline hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Next week
-        </button>
+        </a>
         <div className="text-sm text-[var(--color-fg-muted)]">
           <ReportWeekLabel weekStart={weekStart} />
           <p>Showing {weekStart} through {weekEnd}</p>
@@ -198,9 +187,9 @@ export function InsOutsClient({
                     )}
                   </td>
                   <td className="px-3 py-2">{row.readable ? money(row.insCents) : ""}</td>
-                  <td className="px-3 py-2">{row.readable ? money(row.legacyFeeCents ?? 0) : ""}</td>
-                  <td className="px-3 py-2">{row.readable ? money(row.tolsonLeaseFeeCents ?? 0) : ""}</td>
-                  <td className="px-3 py-2">{row.readable ? money(row.managementFeeCents ?? 0) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.feeSplit.legacyFeeCents) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.feeSplit.tolsonFeeCents) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.categories.find((item) => item.category === "Management fee")?.cents ?? 0) : ""}</td>
                   {columns.map((category) => (
                     <td key={category} className="px-3 py-2 whitespace-nowrap">
                       {row.readable ? money(categoryCents(row, category)) : ""}
