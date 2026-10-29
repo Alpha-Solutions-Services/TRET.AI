@@ -163,30 +163,13 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
     loadStatementTrucks(supabase),
     supabase.from("fee_contracts").select("id, truck_id, effective_from, effective_to"),
     supabase.from("fee_rules").select("contract_id, kind, rate_bp, base_pct_bp"),
-    Promise.all([
-      supabase
-        .from("loads")
-        .select(
-          "id, load_id, truck_id, truck_unit_number, delivery_date, week_start, rate_cents, loaded_distance_mi, deadhead_miles",
-        )
-        .eq("week_start", weekStart),
-      supabase
-        .from("loads")
-        .select(
-          "id, load_id, truck_id, truck_unit_number, delivery_date, week_start, rate_cents, loaded_distance_mi, deadhead_miles",
-        )
-        .gte("delivery_date", bounds.start)
-        .lte("delivery_date", bounds.end),
-    ]).then(([byWeek, byDelivery]) => {
-      if (byWeek.error) return byWeek;
-      if (byDelivery.error) return byDelivery;
-      const merged = new Map<string, NonNullable<typeof byWeek.data>[number]>();
-      for (const row of [...(byWeek.data ?? []), ...(byDelivery.data ?? [])]) {
-        if (row.delivery_date < bounds.start || row.delivery_date > bounds.end) continue;
-        merged.set(row.id, row);
-      }
-      return { data: [...merged.values()], error: null };
-    }),
+    supabase
+      .from("loads")
+      .select(
+        "id, load_id, truck_id, truck_unit_number, delivery_date, week_start, rate_cents, loaded_distance_mi, deadhead_miles",
+      )
+      .gte("delivery_date", bounds.start)
+      .lte("delivery_date", bounds.end),
     supabase
       .from("fuel_transactions")
       .select("unit_number, week_start, amount_cents")
@@ -508,10 +491,12 @@ async function loadStoredTarps(
   weekStart: string,
 ): Promise<Map<string, { cents: number; tarped: boolean }>> {
   const map = new Map<string, { cents: number; tarped: boolean }>();
+  const bounds = weekBoundsForDate(weekStart);
   const { data, error } = await supabase
     .from("loads")
     .select("load_id, tarped, tarp_cents")
-    .eq("week_start", weekStart);
+    .gte("delivery_date", bounds.start)
+    .lte("delivery_date", bounds.end);
   if (error || !data) return map;
   for (const row of data) {
     if (!row.load_id) continue;

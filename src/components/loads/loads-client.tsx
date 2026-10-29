@@ -6,7 +6,7 @@ import { DocumentPhotos, ReceiptUpload, TonuRateConUpload } from "@/components/d
 import type { TruckDocumentRow } from "@/lib/documents/store";
 import { canonicalLoadId } from "@/lib/loads/load-id";
 import { ReportWeekLabel } from "@/components/reports/report-week";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { shiftWeek, weekBoundsForDate } from "@/lib/fee-engine";
 import { countedLoadedHundredths, layoutManifestGroups } from "@/lib/loads/manifest-miles";
 import { centsToDollarString } from "@/lib/money/cents";
 import { centsPerLoadedMile, formatMilesHundredths } from "@/lib/reports/format";
@@ -157,10 +157,8 @@ export function LoadsClient({
     );
   }, [filtered]);
 
-  function shiftWeek(delta: number) {
-    const d = new Date(`${weekStart}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + delta * 7);
-    setWeekStart(weekBoundsForDate(d.toISOString().slice(0, 10)).start);
+  function moveWeek(delta: number) {
+    setWeekStart(shiftWeek(weekStart, delta));
   }
 
   return (
@@ -174,7 +172,7 @@ export function LoadsClient({
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex items-end gap-2">
-          <Buttonish onClick={() => shiftWeek(-1)}>Previous week</Buttonish>
+          <Buttonish onClick={() => moveWeek(-1)}>Previous week</Buttonish>
           <label className="text-sm">
             <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
             <ReportWeekLabel weekStart={weekStart} />
@@ -187,7 +185,7 @@ export function LoadsClient({
               className="h-10 rounded-md border border-[var(--color-border)] px-3"
             />
           </label>
-          <Buttonish onClick={() => shiftWeek(1)}>Next week</Buttonish>
+          <Buttonish onClick={() => moveWeek(1)}>Next week</Buttonish>
         </div>
         <label className="text-sm">
           <span className="mb-1 block text-[var(--color-fg-muted)]">Truck</span>

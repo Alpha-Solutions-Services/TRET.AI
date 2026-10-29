@@ -6,14 +6,8 @@ import { approveDailyCheckAction } from "@/app/daily-check/actions";
 import { ReportWeekLabel } from "@/components/reports/report-week";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { shiftWeek, weekBoundsForDate } from "@/lib/fee-engine";
 import type { DailyCheckSummary } from "@/lib/reports/daily-check";
-
-function shiftWeek(weekStart: string, delta: number): string {
-  const date = new Date(`${weekStart}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + delta * 7);
-  return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
-}
 
 export function DailyCheckClient({
   weekStart,

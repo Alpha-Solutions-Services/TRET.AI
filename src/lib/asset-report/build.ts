@@ -10,7 +10,7 @@ import {
 } from "@/lib/reports/format";
 import { buildOwnerTruckWeek } from "@/lib/reports/owner-week";
 import { weekMpg } from "@/lib/reports/trip-metrics";
-import { applyTarps, percentFeeStatement, tarpLineCents } from "@/lib/statements/engine";
+import { percentFeeStatement } from "@/lib/statements/engine";
 import {
   columnIndex,
   columnIndexes,
@@ -644,36 +644,8 @@ export function buildAssetReport(input: {
     }
   }
   const sheetDriver = read(["driver compensation"]);
-  const sheetTarp = (owner.loads ?? [])
-    .filter((load) => load.status === "Delivered")
-    .reduce((sum, load) => sum + (load.tarpCents ?? 0), 0);
-  const tarpStatement = applyTarps(
-    {
-      ...percentFeeStatement({
-        unitNumber: input.unitNumber,
-        grossCents: 0,
-        weekStart: input.weekStart,
-      }),
-      driverPayCents: sheetDriver,
-      lines: [
-        {
-          lineCode: "DRIVER_PAY",
-          label: "Driver pay",
-          amountCents: sheetDriver,
-          rateBp: null,
-          basePctBp: null,
-          chargedTo: "owner",
-          ownerVisible: true,
-          sortOrder: 10,
-        },
-      ],
-    },
-    sheetTarp,
-    true,
-  );
   const lines = {
-    driver: tarpStatement.driverPayCents,
-    tarps: tarpLineCents(tarpStatement),
+    driver: sheetDriver,
     management: read(["management fee"]),
     dispatch: read(["dispatch fee"]),
     factoring: read(["factoring fee"]),
@@ -690,7 +662,6 @@ export function buildAssetReport(input: {
   };
   const leftExpenses: AssetExpenseLine[] = [
     { label: percentLabel("Driver Compensation", "20%", weekly, ["driver compensation %", "driver compensation percent"]), cents: lines.driver },
-    ...(lines.tarps > 0 ? [{ label: "Tarps", cents: lines.tarps }] : []),
     { label: percentLabel("Management Fee", "10%", weekly, ["management fee %", "management fee percent", "mgmt fee %"]), cents: owner.fees.managementFeeCents },
     ...feeBreakdown(input.unitNumber, owner.grossCents, input.weekStart),
     { label: "Dispatch Fee", cents: lines.dispatch },

@@ -6,7 +6,7 @@ import { resolveSheetFieldAction } from "@/app/sheet-compare/actions";
 import { CopyableError } from "@/components/copyable-error";
 import { useToast } from "@/components/ui/toast";
 import { ReportWeekLabel } from "@/components/reports/report-week";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { shiftWeek, weekBoundsForDate } from "@/lib/fee-engine";
 import { loadMatchKey } from "@/lib/loads/load-id";
 import { countedLoadedHundredths } from "@/lib/loads/manifest-miles";
 import { centsToDollarString } from "@/lib/money/cents";
@@ -60,12 +60,6 @@ function money(cents: number | null): string {
   if (cents == null) return "Blank";
   if (cents < 0) return `-$${centsToDollarString(-cents)}`;
   return `$${centsToDollarString(cents)}`;
-}
-
-function shiftWeek(weekStart: string, delta: number): string {
-  const date = new Date(`${weekStart}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + delta * 7);
-  return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
 }
 
 function cellClass(row: AlignedLoad, field: AlignHighlight): string {

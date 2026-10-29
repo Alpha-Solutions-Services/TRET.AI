@@ -23,17 +23,29 @@ export function deliveryMonday(weekStart: string): string {
   return shiftIso(weekBoundsForDate(weekStart).start, 7);
 }
 
+/** Monday of an ISO week. Week 1 is the week that contains January 4. */
+export function mondayOfIsoWeek(year: number, week: number): string {
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Dow = jan4.getUTCDay() || 7;
+  const week1Monday = new Date(jan4);
+  week1Monday.setUTCDate(jan4.getUTCDate() - (jan4Dow - 1));
+  const monday = new Date(week1Monday);
+  monday.setUTCDate(week1Monday.getUTCDate() + (week - 1) * 7);
+  const y = monday.getUTCFullYear();
+  const m = String(monday.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(monday.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export function isoWeekNumber(weekStart: string): number {
   const monday = weekBoundsForDate(weekStart).start;
   const [year, month, day] = monday.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
   const thursday = new Date(date);
   thursday.setUTCDate(thursday.getUTCDate() + 3);
-  const isoYear = thursday.getUTCFullYear();
-  const jan4 = new Date(Date.UTC(isoYear, 0, 4));
-  const jan4Dow = jan4.getUTCDay() || 7;
-  const week1Monday = new Date(jan4);
-  week1Monday.setUTCDate(jan4.getUTCDate() - (jan4Dow - 1));
+  const week1 = mondayOfIsoWeek(thursday.getUTCFullYear(), 1);
+  const [weekYear, weekMonth, weekDay] = week1.split("-").map(Number);
+  const week1Monday = new Date(Date.UTC(weekYear, (weekMonth ?? 1) - 1, weekDay));
   return Math.floor((date.getTime() - week1Monday.getTime()) / 86_400_000 / 7) + 1;
 }
 

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
 import { useToast } from "@/components/ui/toast";
 import { ReportWeekLabel } from "@/components/reports/report-week";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { shiftWeek, weekBoundsForDate } from "@/lib/fee-engine";
 import {
   canResolveIssue,
   filterInbox,
@@ -30,12 +30,6 @@ function IssueCell({ message, rule }: { message: string; rule: string }) {
       {label ? <p className="mt-1 text-xs text-[var(--color-fg-muted)]">{label}</p> : null}
     </div>
   );
-}
-
-function shiftWeek(weekStart: string, delta: number): string {
-  const date = new Date(`${weekStart}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + delta * 7);
-  return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
 }
 
 export function IssuesClient({

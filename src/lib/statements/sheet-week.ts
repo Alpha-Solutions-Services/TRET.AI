@@ -1,7 +1,7 @@
 import { compareUnitNumbers } from "@/lib/fees/two-lines";
 import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
-import { applyTarps, expectedNetCents } from "@/lib/statements/engine";
+import { expectedNetCents } from "@/lib/statements/engine";
 import type { FleetStatement, StatementLine, UnitStatement, WeekStatements } from "@/lib/statements/types";
 
 function cents(row: TruckWeekInsOuts, category: string): number {
@@ -12,9 +12,6 @@ function cents(row: TruckWeekInsOuts, category: string): number {
 export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): UnitStatement {
   if (!row.readable || !row.outsFromWeekly) return unit;
   const driver = cents(row, "Driver compensation");
-  const tarps = (row.weekLoads ?? [])
-    .filter((load) => load.status === "Delivered")
-    .reduce((sum, load) => sum + (load.tarpCents ?? 0), 0);
   const management = row.managementFeeCents ?? cents(row, "Management fee");
   const legacy = row.legacyFeeCents ?? 0;
   const tolson = row.tolsonLeaseFeeCents ?? 0;
@@ -64,7 +61,7 @@ export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): Unit
     }),
   };
   next.netCents = expectedNetCents(next);
-  return applyTarps(next, tarps, true);
+  return next;
 }
 
 type SheetLineAmounts = {
@@ -86,7 +83,6 @@ type SheetLineAmounts = {
 function syncSheetLines(existing: readonly StatementLine[], amounts: SheetLineAmounts): StatementLine[] {
   const lines = existing.map((line) => ({ ...line }));
   putLine(lines, "DRIVER_PAY", "Driver pay", amounts.driver, 10, true);
-  putLine(lines, "TARPS", "Tarps", 0, 15, false);
   putLine(lines, "MANAGEMENT_FEE", "Management fee", amounts.management, 20, amounts.chargeManagement);
   putLine(lines, "TOLSON_PAYABLE", "Tolson lease fee", amounts.tolson, 21, amounts.chargeTolson);
   putLine(lines, "LEGACY_RETAINED", "Legacy fee", amounts.legacy, 22, false);

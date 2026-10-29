@@ -6,6 +6,7 @@ import {
   columnIndexes,
   findHeaderRow,
   isEmptyCell,
+  normalizeHeader,
   sheetAmountToCents,
   sheetDay,
 } from "@/lib/sheets/cell";
@@ -165,12 +166,15 @@ function neighbor(grid: SheetGrid, label: string): string | null {
   return null;
 }
 
-/** Tarps column. A header named Tarps wins. Otherwise BC, or BG on truck 3. */
+/**
+ * Load Ledger Tarps is column BC, or column BG on truck 3.
+ * Confirmed by Legacy Accounting from the 10/28 sheet exports.
+ * Read that cell only when its header says Tarps. Any other header reads 0.
+ */
 export function tarpColumnIndex(header: string[], unitNumber?: string | null): number {
-  const named = columnIndex(header, TARP);
-  if (named >= 0) return named;
   const unit = (unitNumber ?? "").replace(/\D/g, "").replace(/^0+/, "");
-  return unit === "3" ? TARP_COLUMN_TRUCK_3 : TARP_COLUMN_BC;
+  const index = unit === "3" ? TARP_COLUMN_TRUCK_3 : TARP_COLUMN_BC;
+  return TARP.includes(normalizeHeader(header[index] ?? "")) ? index : -1;
 }
 
 export function parseLoadLedger(

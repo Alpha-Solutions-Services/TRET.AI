@@ -5,18 +5,12 @@ import { ManagementCards } from "@/components/dashboard/management-summary";
 import { LegacyEarningsPanel } from "@/components/ins-outs/legacy-earnings";
 import { OperatingExpensesClient } from "@/components/operating-expenses/operating-expenses-client";
 import { ReportWeekLabel } from "@/components/reports/report-week";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { shiftWeek } from "@/lib/fee-engine";
 import { expensesByCategory, expensesByMonth } from "@/lib/legacy/expenses";
 import type { LegacyEarnings } from "@/lib/legacy/fees";
 import type { ManagementCardSummary } from "@/lib/legacy/summary";
 import type { OperatingExpenseList } from "@/lib/operating-expenses/queries";
 import type { OverviewPageData } from "@/lib/overview/queries";
-
-function shiftWeek(weekStart: string, delta: number): string {
-  const date = new Date(`${weekStart}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + delta * 7);
-  return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
-}
 
 export function ManagementClient({
   data,

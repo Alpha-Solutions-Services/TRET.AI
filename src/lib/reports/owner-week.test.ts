@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { centsPerLoadedMile } from "@/lib/reports/format";
 import { buildOwnerTruckWeek, SHEET_FEE_DIFFERS, TONU_RATE_NOTE, weekReportApplies, weekReportGallons } from "@/lib/reports/owner-week";
 import { fuelLogGallons } from "@/lib/sheets/ins-outs";
+import { TARP_COLUMN_BC } from "@/lib/sheets/ledger";
 import { findFuelLogHeader, locateFuelLogColumns } from "@/lib/fuel-tolls/file/sheet-columns";
 import { compareDailyCheck } from "@/lib/reports/daily-check";
 
@@ -551,11 +552,24 @@ describe("week report scope", () => {
   });
 
   it("keeps sheet driver pay that already includes tarps and leaves a later delivery out", () => {
+    const header = Array.from({ length: TARP_COLUMN_BC + 1 }, () => "");
+    header[0] = "Delivery Date";
+    header[1] = "Load ID";
+    header[2] = "Rate";
+    header[TARP_COLUMN_BC] = "Tarps";
+    const load = (day: string, id: string, rate: string, tarp: string) => {
+      const row = Array.from({ length: TARP_COLUMN_BC + 1 }, () => "");
+      row[0] = day;
+      row[1] = id;
+      row[2] = rate;
+      row[TARP_COLUMN_BC] = tarp;
+      return row;
+    };
     const ledger = [
-      ["Delivery Date", "Load ID", "Rate", "Tarps"],
-      ["10/13/2026", "TBH--1206", "$1,750.00", "$50.00"],
-      ["10/14/2026", "TBH--1209", "$1,200.00", ""],
-      ["10/19/2026", "TBH--1225", "$900.00", "$50.00"],
+      header,
+      load("10/13/2026", "TBH--1206", "$1,750.00", "$50.00"),
+      load("10/14/2026", "TBH--1209", "$1,200.00", ""),
+      load("10/19/2026", "TBH--1225", "$900.00", "$50.00"),
     ];
     const weekly = [
       ["Week Start Date", "Driver Compensation"],

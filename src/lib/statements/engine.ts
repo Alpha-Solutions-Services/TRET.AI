@@ -59,15 +59,6 @@ export function miscOwnerCents(unit: Pick<UnitStatement, "lines">): number {
   return total;
 }
 
-export function tarpLineCents(unit: Pick<UnitStatement, "lines">): number {
-  let total = 0;
-  for (const line of unit.lines) {
-    if (line.lineCode !== "TARPS" || line.chargedTo !== "owner") continue;
-    total += line.amountCents;
-  }
-  return total;
-}
-
 export function ownerDeductionCents(unit: UnitStatement): number {
   const managementOrTolson = ownerPaysManagementTotal(unit.truckClass)
     ? unit.managementFeeCents
@@ -80,45 +71,25 @@ export function ownerDeductionCents(unit: UnitStatement): number {
     unit.fuelCents +
     unit.tollsCents +
     miscOwnerCents(unit) +
-    unit.fixedOwnerCents +
-    tarpLineCents(unit)
+    unit.fixedOwnerCents
   );
 }
 
 /**
- * Tarps line on a statement.
- * When driver pay came from the sheet, that figure already includes tarps, so the
- * amount moves out of driver pay onto its own line and the total does not change.
- * When TRET computed driver pay from the rate, the tarps line is added.
+ * Tarps are part of driver pay and are never a separate owner deduction.
+ * Sheet driver pay already includes them, so this is only for a driver-pay line
+ * TRET computed from the rate. No driver-pay line, as on the percent-fee path, charges nothing.
  */
-export function applyTarps(unit: UnitStatement, tarpCents: number, driverPayIncludesTarps: boolean): UnitStatement {
+function includeTarpInDriverPay(unit: UnitStatement, tarpCents: number): UnitStatement {
   const tarp = tarpCents > 0 ? tarpCents : 0;
   if (tarp === 0) return unit;
-  const lines = unit.lines.map((line) => ({ ...line }));
-  let driverPayCents = unit.driverPayCents;
-  let shown = tarp;
-  if (driverPayIncludesTarps) {
-    shown = Math.min(driverPayCents, tarp);
-    driverPayCents -= shown;
-    const driver = lines.find((line) => line.lineCode === "DRIVER_PAY");
-    if (driver) driver.amountCents = driverPayCents;
-  }
-  if (shown === 0) return unit;
-  const existing = lines.find((line) => line.lineCode === "TARPS");
-  const tarpLine: StatementLine = {
-    lineCode: "TARPS",
-    label: "Tarps",
-    amountCents: shown,
-    rateBp: null,
-    basePctBp: null,
-    chargedTo: "owner",
-    ownerVisible: true,
-    sortOrder: 15,
-  };
-  if (existing) Object.assign(existing, tarpLine);
-  else lines.push(tarpLine);
-  lines.sort((a, b) => a.sortOrder - b.sortOrder);
-  const next: UnitStatement = { ...unit, driverPayCents, lines };
+  if (!unit.lines.some((line) => line.lineCode === "DRIVER_PAY")) return unit;
+  const lines = unit.lines.map((line) =>
+    line.lineCode === "DRIVER_PAY"
+      ? { ...line, amountCents: line.amountCents + tarp, chargedTo: "owner" as const, ownerVisible: true }
+      : line,
+  );
+  const next: UnitStatement = { ...unit, driverPayCents: unit.driverPayCents + tarp, lines };
   next.netCents = expectedNetCents(next);
   return next;
 }
@@ -510,7 +481,7 @@ function buildUnit(
   unit.netCents = expectedNetCents(unit);
   assertInteger(unit.netCents, `net for ${truck.unitNumber}`);
   const tarp = loads.reduce((sum, load) => sum + (load.tarpCents ?? 0), 0);
-  return applyTarps(unit, tarp, false);
+  return includeTarpInDriverPay(unit, tarp);
 }
 
 type ResolvedFees = {

@@ -1,4 +1,5 @@
 import { weekBoundsForDate, type TruckClass } from "@/lib/fee-engine";
+import { mondayOfIsoWeek } from "@/lib/reports/delivery";
 import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
 import type { FeeRatePair, FeeSplit } from "@/lib/fees/two-lines";
 import { centsPerLoadedMile, formatDollarsPerMile, formatPositiveDecimal } from "@/lib/reports/format";
@@ -349,17 +350,6 @@ const WEEK_REPORT_LABELS = new Set([
   "week ending",
   "report week",
 ]);
-
-/** Monday of an ISO week. Week 1 is the week that contains January 4. */
-function mondayOfIsoWeek(year: number, week: number): string {
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  const jan4Dow = jan4.getUTCDay() || 7;
-  const week1Monday = new Date(jan4);
-  week1Monday.setUTCDate(jan4.getUTCDate() - (jan4Dow - 1));
-  const monday = new Date(week1Monday);
-  monday.setUTCDate(week1Monday.getUTCDate() + (week - 1) * 7);
-  return monday.toISOString().slice(0, 10);
-}
 
 function wholeNumber(raw: string): number | null {
   const text = raw.trim().replace(/\.0+$/, "");

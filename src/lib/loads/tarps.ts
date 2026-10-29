@@ -1,6 +1,4 @@
-import { sheetAmountToCents } from "@/lib/sheets/cell";
-
-/** $50. Used only when a load entered in TRET is tarped and has no amount yet. */
+/** $50. Used only when a load entered in TRET is tarped and the saved rate is missing. */
 export const DEFAULT_TARP_CENTS = 5_000;
 
 export const TARP_SETTING_KEY = "tarp_cents_per_load";
@@ -18,12 +16,6 @@ export function resolveTarpCents(input: {
 }): number {
   if (input.sheetCents != null) return input.sheetCents;
   if (input.storedCents != null && input.storedCents > 0) return input.storedCents;
-  if (input.storedTarped) return input.rateCents > 0 ? input.rateCents : DEFAULT_TARP_CENTS;
+  if (input.storedTarped) return input.rateCents >= 0 ? input.rateCents : DEFAULT_TARP_CENTS;
   return 0;
-}
-
-/** A Tarps cell is a dollar amount. Blank, zero, and non-amounts are not tarped. */
-export function tarpDollarsToCents(raw: string | null | undefined): number {
-  const cents = sheetAmountToCents(raw ?? "");
-  return cents != null && cents > 0 ? cents : 0;
 }

@@ -4,7 +4,7 @@ import { CopyableError } from "@/components/copyable-error";
 import { LegacyEarningsPanel } from "@/components/ins-outs/legacy-earnings";
 import { SheetsEnvBanner } from "@/components/sheets-env-banner";
 import { ReportWeekLabel } from "@/components/reports/report-week";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { shiftWeek } from "@/lib/fee-engine";
 import type { LegacyEarnings } from "@/lib/legacy/fees";
 import { formatStatementDollars } from "@/lib/reports/format";
 import {
@@ -15,12 +15,6 @@ import {
 
 function money(cents: number): string {
   return formatStatementDollars(cents);
-}
-
-function shiftWeek(weekStart: string, delta: number): string {
-  const date = new Date(`${weekStart}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + delta * 7);
-  return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
 }
 
 function categoryCents(row: TruckWeekInsOuts, category: string): number {

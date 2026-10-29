@@ -25,7 +25,7 @@ const variantClass: Record<ButtonVariant, string> = {
 
 export function buttonClassName(variant: ButtonVariant = "primary", className?: string): string {
   return cn(
-    "pressable inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] px-4 text-sm font-semibold no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]",
+    "pressable inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] px-4 text-sm font-semibold no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:cursor-not-allowed motion-reduce:transition-none motion-reduce:active:scale-100",
     variantClass[variant],
     className,
   );

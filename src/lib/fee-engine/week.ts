@@ -62,3 +62,11 @@ export function assertMonday(value: string, label: string): void {
   const error = mondayDateError(value, label);
   if (error) throw new Error(error);
 }
+
+/** Monday that is `delta` weeks away from this Monday. */
+export function shiftWeek(weekStart: string, delta: number): string {
+  const [year, month, day] = weekStart.split("-").map(Number);
+  const date = new Date(Date.UTC(year, (month ?? 1) - 1, day));
+  date.setUTCDate(date.getUTCDate() + delta * 7);
+  return weekBoundsForDate(formatUtcDate(date)).start;
+}

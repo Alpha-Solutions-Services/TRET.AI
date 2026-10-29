@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { categoryColor } from "@/lib/charts/palette";
 import { KpiCard } from "@/components/motion/kpi-card";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { shiftWeek } from "@/lib/fee-engine";
 import {
   formatGroupedInt,
   formatMilesHundredths,
@@ -61,12 +61,6 @@ function formatMpgCount(value: number): string {
   const whole = Math.floor(Math.abs(value) / 100);
   const frac = Math.abs(value) % 100;
   return `${whole}.${String(frac).padStart(2, "0")}`;
-}
-
-function shiftWeek(weekStart: string, delta: number): string {
-  const date = new Date(`${weekStart}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + delta * 7);
-  return weekBoundsForDate(date.toISOString().slice(0, 10)).start;
 }
 
 export function OverviewClient({

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { FileImportPanel } from "@/components/fuel-tolls/file-import-panel";
 import type { OpenQueueItem } from "@/lib/fuel-tolls/file/messages";
 import { ReportWeekLabel } from "@/components/reports/report-week";
-import { weekBoundsForDate } from "@/lib/fee-engine";
+import { shiftWeek, weekBoundsForDate } from "@/lib/fee-engine";
 import { lastFinishedWeekStart } from "@/lib/reports/delivery";
 import { fuelWeekTotals } from "@/lib/fuel-tolls/totals";
 import { formatGallonsMilli } from "@/lib/fuel-tolls/quantity";
@@ -66,10 +66,8 @@ export function FuelClient({
     [filtered, weekStart],
   );
 
-  function shiftWeek(delta: number) {
-    const d = new Date(`${weekStart}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + delta * 7);
-    setWeekStart(weekBoundsForDate(d.toISOString().slice(0, 10)).start);
+  function moveWeek(delta: number) {
+    setWeekStart(shiftWeek(weekStart, delta));
   }
 
   return (
@@ -85,7 +83,7 @@ export function FuelClient({
       <div className="flex flex-wrap items-end gap-3">
         <button
           type="button"
-          onClick={() => shiftWeek(-1)}
+          onClick={() => moveWeek(-1)}
           className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Previous week
@@ -102,7 +100,7 @@ export function FuelClient({
         </label>
         <button
           type="button"
-          onClick={() => shiftWeek(1)}
+          onClick={() => moveWeek(1)}
           className="inline-flex h-10 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-field)] px-3 text-sm font-medium hover:bg-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Next week

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculateFeeLines,
   findContractForDate,
+  shiftWeek,
   weekBoundsForDate,
   type FeeContractRecord,
   type FeeRuleInput,
@@ -240,6 +241,11 @@ describe("weekBoundsForDate", () => {
       start: "2026-09-21",
       end: "2026-09-27",
     });
+  });
+
+  it("moves a Monday by whole weeks", () => {
+    expect(shiftWeek("2026-10-12", -1)).toBe("2026-10-05");
+    expect(shiftWeek("2026-10-12", 1)).toBe("2026-10-19");
   });
 
   it("Monday 2026-09-28 starts the next week", () => {
