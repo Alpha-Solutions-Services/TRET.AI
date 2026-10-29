@@ -18,6 +18,7 @@ import {
   sheetDay,
 } from "@/lib/sheets/ins-outs";
 import { inWeek } from "@/lib/sheets/cell";
+import { dollarStringToCents } from "@/lib/money/cents";
 import { InsOutsClient } from "@/components/ins-outs/ins-outs-client";
 import { loadTruckWeekInsOuts } from "@/lib/sheets/read";
 
@@ -53,6 +54,8 @@ describe("sheet Ins and Outs", () => {
     expect(sheetAmountToCents("0")).toBe(0);
     expect(sheetAmountToCents("21474836.47")).toBe(2_147_483_647);
     expect(sheetAmountToCents("21474836.48")).toBeNull();
+    expect(dollarStringToCents("188.125", { roundHalfUp: true })).toBe(18_813);
+    expect(() => dollarStringToCents("188.125")).toThrow(/2 decimal places/);
   });
 
   it("sums Rate by delivery date and management expenses by date", () => {

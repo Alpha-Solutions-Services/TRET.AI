@@ -97,7 +97,7 @@ export type TruckWeekInsOuts = {
   reportDefGallonsMilli?: number;
   categories: ExpenseCategoryTotal[];
   /** The Legacy and Tolson lines for this week. Sheet AN and AO when they add up to H, otherwise the calculated split. */
-  feeSplit?: { legacyFeeCents: number; tolsonFeeCents: number } | null;
+  feeSplit: { legacyFeeCents: number; tolsonFeeCents: number };
   /** True when Outs came from the Weekly Expenses tab. */
   outsFromWeekly: boolean;
   /** Easy-language cause when the sheet could not be read, a tab was missing, or a header did not parse. */
@@ -418,6 +418,7 @@ export function buildTruckWeekInsOuts(input: {
     netCents: 0,
     loadCount: 0,
     categories: [] as ExpenseCategoryTotal[],
+    feeSplit: { legacyFeeCents: 0, tolsonFeeCents: 0 },
     outsFromWeekly: false,
     ledgerLoads: [] as LedgerLoadRef[],
     recentWeeks: [] as WeekMoney[],

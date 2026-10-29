@@ -107,8 +107,8 @@ export async function loadManagementCardSummary(
   let tolsonLeaseFeeCents = 0;
   for (const truck of trucks) {
     if (!truck.readable) continue;
-    legacyFeeCents += truck.feeSplit?.legacyFeeCents ?? 0;
-    tolsonLeaseFeeCents += truck.feeSplit?.tolsonFeeCents ?? 0;
+    legacyFeeCents += truck.feeSplit.legacyFeeCents;
+    tolsonLeaseFeeCents += truck.feeSplit.tolsonFeeCents;
   }
   return buildManagementCards({
     legacyFeeCents,

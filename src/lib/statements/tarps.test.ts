@@ -7,7 +7,7 @@ import { buildOwnerTruckWeek } from "@/lib/reports/owner-week";
 import type { WeeklyReportSource } from "@/lib/reports/types";
 import { buildTruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { parseLoadLedger, tarpColumnIndex, TARP_COLUMN_BC, TARP_COLUMN_TRUCK_3 } from "@/lib/sheets/ledger";
-import { buildWeekStatements, linesMatchNet, ownerDeductionCents, percentFeeStatement } from "@/lib/statements/engine";
+import { buildWeekStatements, includeTarpInDriverPay, linesMatchNet, ownerDeductionCents, percentFeeStatement } from "@/lib/statements/engine";
 import { applySheetWeek } from "@/lib/statements/sheet-week";
 import type { FleetStatement, StatementContract, UnitStatement, WeekStatementInput } from "@/lib/statements/types";
 
@@ -197,6 +197,34 @@ describe("statement tarps", () => {
     expect(report.fleetRows.find((item) => item.label === "Net to owner")?.value).toBe(
       formatStatementDollars(statement.netCents),
     );
+  });
+
+  it("shows a skipped tarp on the statement warnings when driver pay has no rate", () => {
+    const week = buildWeekStatements(
+      weekInput(5_000, [
+        { kind: "DRIVER_PAY", rateBp: 2000, basePctBp: 10000 },
+        { kind: "MANAGEMENT_FEE", rateBp: 0, basePctBp: 10000 },
+      ]),
+    );
+    expect(week.warnings.some((row) => row.rule === "tarp_skipped")).toBe(false);
+    const unit = week.units[0]!;
+    const skipped = includeTarpInDriverPay(
+      {
+        ...unit,
+        driverPayCents: 20_000,
+        lines: unit.lines.map((line) =>
+          line.lineCode === "DRIVER_PAY" ? { ...line, amountCents: 20_000, rateBp: null, label: "Driver pay" } : line,
+        ),
+      },
+      5_000,
+    );
+    expect(skipped.warning).toEqual({
+      rule: "tarp_skipped",
+      message: "Truck 8: tarp skipped because driver pay has no rate.",
+      ref: "8",
+    });
+    expect(skipped.unit.driverPayCents).toBe(20_000);
+    expect(skipped.unit.netCents).toBe(unit.netCents);
   });
 
   it("charges no tarp when the percent-fee path has no driver pay line", () => {

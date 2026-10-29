@@ -16,9 +16,8 @@ export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): Unit
     .filter((load) => load.status === "Delivered")
     .reduce((sum, load) => sum + (load.tarpCents ?? 0), 0);
   const management = cents(row, "Management fee");
-  const split = row.feeSplit ?? null;
-  const legacy = split?.legacyFeeCents ?? 0;
-  const tolsonPart = split?.tolsonFeeCents ?? 0;
+  const legacy = row.feeSplit.legacyFeeCents;
+  const tolsonPart = row.feeSplit.tolsonFeeCents;
   const dispatch = cents(row, "Dispatch fee");
   const factoring = cents(row, "Factoring fee");
   const fuel = cents(row, "Fuel");

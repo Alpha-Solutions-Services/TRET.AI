@@ -81,15 +81,23 @@ export function ownerDeductionCents(unit: UnitStatement): number {
  * Sheet driver pay already includes them, so this is only for a driver-pay line
  * TRET computed from the rate. No driver-pay line, as on the percent-fee path, charges nothing.
  */
-function includeTarpInDriverPay(unit: UnitStatement, tarpCents: number): UnitStatement {
+export function includeTarpInDriverPay(
+  unit: UnitStatement,
+  tarpCents: number,
+): { unit: UnitStatement; warning: StatementBlocker | null } {
   const tarp = tarpCents > 0 ? tarpCents : 0;
-  if (tarp === 0) return unit;
+  if (tarp === 0) return { unit, warning: null };
   const driver = unit.lines.find((line) => line.lineCode === "DRIVER_PAY");
-  if (!driver || driver.rateBp == null) {
-    if (driver && driver.rateBp == null) {
-      console.warn(`Truck ${unit.unitNumber}: tarp skipped because driver pay has no rate.`);
-    }
-    return unit;
+  if (!driver) return { unit, warning: null };
+  if (driver.rateBp == null) {
+    return {
+      unit,
+      warning: {
+        rule: "tarp_skipped",
+        message: `Truck ${unit.unitNumber}: tarp skipped because driver pay has no rate.`,
+        ref: unit.unitNumber,
+      },
+    };
   }
   const rateBp = driver.rateBp;
   const lines = unit.lines.map((line) => {
@@ -104,7 +112,7 @@ function includeTarpInDriverPay(unit: UnitStatement, tarpCents: number): UnitSta
   });
   const next: UnitStatement = { ...unit, driverPayCents: unit.driverPayCents + tarp, lines };
   next.netCents = expectedNetCents(next);
-  return next;
+  return { unit: next, warning: null };
 }
 
 export function expectedNetCents(unit: UnitStatement): number {
@@ -172,6 +180,7 @@ export function buildWeekStatements(input: WeekStatementInput): WeekStatements {
     });
   }
   const warnings = rowCountWarnings(input);
+  const tarpWarnings: StatementBlocker[] = [];
 
   const units: UnitStatement[] = [];
   const trucks = [...input.trucks].sort((a, b) => compareUnitNumbers(a.unitNumber, b.unitNumber));
@@ -186,7 +195,7 @@ export function buildWeekStatements(input: WeekStatementInput): WeekStatements {
       continue;
     }
     seen.add(truck.id);
-    const built = buildUnit(truck, input, weekLoads, blockers);
+    const built = buildUnit(truck, input, weekLoads, blockers, tarpWarnings);
     if (built) units.push(built);
   }
 
@@ -215,7 +224,7 @@ export function buildWeekStatements(input: WeekStatementInput): WeekStatements {
     units,
     fleet,
     blockers,
-    warnings,
+    warnings: [...warnings, ...tarpWarnings],
     closeAllowed: blockers.length === 0,
   };
 }
@@ -348,6 +357,7 @@ function buildUnit(
   input: WeekStatementInput,
   weekLoads: StatementLoad[],
   blockers: StatementBlocker[],
+  tarpWarnings: StatementBlocker[],
 ): UnitStatement | null {
   const loads = weekLoads.filter((load) => load.truckId === truck.id);
   const fuelCents = sumMatching(input.fuel, truck.unitNumber, input.weekStart);
@@ -494,7 +504,9 @@ function buildUnit(
   unit.netCents = expectedNetCents(unit);
   assertInteger(unit.netCents, `net for ${truck.unitNumber}`);
   const tarp = loads.reduce((sum, load) => sum + (load.tarpCents ?? 0), 0);
-  return includeTarpInDriverPay(unit, tarp);
+  const applied = includeTarpInDriverPay(unit, tarp);
+  if (applied.warning) tarpWarnings.push(applied.warning);
+  return applied.unit;
 }
 
 type ResolvedFees = {

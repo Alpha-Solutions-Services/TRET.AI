@@ -425,8 +425,7 @@ function columnTotal(header: string[], rows: string[][], names: readonly string[
   return sum;
 }
 
-function feeBreakdown(split: { legacyFeeCents: number; tolsonFeeCents: number } | null): AssetExpenseLine[] {
-  if (!split) return [];
+function feeBreakdown(split: { legacyFeeCents: number; tolsonFeeCents: number }): AssetExpenseLine[] {
   return [
     { label: "Legacy fee", cents: split.legacyFeeCents, detail: true },
     { label: "Tolson lease fee", cents: split.tolsonFeeCents, detail: true },

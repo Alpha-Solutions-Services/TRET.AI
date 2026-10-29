@@ -11,6 +11,40 @@ import { compareDailyCheck } from "@/lib/reports/daily-check";
 
 const WEEK = { weekStart: "2026-10-05", weekEnd: "2026-10-11" };
 
+/** Week 41 truck 8 tolls from the 10/29 sheet read. The $12 is TBH--1195, not TBH--1178. */
+function week41TollLedger(): string[][] {
+  const header = Array.from({ length: 48 }, () => "");
+  header[0] = "Delivery Date";
+  header[1] = "Load ID";
+  header[2] = "Rate";
+  header[3] = "Status";
+  header[4] = "Trip Group";
+  header[15] = "Allocated Miles";
+  header[44] = "Toll Expense";
+  header[47] = "Alloc Deadhead";
+  const row = (day: string, id: string, rate: string, status: string, trip: string, miles: string, toll: string, deadhead: string) => {
+    const cells = Array.from({ length: 48 }, () => "");
+    cells[0] = day;
+    cells[1] = id;
+    cells[2] = rate;
+    cells[3] = status;
+    cells[4] = trip;
+    cells[15] = miles;
+    cells[44] = toll;
+    cells[47] = deadhead;
+    return cells;
+  };
+  return [
+    header,
+    row("10/05/2026", "TBH--1179", "$2,400.00", "", "", "", "$5.72", ""),
+    row("10/06/2026", "TBH--1184", "$1,100.00", "", "", "", "$12.34", ""),
+    row("10/08/2026", "TBH--1188", "$1,800.00", "", "M-1195", "2650.00", "$18.55", "241.00"),
+    row("10/08/2026", "TBH--1192", "$1,700.00", "", "M-1195", "", "$0.00", ""),
+    row("10/08/2026", "TBH--1195", "$900.00", "", "M-1195", "", "$12.00", ""),
+    row("10/09/2026", "TBH--1201", "$2,000.00", "TONU", "", "10.00", "$50.00", "10.00"),
+  ];
+}
+
 type TruckFixture = {
   unit: string;
   loads: number;
@@ -386,30 +420,9 @@ describe("week 41 owner sheet", () => {
   });
 
   it("leaves a held TONU deadhead and toll out of week 41 and counts them in week 42", () => {
-    const cells = Array.from({ length: 48 }, () => "");
-    cells[0] = "Delivery Date";
-    cells[1] = "Load ID";
-    cells[2] = "Rate";
-    cells[3] = "Status";
-    cells[15] = "Allocated Miles";
-    cells[44] = "Toll Expense";
-    cells[47] = "Alloc Deadhead";
-    const delivered = Array.from({ length: 48 }, () => "");
-    delivered[0] = "10/06/2026";
-    delivered[1] = "TBH--1178";
-    delivered[2] = "$7,900.00";
-    delivered[5] = "Yes";
-    delivered[15] = "2650.00";
-    delivered[44] = "$48.61";
-    delivered[47] = "241.00";
-    const tonu = Array.from({ length: 48 }, () => "");
-    tonu[0] = "10/09/2026";
-    tonu[1] = "TBH--1201";
-    tonu[2] = "$2,000.00";
-    tonu[3] = "TONU";
-    tonu[15] = "10.00";
-    tonu[44] = "$50.00";
-    tonu[47] = "10.00";
+    const ledger = week41TollLedger();
+    expect(ledger.find((row) => row[1] === "TBH--1195")?.[44]).toBe("$12.00");
+    expect(ledger.some((row) => row[1] === "TBH--1178")).toBe(false);
     const report = weekReport(TRUCKS[7]!);
     report[3]![2] = "$7,900.00";
     report[17]![2] = "241.00";
@@ -418,12 +431,14 @@ describe("week 41 owner sheet", () => {
     const weekly = weeklyFor(TRUCKS[7]!);
     weekly[1]![6] = "$48.61";
     const week = buildOwnerTruckWeek({
-      ledger: [cells, delivered, tonu],
+      ledger,
       weekly,
       weekReport: report,
       unitNumber: "8",
       ...WEEK,
     });
+    expect(week.loadIds).toContain("TBH--1195");
+    expect(week.loadIds).not.toContain("TBH--1178");
     expect(week.loadIds).not.toContain("TBH--1201");
     expect(week.grossCents).toBe(790_000);
     expect(week.deadheadHundredths).toBe(24_100);
@@ -432,7 +447,7 @@ describe("week 41 owner sheet", () => {
     expect(week.expenseCents).toBe(TRUCKS[7]!.expenseCents);
     expect(week.netCents).toBe(790_000 - week.expenseCents);
     const week42 = buildOwnerTruckWeek({
-      ledger: [cells, delivered, tonu],
+      ledger,
       weekly,
       weekReport: null,
       unitNumber: "8",
@@ -449,31 +464,9 @@ describe("week 41 owner sheet", () => {
   });
 
   it("does not count the TONU miles twice when the count week already includes them", () => {
-    const cells = Array.from({ length: 48 }, () => "");
-    cells[0] = "Delivery Date";
-    cells[1] = "Load ID";
-    cells[2] = "Rate";
-    cells[3] = "Status";
-    cells[15] = "Allocated Miles";
-    cells[44] = "Toll Expense";
-    cells[47] = "Alloc Deadhead";
-    const delivered = Array.from({ length: 48 }, () => "");
-    delivered[0] = "10/06/2026";
-    delivered[1] = "TBH--1178";
-    delivered[2] = "$7,900.00";
-    delivered[15] = "2650.00";
-    delivered[44] = "$48.61";
-    delivered[47] = "241.00";
-    const tonu = Array.from({ length: 48 }, () => "");
-    tonu[0] = "10/09/2026";
-    tonu[1] = "TBH--1201";
-    tonu[2] = "$2,000.00";
-    tonu[3] = "TONU";
-    tonu[15] = "10.00";
-    tonu[44] = "$50.00";
-    tonu[47] = "10.00";
+    const ledger = week41TollLedger();
     const week = buildOwnerTruckWeek({
-      ledger: [cells, delivered, tonu],
+      ledger,
       weekly: weeklyFor(TRUCKS[7]!),
       weekReport: weekReport(TRUCKS[7]!),
       unitNumber: "8",
@@ -494,7 +487,7 @@ describe("week 41 owner sheet", () => {
     countedWeek[29]![13] = "Toll Fees";
     countedWeek[29]![14] = "$50.00";
     const week42 = buildOwnerTruckWeek({
-      ledger: [cells, delivered, tonu],
+      ledger,
       weekly: [["Week Start Date", "Driver Compensation", "Toll Fees"], ["10/12/2026", "$0.00", "$50.00"]],
       weekReport: countedWeek,
       unitNumber: "8",
@@ -772,8 +765,44 @@ describe("live weekly expense headers", () => {
       ...WEEK,
     });
     expect(week.categories.find((row) => row.category === "Management fee")?.cents).toBe(18_000);
-    expect(week.warnings).toEqual(["Sheet fee split does not add up to Total Fees (Legacy+Tolson)."]);
+    expect(week.warnings).toEqual(["Legacy plus Tolson doesn't equal H."]);
     expect(week.feeSplit).toEqual({ legacyFeeCents: 10_000, tolsonFeeCents: 8_000 });
+    const ledger = [
+      ["Delivery Date", "Load ID", "Rate"],
+      ["10/06/2026", "TBH--1", "$1,000.00"],
+    ];
+    const weekly = [
+      ["Week Start Date", "Driver Compensation", "Total Fees (Legacy+Tolson)", "Legacy Fee", "Tolson Fee"],
+      ["10/05/2026", "$0.00", "$180.00", "$100.00", "$50.00"],
+    ];
+    const row = buildTruckWeekInsOuts({
+      unitNumber: "8",
+      truckName: "Truck 8",
+      ...WEEK,
+      loadLedger: ledger,
+      mgmtExpenses: null,
+      weeklyExpenses: weekly,
+      note: null,
+    });
+    expect(row.note).toContain("Legacy plus Tolson doesn't equal H.");
+    expect(row.feeSplit).toEqual({ legacyFeeCents: 10_000, tolsonFeeCents: 8_000 });
+    const statement = applySheetWeek(
+      percentFeeStatement({ unitNumber: "8", grossCents: row.insCents, weekStart: WEEK.weekStart }),
+      row,
+    );
+    expect(statement.legacyRetainedCents).toBe(10_000);
+    expect(statement.tolsonPayableCents).toBe(8_000);
+    const asset = buildAssetReport({
+      ...WEEK,
+      unitNumber: "8",
+      ownerName: null,
+      ledger,
+      weekly,
+      fuelLog: null,
+      fleet: null,
+      sheetNote: null,
+    });
+    expect(asset.notes.join(" ")).toContain("Legacy plus Tolson doesn't equal H.");
     const missing = buildOwnerTruckWeek({
       ledger: [
         ["Delivery Date", "Load ID", "Rate"],
@@ -789,6 +818,87 @@ describe("live weekly expense headers", () => {
     });
     expect(missing.warnings).toEqual([]);
     expect(missing.feeSplit).toEqual({ legacyFeeCents: 10_000, tolsonFeeCents: 8_000 });
+  });
+
+  it("counts only the weekly escrow, not the Escrow Balance, on the owner week, the statement, and the asset report", () => {
+    const ledger = [
+      ["Delivery Date", "Load ID", "Rate"],
+      ["10/06/2026", "TBH--1", "$1,000.00"],
+    ];
+    const weekly = [
+      ["Week Start Date", "Driver Compensation", "Maintenance Escrow Weekly", "Escrow Balance"],
+      ["10/05/2026", "$200.00", "$7.00", "$25.00"],
+    ];
+    const week = buildOwnerTruckWeek({ ledger, weekly, weekReport: null, unitNumber: "8", ...WEEK });
+    expect(week.categories.find((row) => row.category === "Maintenance Escrow Weekly")?.cents).toBe(700);
+    expect(week.expenseCents).toBe(20_700);
+    expect(week.netCents).toBe(week.grossCents - week.expenseCents);
+    const row = buildTruckWeekInsOuts({
+      unitNumber: "8",
+      truckName: "Truck 8",
+      ...WEEK,
+      loadLedger: ledger,
+      mgmtExpenses: null,
+      weeklyExpenses: weekly,
+      note: null,
+    });
+    const statement = applySheetWeek(
+      percentFeeStatement({ unitNumber: "8", grossCents: row.insCents, weekStart: WEEK.weekStart }),
+      row,
+    );
+    expect(statement.netCents).toBe(week.netCents);
+    const asset = buildAssetReport({
+      ...WEEK,
+      unitNumber: "8",
+      ownerName: null,
+      ledger,
+      weekly,
+      fuelLog: null,
+      fleet: null,
+      sheetNote: null,
+    });
+    expect(asset.rightExpenses.find((line) => line.label === "Maintenance Escrow Weekly")?.cents).toBe(700);
+    expect(asset.escrowBalanceCents).toBe(2_500);
+    expect(asset.expenseCents).toBe(week.expenseCents);
+    expect(asset.netCents).toBe(week.netCents);
+  });
+
+  it("warns when a filled Weekly Expenses cell cannot be read and does not count it as zero", () => {
+    const ledger = [
+      ["Delivery Date", "Load ID", "Rate"],
+      ["10/06/2026", "TBH--1", "$100.00"],
+    ];
+    const weekly = [
+      ["Week Start Date", "Driver Compensation", "Fuel"],
+      ["10/05/2026", "$10.00", "21474836.48"],
+    ];
+    const week = buildOwnerTruckWeek({ ledger, weekly, weekReport: null, unitNumber: "8", ...WEEK });
+    expect(week.categories.find((row) => row.category === "Fuel")).toBeUndefined();
+    expect(week.warnings[0]).toContain("Fuel");
+    expect(week.warnings[0]).toContain("not counted as $0");
+    expect(week.netCents).toBe(week.grossCents - 1_000);
+    const row = buildTruckWeekInsOuts({
+      unitNumber: "8",
+      truckName: "Truck 8",
+      ...WEEK,
+      loadLedger: ledger,
+      mgmtExpenses: null,
+      weeklyExpenses: weekly,
+      note: null,
+    });
+    expect(row.note).toContain("not counted as $0");
+    const asset = buildAssetReport({
+      ...WEEK,
+      unitNumber: "8",
+      ownerName: null,
+      ledger,
+      weekly,
+      fuelLog: null,
+      fleet: null,
+      sheetNote: null,
+    });
+    expect(asset.notes.join(" ")).toContain("not counted as $0");
+    expect(asset.netCents).toBe(week.netCents);
   });
 });
 

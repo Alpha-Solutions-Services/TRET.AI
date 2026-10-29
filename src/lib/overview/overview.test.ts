@@ -119,6 +119,7 @@ describe("sheet week snapshot", () => {
         netCents: insCents - outsCents,
         loadCount: 1,
         categories,
+        feeSplit: { legacyFeeCents: 0, tolsonFeeCents: 0 },
         outsFromWeekly: true,
         note: null,
         noteDetail: null,

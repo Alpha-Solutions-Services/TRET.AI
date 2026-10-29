@@ -79,13 +79,10 @@ export type OwnerTruckWeek = {
   fees: FeeSplit;
   /** True when the sheet Management Fee cell is not the percent-of-gross total. */
   sheetFeeDiffers: boolean;
-  /** Shown on the truck week when column AN plus AO is present and is not column H. */
+  /** Shown on the truck week. A bad fee split, or a Weekly Expenses cell that could not be read. */
   warnings: string[];
-  /**
-   * Weekly Expenses AN and AO when they add up to column H.
-   * Null when those columns are absent.
-   */
-  feeSplit: { legacyFeeCents: number; tolsonFeeCents: number } | null;
+  /** Sheet AN and AO when they add up to column H. Otherwise the calculated split. */
+  feeSplit: { legacyFeeCents: number; tolsonFeeCents: number };
 };
 
 export const TONU_RATE_NOTE = "TONU rate unconfirmed";
@@ -255,13 +252,13 @@ export function buildOwnerTruckWeek(input: {
   let tolsonPart = weekly?.tolsonFeeCents ?? null;
   if (reportApplies && report.legacyFeeCents != null) legacyPart = report.legacyFeeCents;
   if (reportApplies && report.tolsonFeeCents != null) tolsonPart = report.tolsonFeeCents;
-  const warnings: string[] = [];
+  const warnings: string[] = [...(weekly?.warnings ?? [])];
   let feeSplit = { legacyFeeCents: fees.legacyFeeCents, tolsonFeeCents: fees.tolsonLeaseFeeCents };
   if (legacyPart != null && tolsonPart != null) {
     if (legacyPart + tolsonPart === feeTotal) {
       feeSplit = { legacyFeeCents: legacyPart, tolsonFeeCents: tolsonPart };
     } else {
-      warnings.push("Sheet fee split does not add up to Total Fees (Legacy+Tolson).");
+      warnings.push("Legacy plus Tolson doesn't equal H.");
     }
   }
   // Sheet and Week Report driver pay already include Tarps. Do not add that column again.

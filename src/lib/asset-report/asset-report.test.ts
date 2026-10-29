@@ -279,9 +279,9 @@ describe("weekly asset report", () => {
     expect(report.revenuePerLoadCents).toBe(158_000);
     expect(report.fuelPerMileCents).toBe(50);
     expect(report.fuelEconomy).toBe("11.09");
-    expect(report.expenseCents).toBe(527_253);
-    expect(report.netCents).toBe(262_747);
-    expect(report.rightExpenses.find((line) => line.label === "Maintenance Escrow Weekly")?.cents).toBe(20_000);
+    expect(report.expenseCents).toBe(507_253);
+    expect(report.netCents).toBe(282_747);
+    expect(report.rightExpenses.find((line) => line.label === "Maintenance Escrow Weekly")?.cents).toBe(0);
     expect(report.escrowCardLabel).toBe("Escrow Balance");
     expect(report.escrowBalanceCents).toBe(20_000);
     expect(report.rightExpenses.map((line) => line.label)).not.toContain("Escrow Balance (this week)");

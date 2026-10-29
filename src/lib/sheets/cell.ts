@@ -1,5 +1,5 @@
 import { canonicalLoadId } from "@/lib/loads/load-id";
-import { MAX_CENTS } from "@/lib/money/cents";
+import { dollarStringToCents } from "@/lib/money/cents";
 
 /** Collapse odd spaces from sheet cells. */
 export function cleanCell(raw: string): string {
@@ -18,20 +18,20 @@ export function cleanLoadId(raw: string): string {
   return canonicalLoadId(compact);
 }
 
+/** Sheet dollars, including `$` and commas. Extra decimals round half up through `dollarStringToCents`. */
 export function sheetAmountToCents(raw: string): number | null {
   if (isEmptyCell(raw)) return null;
   const trimmed = cleanCell(raw);
   if (!trimmed) return null;
   const negative = trimmed.startsWith("-") || /^\(.*\)$/.test(trimmed);
   const cleaned = trimmed.replace(/[$,\s]/g, "").replace(/[()]/g, "").replace(/^-/, "");
-  if (!/^\d{1,10}(\.\d+)?$/.test(cleaned)) return null;
-  const [wholePart, fracPart = ""] = cleaned.split(".");
-  const whole = Number.parseInt(wholePart ?? "0", 10);
-  const digits = (fracPart + "000").slice(0, 3);
-  let cents = whole * 100 + Number.parseInt(digits.slice(0, 2), 10);
-  if ((digits[2] ?? "0") >= "5") cents += 1;
-  if (!Number.isInteger(cents) || cents < 0 || cents > MAX_CENTS) return null;
-  return negative ? -cents : cents;
+  if (!cleaned) return null;
+  try {
+    const cents = dollarStringToCents(cleaned, { roundHalfUp: true });
+    return negative ? -cents : cents;
+  } catch {
+    return null;
+  }
 }
 
 /**
