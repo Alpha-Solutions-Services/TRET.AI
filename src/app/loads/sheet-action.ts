@@ -42,6 +42,7 @@ export async function sheetLoadsForWeek(weekStart: string): Promise<{ rows: Load
         source_manifest_ref: load.tripGroup ?? load.manifestId,
         status: load.status,
         tonuConfirmed: load.status === "TONU" && load.reason == null,
+        tarpCents: load.tarpCents ?? 0,
       });
     }
   }

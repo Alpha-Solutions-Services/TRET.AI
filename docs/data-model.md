@@ -148,6 +148,12 @@ v0.0.0.9 does not add a table. The PDF is built when the owner downloads it. A l
 
 v0.0.0.10 does not add a table. Overview and the management P&L are computed when the page loads. `resolve_issue` updates one open Warn or Block row in `issues` and writes `change_log` with `entity_type` `issue`. It does not change imported rows.
 
+## loads tarps (v0.0.0.42)
+
+Migration `supabase/migrations/20261029120000_v42_load_tarps.sql` is not applied until the owner says go. It does not add a table. `loads` already has row level security.
+
+`loads.tarped` is true when the load was tarped. `loads.tarp_cents` is the tarps amount in integer cents. `import_settings.tarp_cents_per_load` is the default, 5000 cents ($50). A tarped load with `tarp_cents` still zero uses that default. Driver pay includes the amount. The migration marks the week 42 tarped load ids when those rows already exist.
+
 ## truck_documents (v0.0.0.41)
 
 Migration `20261013180000_v41_truck_documents.sql` is not applied until the owner says go.

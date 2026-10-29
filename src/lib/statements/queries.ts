@@ -180,6 +180,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
       if (byDelivery.error) return byDelivery;
       const merged = new Map<string, NonNullable<typeof byWeek.data>[number]>();
       for (const row of [...(byWeek.data ?? []), ...(byDelivery.data ?? [])]) {
+        if (row.delivery_date < bounds.start || row.delivery_date > bounds.end) continue;
         merged.set(row.id, row);
       }
       return { data: [...merged.values()], error: null };
@@ -197,7 +198,8 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
       .select("id, truck_id, kind, weekly_amount_cents, charged_to, effective_from, effective_to"),
     supabase
       .from("truck_fixed_expense_overrides")
-      .select("id, truck_id, kind, week_start, amount_cents, charged_to"),
+      .select("id, truck_id, kind, week_start, amount_cents, charged_to")
+      .eq("week_start", weekStart),
     supabase
       .from("import_runs")
       .select("kind, status, range_from, range_to, rows_fetched, finished_at")

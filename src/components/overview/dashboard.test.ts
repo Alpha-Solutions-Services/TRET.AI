@@ -156,6 +156,10 @@ describe("dashboard display", () => {
     );
     expect(html).toContain("Previous week");
     expect(html).toContain("Next week");
+    expect(html).toContain('href="/?week=2026-09-28"');
+    expect(html).toContain('href="/?week=2026-10-12"');
+    expect(html).toContain('name="week"');
+    expect(html).toContain('action="/"');
     expect(html).toContain("4,889.50");
     expect(html).toContain("Truck miles");
     expect(html).toContain("Deadhead");

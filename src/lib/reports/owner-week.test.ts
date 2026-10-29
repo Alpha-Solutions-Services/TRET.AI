@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { centsPerLoadedMile } from "@/lib/reports/format";
-import { buildOwnerTruckWeek, SHEET_FEE_DIFFERS, TONU_RATE_NOTE, weekReportGallons } from "@/lib/reports/owner-week";
+import { buildOwnerTruckWeek, SHEET_FEE_DIFFERS, TONU_RATE_NOTE, weekReportApplies, weekReportGallons } from "@/lib/reports/owner-week";
 import { fuelLogGallons } from "@/lib/sheets/ins-outs";
 import { findFuelLogHeader, locateFuelLogColumns } from "@/lib/fuel-tolls/file/sheet-columns";
 import { compareDailyCheck } from "@/lib/reports/daily-check";
@@ -194,6 +194,9 @@ describe("week 41 owner sheet", () => {
       expect(week.mpg, truck.unit).toBe(truck.mpg);
     }
     expect(loads).toBe(19);
+    expect(TRUCKS.reduce((sum, truck) => sum + truck.grossCents, 0)).toBe(3_285_000);
+    expect(TRUCKS.reduce((sum, truck) => sum + truck.expenseCents, 0)).toBe(3_446_314);
+    expect(TRUCKS.reduce((sum, truck) => sum + truck.netCents, 0)).toBe(-161_314);
     const legacyIncome = TRUCKS.reduce((sum, truck) => sum + truck.legacyCents, 0);
     const tolsonPayable = TRUCKS.reduce((sum, truck) => sum + truck.tolsonCents, 0);
     expect(legacyIncome).toBe(328_500);
@@ -495,6 +498,84 @@ describe("week 41 owner sheet", () => {
     expect(week42.milesHundredths).toBe(1_000);
     expect(week42.categories.find((row) => row.category === "Toll fees")?.cents).toBe(1_200);
     expect(week42.netCents).toBe(-1_200);
+  });
+});
+
+describe("week report scope", () => {
+  it("keeps week 41 totals when the report belongs to week 42", () => {
+    const truck = TRUCKS[2]!;
+    const report = weekReport(truck);
+    report[0]![0] = "Week start";
+    report[0]![1] = "10/12/2026";
+    report[3]![2] = "$7,250.00";
+    report[3]![5] = "$5,185.43";
+    expect(weekReportApplies(report, WEEK.weekStart, truck.grossCents, 0)).toBe(false);
+    const week = buildOwnerTruckWeek({
+      ledger: ledgerFor(truck),
+      weekly: weeklyFor(truck),
+      weekReport: report,
+      unitNumber: "3",
+      ...WEEK,
+    });
+    expect(week.grossCents).toBe(855_000);
+    expect(week.expenseCents).toBe(703_660);
+    expect(week.netCents).toBe(151_340);
+  });
+
+  it("ignores an unlabeled report whose revenue is a different week", () => {
+    const truck = TRUCKS[2]!;
+    const report = weekReport(truck);
+    report[3]![2] = "$7,250.00";
+    const week = buildOwnerTruckWeek({
+      ledger: ledgerFor(truck),
+      weekly: weeklyFor(truck),
+      weekReport: report,
+      unitNumber: "3",
+      ...WEEK,
+    });
+    expect(week.grossCents).toBe(truck.grossCents);
+    expect(week.netCents).toBe(truck.netCents);
+  });
+
+  it("uses a week 42 report when that report matches the week 42 ledger", () => {
+    const ledger = [
+      ["Delivery Date", "Load ID", "Rate", "Allocated Miles"],
+      ["10/13/2026", "TBH--1203", "$1,000.00", "100.00"],
+      ["10/14/2026", "TBH--1204", "$1,000.00", "100.00"],
+    ];
+    const weekly = [
+      ["Week Start Date", "Driver Compensation", "Fuel"],
+      ["10/12/2026", "$400.00", "$100.00"],
+    ];
+    const report = [
+      ["Week start", "10/12/2026"],
+      [],
+      [],
+      ["", "Total Revenue", "$2,000.00", "", "", "$600.00"],
+    ];
+    const week = buildOwnerTruckWeek({
+      ledger,
+      weekly,
+      weekReport: report,
+      unitNumber: "3",
+      weekStart: "2026-10-12",
+      weekEnd: "2026-10-18",
+    });
+    expect(week.grossCents).toBe(200_000);
+    expect(week.loads.find((load) => load.loadId === "TBH--1203")?.tarpCents).toBe(5_000);
+    expect(week.loads.find((load) => load.loadId === "TBH--1204")?.tarpCents).toBe(5_000);
+    expect(week.categories.find((row) => row.category === "Driver compensation")?.cents).toBe(40_000 + 10_000);
+    expect(week.expenseCents).toBe(60_000);
+    expect(week.netCents).toBe(140_000);
+  });
+
+  it("records the checked week 42 fleet totals", () => {
+    const grossCents = 3_405_000;
+    const expenseCents = 3_104_805;
+    const netCents = grossCents - expenseCents;
+    expect(grossCents).toBe(3_405_000);
+    expect(expenseCents).toBe(3_104_805);
+    expect(netCents).toBe(300_195);
   });
 });
 

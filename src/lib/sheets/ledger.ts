@@ -57,6 +57,7 @@ const TOLL_EXPENSE_INDEX = 44;
 /** Load Ledger column M. A=0. */
 const LEDGER_M_INDEX = 12;
 const STATUS = ["status", "load status", "order status", "trip status"];
+const TARP = ["tarps", "tarp amount", "tarp", "tarped"];
 /** Load Ledger columns AM through AQ. Misc receipts live here. */
 const MISC_START = 38;
 const MISC_END = 42;
@@ -90,6 +91,8 @@ export type LedgerLoadRow = {
   miscCents: number;
   /** Toll expense for this load, in cents. Zero when that cell is blank. */
   tollCents: number;
+  /** Tarps cell when that column is present. Null when the column is missing or blank. */
+  tarpRaw?: string | null;
   status: string | null;
   /** order: the delivery column. fallback: Destination Datetime. */
   deliverySource: "column" | "fallback" | null;
@@ -194,6 +197,7 @@ export function parseLoadLedger(
   const allocatedCol = allocatedColumnIndex(header);
   const deadheadAllocCol = allocatedDeadheadColumnIndex(header);
   const tollCol = tollExpenseColumnIndex(header);
+  const tarpCol = columnIndex(header, TARP);
   const statusCols = columnIndexes(header, STATUS);
   const rows: LedgerLoadRow[] = [];
   for (const row of grid.slice(headerIndex + 1)) {
@@ -226,6 +230,7 @@ export function parseLoadLedger(
       allocatedDeadheadHundredths: deadheadAllocCol >= 0 ? milesToHundredths(cell(row, deadheadAllocCol)) : null,
       miscCents: miscColumnsCents(row),
       tollCents: tollCol >= 0 ? (sheetAmountToCents(cell(row, tollCol)) ?? 0) : 0,
+      tarpRaw: tarpCol >= 0 ? textOrNull(cell(row, tarpCol)) : null,
       status: tonu ? "TONU" : textOrNull(statusCols.map((index) => cell(row, index)).join(" ")),
       deliverySource: primaryDay ? "column" : fallbackDay ? "fallback" : deliveryDay ? "fallback" : null,
     });

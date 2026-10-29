@@ -2,6 +2,11 @@
 
 ## v0.0.0.42 — 2026-10-13
 
+- The week snapshot, Ins and Outs, and Management use one week at a time. A Week Report is applied only when it is labeled for that week, or when its revenue matches that week's ledger. The sheet cache key is the spreadsheet plus the week. Week 41 stays gross $32,850.00, expenses $34,463.14, net -$1,613.14. The checked week 42 fleet is gross $34,050.00, expenses $31,048.05, net $3,001.95 before tarps.
+- Previous week, Next week, and the Ins and Outs week date open `?week=` for that Monday. Management uses the same week links.
+- A tarped load has a tarps amount, $50 by default, added to driver pay. Fee settings can change the default. Week 42 tarped loads are TBH--1203, TBH--1204, TBH--1206, TBH--1208, TBH--1209, TBH--1212, TBH--1214, TBH--1216, TBH--1218, and TBH--1225. Ten loads add $500.00 to driver pay.
+- TBH--1221 (truck 6) and TBH--1201 (truck 8) are owner-confirmed at $250.00. They are not marked unconfirmed. Gross is unchanged.
+- Migration `supabase/migrations/20261029120000_v42_load_tarps.sql` adds `loads.tarped`, `loads.tarp_cents`, and the `tarp_cents_per_load` setting. It is not applied from this branch.
 - Connection cards and the dashboard Hub pulse a status dot only while that check is connected or busy. A missing check stays still. Cards and the New, Duplicate, and Flagged counters take one accent border on hover and scale slightly on press.
 - The import diagram draws Vektor, Fuel, and Tolls into TRET and on to Google Sheets. One accent mark travels those lines. The import steps move that mark only while a job is running. The counters show the current number at once and move only after the number changes.
 - Checking AI status, loading imports, and a running import or AI check use a skeleton shaped like that content. The bar-wave loader is gone.

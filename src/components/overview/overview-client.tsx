@@ -63,6 +63,12 @@ function formatMpgCount(value: number): string {
   return `${whole}.${String(frac).padStart(2, "0")}`;
 }
 
+const weekLinkClass =
+  "pressable inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] border border-transparent bg-[#7eb6ff] px-4 text-sm font-semibold text-[#041018] no-underline shadow-[0_0_18px_color-mix(in_srgb,#7eb6ff_55%,transparent)] hover:bg-[#a9cdff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]";
+
+const weekLinkAltClass =
+  "pressable inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] border border-transparent bg-[#c084fc] px-4 text-sm font-semibold text-[#140818] no-underline shadow-[0_0_18px_color-mix(in_srgb,#c084fc_55%,transparent)] hover:bg-[#d7b4fd] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]";
+
 function shiftWeek(weekStart: string, delta: number): string {
   const date = new Date(`${weekStart}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + delta * 7);
@@ -106,8 +112,8 @@ export function OverviewClient({
   );
   const issueStatus = data.openIssueCount == null ? "warn" : data.openIssueCount > 0 ? "danger" : "ok";
 
-  function openWeek(next: string) {
-    router.push(`/?week=${next}`);
+  function weekHref(next: string): string {
+    return `/?week=${encodeURIComponent(next)}`;
   }
 
   return (
@@ -214,28 +220,27 @@ export function OverviewClient({
       ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
-        <Button variant="vivid" onClick={() => openWeek(shiftWeek(data.weekStart, -1))}>
+        <a href={weekHref(shiftWeek(data.weekStart, -1))} className={weekLinkClass}>
           Previous week
-        </Button>
-        <label className="text-sm">
-          <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
-          <input
-            type="date"
-            value={data.weekStart}
-            onChange={(event) => {
-              if (!event.target.value) return;
-              try {
-                openWeek(weekBoundsForDate(event.target.value).start);
-              } catch {
-                return;
-              }
-            }}
-            className="h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3"
-          />
-        </label>
-        <Button variant="vividAlt" onClick={() => openWeek(shiftWeek(data.weekStart, 1))}>
+        </a>
+        <form action="/" method="get" className="text-sm">
+          <label>
+            <span className="mb-1 block text-[var(--color-fg-muted)]">Week starting</span>
+            <input
+              type="date"
+              name="week"
+              defaultValue={data.weekStart}
+              onChange={(event) => {
+                if (!event.target.value) return;
+                event.currentTarget.form?.requestSubmit();
+              }}
+              className="h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-field)] px-3"
+            />
+          </label>
+        </form>
+        <a href={weekHref(shiftWeek(data.weekStart, 1))} className={weekLinkAltClass}>
           Next week
-        </Button>
+        </a>
         <div className="space-y-1">
           <ReportWeekLabel weekStart={data.weekStart} />
           <p className="text-sm text-[var(--color-fg-muted)]">

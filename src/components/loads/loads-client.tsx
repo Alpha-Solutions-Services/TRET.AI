@@ -34,6 +34,7 @@ export type LoadListRow = {
   source_manifest_ref?: string | null;
   status?: LoadWeekStatus;
   tonuConfirmed?: boolean;
+  tarpCents?: number;
 };
 
 function dollars(cents: number): string {
@@ -253,6 +254,7 @@ export function LoadsClient({
                 <th className="px-3 py-3 font-medium">Loaded</th>
                 <th className="px-3 py-3 font-medium">Deadhead</th>
                 <th className="px-3 py-3 font-medium">Rate</th>
+                <th className="px-3 py-3 font-medium">Tarps</th>
                 <th className="px-3 py-3 font-medium">Status</th>
               </tr>
             </thead>
@@ -261,7 +263,7 @@ export function LoadsClient({
                 <Fragment key={row.id}>
                   {row.manifestHeader && row.manifestRef ? (
                     <tr className="border-b border-[var(--color-border)] bg-[var(--color-muted)]">
-                      <td className="px-3 py-2 font-medium" colSpan={11}>
+                      <td className="px-3 py-2 font-medium" colSpan={12}>
                         Manifest {row.manifestRef}
                       </td>
                     </tr>
@@ -281,10 +283,11 @@ export function LoadsClient({
                       {row.deadhead_miles == null ? "Blank" : formatMilesHundredths(hundredths(row.deadhead_miles))}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 num">{loadRateLabel(row)}</td>
+                    <td className="whitespace-nowrap px-3 py-2 num">{dollars(row.tarpCents ?? 0)}</td>
                     <td className="whitespace-nowrap px-3 py-2">{row.status ?? "Delivered"}</td>
                   </tr>
                   <tr className="border-b border-[var(--color-border)]">
-                    <td className="px-3 py-2" colSpan={11}>
+                    <td className="px-3 py-2" colSpan={12}>
                       <DocumentPhotos
                         documents={documents.filter(
                           (doc) => doc.loadId != null && canonicalLoadId(doc.loadId) === canonicalLoadId(row.load_id ?? ""),
@@ -320,6 +323,13 @@ export function LoadsClient({
                 <td className="whitespace-nowrap px-3 py-3 num">{formatMilesHundredths(totals.loaded)}</td>
                 <td className="whitespace-nowrap px-3 py-3 num">{formatMilesHundredths(totals.deadhead)}</td>
                 <td className="whitespace-nowrap px-3 py-3 num">{dollars(totals.rateCents)}</td>
+                <td className="whitespace-nowrap px-3 py-3 num">
+                  {dollars(
+                    filtered
+                      .filter((row) => (row.status ?? "Delivered") === "Delivered")
+                      .reduce((sum, row) => sum + (row.tarpCents ?? 0), 0),
+                  )}
+                </td>
                 <td className="px-3 py-3"></td>
               </tr>
             </tbody>

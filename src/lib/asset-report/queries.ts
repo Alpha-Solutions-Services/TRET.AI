@@ -15,10 +15,13 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
     (row) => row.unit_number === unitNumber || unitKey(row.unit_number) === unitKey(unitNumber),
   );
   if (!truck) throw new Error("That truck was not found.");
-  const book = await loadTruckWorkbook({
-    unitNumber: truck.unit_number,
-    googleSheetUrl: truck.google_sheet_url,
-  });
+  const book = await loadTruckWorkbook(
+    {
+      unitNumber: truck.unit_number,
+      googleSheetUrl: truck.google_sheet_url,
+    },
+    { weekStart: bounds.start },
+  );
   const extras = await loadDbFuelAndTolls(truck.unit_number, bounds.start);
   const imported = (await loadStoredWeekTotals(bounds.start)).find(
     (row) => unitKey(row.unitNumber) === unitKey(truck.unit_number),

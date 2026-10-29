@@ -6,9 +6,12 @@ import { loadTruckWeekInsOuts, missingGoogleServiceAccountEnv } from "@/lib/shee
 import { sheetLedgerRefs } from "@/lib/sheets/mismatch";
 import { syncSheetMismatches } from "@/lib/sheets/sync-mismatches";
 import { listTrucks } from "@/lib/trucks/queries";
-import { applyTonuConfirmations } from "@/lib/documents/tonu-flag";
+import { OWNER_CONFIRMED_TONU_CENTS, applyTonuConfirmations } from "@/lib/documents/tonu-flag";
 import { listConfirmedTonuRates } from "@/lib/documents/store";
 import { missingSheetLinkNote } from "@/lib/trucks/fields";
+import { canonicalLoadId } from "@/lib/loads/load-id";
+import { DEFAULT_TARP_CENTS, TARP_SETTING_KEY, defaultTarpByLoadId } from "@/lib/loads/tarps";
+import { createClient } from "@/lib/supabase/server";
 
 export async function loadActiveTruckInsOuts(
   weekStart: string,
@@ -17,6 +20,7 @@ export async function loadActiveTruckInsOuts(
   try {
     const [{ trucks }, fees] = await Promise.all([listTrucks(), loadFeeSettings().catch(() => null)]);
     const active = trucks.filter((truck) => truck.active);
+    const tarp = await loadTarpConfig();
     const rows = ensureFleetUnits(
       await loadTruckWeekInsOuts(
         active.map((truck) => ({
@@ -28,18 +32,50 @@ export async function loadActiveTruckInsOuts(
         })),
         weekStart,
         weekEnd,
+        { tarpCentsPerLoad: tarp.rateCents, tarpByLoadId: tarp.byLoadId },
       ),
       weekStart,
       weekEnd,
     );
     const confirmed = await listConfirmedTonuRates().catch(() => ({}));
-    return { rows: applyTonuConfirmations(rows, confirmed), error: null };
+    return {
+      rows: applyTonuConfirmations(rows, { ...OWNER_CONFIRMED_TONU_CENTS, ...confirmed }),
+      error: null,
+    };
   } catch (err) {
     return {
       rows: [],
       error: err instanceof Error ? err.message : "Ins and Outs could not be loaded.",
     };
   }
+}
+
+async function loadTarpConfig(): Promise<{ rateCents: number; byLoadId: Map<string, number> }> {
+  let rateCents = DEFAULT_TARP_CENTS;
+  const byLoadId = defaultTarpByLoadId(rateCents);
+  try {
+    const supabase = await createClient();
+    const setting = await supabase
+      .from("import_settings")
+      .select("value_int")
+      .eq("key", TARP_SETTING_KEY)
+      .maybeSingle();
+    if (!setting.error && setting.data?.value_int != null && setting.data.value_int >= 0) {
+      rateCents = setting.data.value_int;
+      for (const id of byLoadId.keys()) byLoadId.set(id, rateCents);
+    }
+    const loads = await supabase.from("loads").select("load_id, tarped, tarp_cents").eq("tarped", true);
+    if (!loads.error) {
+      for (const row of loads.data ?? []) {
+        if (!row.load_id) continue;
+        const cents = row.tarp_cents > 0 ? row.tarp_cents : rateCents;
+        byLoadId.set(canonicalLoadId(row.load_id), cents);
+      }
+    }
+  } catch {
+    return { rateCents, byLoadId };
+  }
+  return { rateCents, byLoadId };
 }
 
 function feeRatesFor(

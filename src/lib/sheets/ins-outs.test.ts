@@ -174,6 +174,10 @@ describe("sheet Ins and Outs", () => {
     );
     expect(html).toContain("Legacy Inc income and outgoing");
     expect(html).toContain("Showing 2026-10-05 through 2026-10-11");
+    expect(html).toContain('href="/ins-outs?week=2026-09-28"');
+    expect(html).toContain('href="/ins-outs?week=2026-10-12"');
+    expect(html).toContain('action="/ins-outs"');
+    expect(html).toContain('name="week"');
     expect(html).toContain("Spare Expense 5");
     expect(html).toContain("Vektor Fee");
     expect(html).toContain("John Reed");
