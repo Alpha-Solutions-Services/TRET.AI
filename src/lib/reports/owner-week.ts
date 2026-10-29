@@ -129,6 +129,7 @@ export function buildOwnerTruckWeek(input: {
   const pending: OwnerPendingLoad[] = [];
   const loads: OwnerWeekLoad[] = [];
   let heldTonuCents = 0;
+  let confirmedTonuCentsTotal = 0;
   const nextEnd = shiftDay(input.weekEnd, 7);
   for (const row of parsed?.rows ?? []) {
     const tonu = isTonu(row.status);
@@ -137,9 +138,12 @@ export function buildOwnerTruckWeek(input: {
     const inTransit = !row.deliveryDay && row.pickupDay != null && row.pickupDay <= input.weekEnd;
     if (tonu) {
       const confirmed = confirmedTonuCents(input.confirmedCentsByLoadId, row.loadId);
-      if (inThis && confirmed != null) {
-        counted.push({ ...row, rateCents: confirmed });
-        loads.push(weekLoad({ ...row, rateCents: confirmed }, "TONU", null));
+      if (confirmed != null) {
+        if (inThis) {
+          confirmedTonuCentsTotal += confirmed;
+          counted.push({ ...row, rateCents: confirmed });
+          loads.push(weekLoad({ ...row, rateCents: confirmed }, "TONU", null));
+        }
         continue;
       }
       const countWeek = row.deliveryDay ? tonuHoldWeekStart(row.deliveryDay) : null;
@@ -205,8 +209,24 @@ export function buildOwnerTruckWeek(input: {
   const report = readWeekReportMoney(reportGrid);
   const earlyWarnings: string[] = [];
   if (report.grossCents != null) {
-    const includesHeldTonu = heldTonuCents > 0 && report.grossCents === grossCents + heldTonuCents;
-    if (!includesHeldTonu) grossCents = report.grossCents;
+    const withConfirmed = grossCents;
+    const withoutConfirmed = withConfirmed - confirmedTonuCentsTotal;
+    const includesHeldTonu = heldTonuCents > 0 && report.grossCents === withConfirmed + heldTonuCents;
+    const reportIncludesConfirmed = confirmedTonuCentsTotal > 0 && report.grossCents === withConfirmed;
+    const reportOmitsConfirmed = confirmedTonuCentsTotal > 0 && report.grossCents === withoutConfirmed;
+    if (reportIncludesConfirmed) {
+      earlyWarnings.push("Week Report gross already includes the confirmed TONU.");
+    } else if (reportOmitsConfirmed || includesHeldTonu) {
+      if (reportOmitsConfirmed) {
+        earlyWarnings.push("Week Report gross left out the confirmed TONU, so it was kept.");
+      }
+    } else {
+      grossCents = report.grossCents;
+      if (confirmedTonuCentsTotal > 0 && grossCents < withConfirmed) {
+        grossCents += confirmedTonuCentsTotal;
+        earlyWarnings.push("Week Report gross left out the confirmed TONU, so it was kept.");
+      }
+    }
   }
   if (report.milesHundredths != null) {
     milesHundredths = report.milesHundredths;
@@ -221,7 +241,16 @@ export function buildOwnerTruckWeek(input: {
       "Week Report Factoring Fee could not be read, so the Weekly Expenses amount is used until it is fixed.",
     );
   }
-  if (report.managementCents != null) replaceCategory(categories, "Management fee", report.managementCents);
+  if (report.legacyUnreadable) {
+    earlyWarnings.push(
+      "Week Report Legacy Fee could not be read, so the Weekly Expenses amount is used until it is fixed.",
+    );
+  }
+  if (report.tolsonUnreadable) {
+    earlyWarnings.push(
+      "Week Report Tolson Fee could not be read, so the Weekly Expenses amount is used until it is fixed.",
+    );
+  }
   if (report.fuelCents != null) replaceCategory(categories, "Fuel", report.fuelCents);
   if (report.tollCents != null) replaceCategory(categories, "Toll fees", report.tollCents);
   const countedTollCents = counted.reduce((sum, row) => sum + row.tollCents, 0);
@@ -252,7 +281,8 @@ export function buildOwnerTruckWeek(input: {
     input.weekEnd,
   );
   const mpg = report.mpg ?? weekReportMpg(reportGrid);
-  const sheetManagement = weekly?.managementFeeCents ?? categories.find((row) => row.category === "Management fee")?.cents ?? null;
+  const sheetManagement = weekly?.managementFeeCents ?? null;
+  const reportManagement = report.managementCents;
   const statement =
     input.statement ??
     percentFeeStatement({
@@ -265,23 +295,28 @@ export function buildOwnerTruckWeek(input: {
     });
   const fees = feeSplitFromUnit(statement);
   const sheetFeeDiffers = sheetManagement != null && sheetManagement !== fees.managementFeeCents;
-  if (sheetFeeDiffers && sheetManagement != null) {
+  if (sheetManagement != null && sheetManagement !== fees.managementFeeCents) {
+    replaceCategory(categories, "Management fee", fees.managementFeeCents);
+  } else if (reportManagement != null && reportManagement !== fees.managementFeeCents) {
     replaceCategory(categories, "Management fee", fees.managementFeeCents);
   }
-  const feeTotal = sheetManagement ?? 0;
   let legacyPart = weekly?.legacyFeeCents ?? null;
   let tolsonPart = weekly?.tolsonFeeCents ?? null;
-  if (reportApplies && report.legacyFeeCents != null) legacyPart = report.legacyFeeCents;
-  if (reportApplies && report.tolsonFeeCents != null) tolsonPart = report.tolsonFeeCents;
+  if (reportApplies && report.legacyFeeCents != null && !report.legacyUnreadable) legacyPart = report.legacyFeeCents;
+  if (reportApplies && report.tolsonFeeCents != null && !report.tolsonUnreadable) tolsonPart = report.tolsonFeeCents;
   const warnings: string[] = [...(weekly?.warnings ?? []), ...earlyWarnings];
-  if (sheetFeeDiffers && sheetManagement != null) {
+  if (sheetManagement != null && sheetManagement !== fees.managementFeeCents) {
     warnings.push(
       `Sheet fee is ${formatStatementDollars(sheetManagement)}. The total uses the calculated fee.`,
     );
+  } else if (reportManagement != null && reportManagement !== fees.managementFeeCents) {
+    warnings.push(
+      `Week Report management fee is ${formatStatementDollars(reportManagement)}. The total uses the calculated fee.`,
+    );
   }
   let feeSplit = { legacyFeeCents: fees.legacyFeeCents, tolsonFeeCents: fees.tolsonLeaseFeeCents };
-  if (!sheetFeeDiffers && legacyPart != null && tolsonPart != null) {
-    if (legacyPart + tolsonPart === feeTotal) {
+  if (sheetManagement != null && !sheetFeeDiffers && legacyPart != null && tolsonPart != null) {
+    if (legacyPart + tolsonPart === sheetManagement) {
       feeSplit = { legacyFeeCents: legacyPart, tolsonFeeCents: tolsonPart };
     } else {
       warnings.push("Legacy plus Tolson doesn't equal H.");
@@ -483,6 +518,8 @@ type WeekReportMoney = {
   dispatchCents: number | null;
   factoringCents: number | null;
   factoringUnreadable: boolean;
+  legacyUnreadable: boolean;
+  tolsonUnreadable: boolean;
   legacyFeeCents: number | null;
   tolsonFeeCents: number | null;
   managementCents: number | null;
@@ -503,6 +540,8 @@ export function readWeekReportMoney(grid: SheetGrid | null | undefined): WeekRep
     dispatchCents: null,
     factoringCents: null,
     factoringUnreadable: false,
+    legacyUnreadable: false,
+    tolsonUnreadable: false,
     legacyFeeCents: null,
     tolsonFeeCents: null,
     managementCents: null,
@@ -514,6 +553,8 @@ export function readWeekReportMoney(grid: SheetGrid | null | undefined): WeekRep
   };
   if (!grid) return empty;
   const factoring = moneyByLabel(grid, ["factoring fee", "factoring fee (rounded to cents)"]);
+  const legacyFee = moneyByLabel(grid, ["legacy fee", "legacy fee (in total)"]);
+  const tolsonFee = moneyByLabel(grid, ["tolson fee", "tolson fee (in total)"]);
   return {
     grossCents: reportMoney(grid, ["total revenue"], 3, 2),
     expenseCents: reportMoney(grid, ["total expenses", "total weekly expense"], 3, 5),
@@ -527,8 +568,10 @@ export function readWeekReportMoney(grid: SheetGrid | null | undefined): WeekRep
     tollCents: reportMoney(grid, ["toll fees"], 29, 14),
     miscCents: reportMoney(grid, ["misc expenses", "misc expenses (1-5)"], 25, 14),
     deadheadHundredths: reportMoney(grid, ["deadhead miles", "deadhead", "alloc deadhead"], 17, 2),
-    legacyFeeCents: moneyByLabel(grid, ["legacy fee", "legacy fee (in total)"]).cents,
-    tolsonFeeCents: moneyByLabel(grid, ["tolson fee", "tolson fee (in total)"]).cents,
+    legacyFeeCents: legacyFee.cents,
+    legacyUnreadable: legacyFee.unreadable,
+    tolsonFeeCents: tolsonFee.cents,
+    tolsonUnreadable: tolsonFee.unreadable,
     mpg: empty.mpg,
   };
 }

@@ -75,7 +75,11 @@ export async function listConfirmedTonuRates(): Promise<Record<string, number>> 
     .eq("kind", "tonu_rate_con")
     .eq("confirmed", true)
     .order("created_at", { ascending: true });
-  if (error || !data) return {};
+  if (error) {
+    if (isMissingSchemaError(error)) throw new Error(DOCUMENTS_MIGRATION_MESSAGE);
+    throw new Error("TONU confirmations could not be loaded.");
+  }
+  if (!data) throw new Error("TONU confirmations could not be loaded.");
   const rates: Record<string, number> = {};
   for (const row of data) {
     if (!row.load_id || row.amount_cents == null) continue;

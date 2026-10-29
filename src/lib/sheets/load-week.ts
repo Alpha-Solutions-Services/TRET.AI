@@ -13,11 +13,20 @@ import { missingSheetLinkNote } from "@/lib/trucks/fields";
 export async function loadActiveTruckInsOuts(
   weekStart: string,
   weekEnd: string,
-): Promise<{ rows: TruckWeekInsOuts[]; error: string | null }> {
+): Promise<{ rows: TruckWeekInsOuts[]; error: string | null; confirmationError: string | null }> {
   try {
     const [{ trucks }, fees] = await Promise.all([listTrucks(), loadFeeSettings().catch(() => null)]);
     const active = trucks.filter((truck) => truck.active);
-    const confirmed = await listConfirmedTonuRates().catch(() => ({}));
+    let confirmed: Record<string, number>;
+    try {
+      confirmed = await listConfirmedTonuRates();
+    } catch (err) {
+      return {
+        rows: [],
+        error: null,
+        confirmationError: err instanceof Error ? err.message : "TONU confirmations could not be loaded.",
+      };
+    }
     const rows = ensureFleetUnits(
       await loadTruckWeekInsOuts(
         active.map((truck) => ({
@@ -34,11 +43,12 @@ export async function loadActiveTruckInsOuts(
       weekStart,
       weekEnd,
     );
-    return { rows: applyTonuConfirmations(rows, confirmed), error: null };
+    return { rows: applyTonuConfirmations(rows, confirmed), error: null, confirmationError: null };
   } catch (err) {
     return {
       rows: [],
       error: err instanceof Error ? err.message : "Ins and Outs could not be loaded.",
+      confirmationError: null,
     };
   }
 }
@@ -92,10 +102,10 @@ export async function loadInsOutsWeek(
 }> {
   const loaded = await loadActiveTruckInsOuts(weekStart, weekEnd);
   const sheetEnvMissing = missingGoogleServiceAccountEnv();
-  if (loaded.error) {
+  if (loaded.error || loaded.confirmationError) {
     return {
       rows: loaded.rows,
-      error: loaded.error,
+      error: loaded.error ?? loaded.confirmationError,
       sheetEnvMissing,
       mismatchCount: null,
       mismatchError: loaded.error,

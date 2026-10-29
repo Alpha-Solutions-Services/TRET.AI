@@ -185,6 +185,10 @@ export function outsFromWeeklyExpenses(
     "total fees (legacy+tolson)",
     "total fees (legacy + tolson)",
   ]);
+  for (const warning of management.warnings) {
+    if (!warnings.includes(warning)) warnings.push(warning);
+  }
+  if (management.warnings.length > 0 && !unreadable.includes("Management fee")) unreadable.push("Management fee");
   return {
     outsCents,
     categories,

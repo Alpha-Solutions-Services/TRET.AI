@@ -8,6 +8,7 @@ import { loadTruckWorkbook } from "@/lib/sheets/read";
 import { createClient } from "@/lib/supabase/server";
 import { listTrucks } from "@/lib/trucks/queries";
 import { listConfirmedTonuRates } from "@/lib/documents/store";
+import { ReportBlockedError } from "@/lib/reports/prepare";
 
 export async function buildAssetReportPdf(weekStart: string, unitNumber: string): Promise<Uint8Array> {
   const bounds = weekBoundsForDate(weekStart);
@@ -27,6 +28,12 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
   const imported = (await loadStoredWeekTotals(bounds.start)).find(
     (row) => unitKey(row.unitNumber) === unitKey(truck.unit_number),
   );
+  let confirmedCentsByLoadId: Record<string, number>;
+  try {
+    confirmedCentsByLoadId = await listConfirmedTonuRates();
+  } catch (err) {
+    throw new ReportBlockedError(err instanceof Error ? err.message : "TONU confirmations could not be loaded.");
+  }
   const report = buildAssetReport({
     weekStart: bounds.start,
     weekEnd: bounds.end,
@@ -43,7 +50,7 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
     dbGallonsMilli: extras.gallonsMilli,
     dbTollCents: extras.tollCents,
     manifestRefs: await loadManifestRefs(truck.unit_number),
-    confirmedCentsByLoadId: await listConfirmedTonuRates().catch(() => ({})),
+    confirmedCentsByLoadId,
     importTotals: imported
       ? {
           fuelCostCents: imported.fuelCostCents,
@@ -55,6 +62,10 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
         }
       : null,
   });
+  const unread = report.notes.find((note) => note.includes("could not be read or is over the cap"));
+  if (unread) {
+    throw new ReportBlockedError(`Truck ${truck.unit_number}: ${unread}`);
+  }
   return renderAssetReportPdf(report);
 }
 

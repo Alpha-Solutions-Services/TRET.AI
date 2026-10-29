@@ -546,7 +546,11 @@ function resolveFees(
       return {
         ok: false,
         blocker: {
-          rule: message.startsWith("No fee contract") ? "missing_fee_contract" : "fee_contract_error",
+          rule: message.startsWith("No fee contract")
+            ? "missing_fee_contract"
+            : message.includes("driver pay has no rate")
+              ? "missing_driver_rate"
+              : "fee_contract_error",
           message: `Truck ${truck.unitNumber}: ${message}`,
           ref: truck.unitNumber,
         },
@@ -597,11 +601,13 @@ function feesFromContract(
       throw new Error(`Rates change inside week ${weekStart} (contracts ${contract.id} and ${day.id})`);
     }
   }
-  const missingDriverRate = full.rules.some((rule) => rule.kind === "DRIVER_PAY" && rule.rateBp == null);
+  if (full.rules.some((rule) => rule.kind === "DRIVER_PAY" && rule.rateBp == null)) {
+    throw new Error("driver pay has no rate");
+  }
   const calculated = calculateFeeLines({
     grossCents,
     truckClass: truck.truckClass,
-    rules: missingDriverRate ? full.rules.filter((rule) => !(rule.kind === "DRIVER_PAY" && rule.rateBp == null)) : full.rules,
+    rules: full.rules,
   });
   const tolsonFixed =
     truck.tolsonFixedCents != null && feeIsActive(truck.tolsonEffectiveFrom, weekStart) ? truck.tolsonFixedCents : null;
@@ -612,18 +618,6 @@ function feesFromContract(
       ? truck.legacyFixedCents
       : null;
   const lines = calculated.map((line) => feeLineFromResult(truck.truckClass, line));
-  if (missingDriverRate) {
-    lines.push({
-      lineCode: "DRIVER_PAY",
-      label: "Driver pay",
-      amountCents: 0,
-      rateBp: null,
-      basePctBp: null,
-      chargedTo: "owner",
-      ownerVisible: true,
-      sortOrder: 10,
-    });
-  }
   const tolsonPayableCents = tolsonFixed ?? feeAmount(calculated, "TOLSON_PAYABLE");
   const legacyRetainedCents = legacyFixed ?? feeAmount(calculated, "LEGACY_RETAINED");
   if (tolsonFixed != null) applyFixedAmount(lines, "TOLSON_PAYABLE", tolsonFixed);

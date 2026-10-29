@@ -199,19 +199,19 @@ describe("statement tarps", () => {
     );
   });
 
-  it("puts tarp_skipped on the statement warnings when driver pay has no rate", () => {
+  it("blocks Close when the contract driver rate is missing", () => {
     const week = buildWeekStatements(
       weekInput(5_000, [
         { kind: "DRIVER_PAY", rateBp: null as unknown as number, basePctBp: 10000 },
         { kind: "MANAGEMENT_FEE", rateBp: 0, basePctBp: 10000 },
       ]),
     );
-    expect(week.warnings.map((row) => row.rule)).toContain("tarp_skipped");
-    expect(week.warnings.find((row) => row.rule === "tarp_skipped")?.message).toBe(
-      "Truck 8: tarp skipped because driver pay has no rate.",
+    expect(week.closeAllowed).toBe(false);
+    expect(week.blockers.map((row) => row.rule)).toContain("missing_driver_rate");
+    expect(week.blockers.find((row) => row.rule === "missing_driver_rate")?.message).toBe(
+      "Truck 8: driver pay has no rate",
     );
-    expect(week.units[0]?.driverPayCents).toBe(0);
-    expect(week.closeAllowed).toBe(true);
+    expect(week.units.some((unit) => unit.driverPayCents === 0 && unit.lines.some((line) => line.lineCode === "DRIVER_PAY" && line.rateBp == null))).toBe(false);
   });
 
   it("shows a skipped tarp on the statement warnings when driver pay has no rate", () => {

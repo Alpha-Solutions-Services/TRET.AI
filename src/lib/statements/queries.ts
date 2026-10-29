@@ -235,6 +235,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
   const sheets = await loadActiveTruckInsOuts(bounds.start, bounds.end).catch(() => ({
     rows: [],
     error: "Sheets were not read.",
+    confirmationError: null as string | null,
   }));
   const tarpRate = await readTarpCentsPerLoad();
   const storedTarps = await loadStoredTarps(supabase, bounds.start);
@@ -349,6 +350,13 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
     return failed(bounds, err instanceof Error ? err.message : "Could not compute this week.");
   }
   live.blockers.push(...unreadExpenseBlockers(sheets.rows));
+  if (sheets.confirmationError) {
+    live.blockers.push({
+      rule: "tonu_confirmations_unread",
+      message: sheets.confirmationError,
+      ref: null,
+    });
+  }
   live.blockers.push(...schemaNotes);
   live.closeAllowed = live.blockers.length === 0;
 
