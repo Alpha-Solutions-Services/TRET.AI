@@ -9,6 +9,7 @@ import {
 } from "@/lib/fee-engine";
 import { assertInteger, assertNonNegativeInteger } from "@/lib/fee-engine/money";
 import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
+import { bpToPercentString } from "@/lib/fees/percent";
 import { compareUnitNumbers, managementFeeSplit, seededFeeRates } from "@/lib/fees/two-lines";
 import { FIXED_EXPENSE_KINDS, FIXED_EXPENSE_LABELS } from "@/lib/fixed-expenses/kinds";
 import { lookupWeeklyFixedExpense } from "@/lib/fixed-expenses/lookup";
@@ -83,13 +84,13 @@ export function ownerDeductionCents(unit: UnitStatement): number {
 function includeTarpInDriverPay(unit: UnitStatement, tarpCents: number): UnitStatement {
   const tarp = tarpCents > 0 ? tarpCents : 0;
   if (tarp === 0) return unit;
-  if (!unit.lines.some((line) => line.lineCode === "DRIVER_PAY")) return unit;
+  const driver = unit.lines.find((line) => line.lineCode === "DRIVER_PAY");
+  if (!driver || driver.rateBp == null) return unit;
   const lines = unit.lines.map((line) => {
     if (line.lineCode !== "DRIVER_PAY") return line;
-    const percent = line.rateBp == null ? "20" : String(line.rateBp / 100);
     return {
       ...line,
-      label: `Driver pay (${percent}% + tarps)`,
+      label: `Driver pay (${bpToPercentString(line.rateBp ?? 0)}% + tarps)`,
       amountCents: line.amountCents + tarp,
       chargedTo: "owner" as const,
       ownerVisible: true,

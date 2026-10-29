@@ -79,6 +79,11 @@ export type OwnerTruckWeek = {
   fees: FeeSplit;
   /** True when the sheet Management Fee cell is not the percent-of-gross total. */
   sheetFeeDiffers: boolean;
+  /**
+   * Weekly Expenses AN and AO when they add up to column H.
+   * Null when those columns are absent.
+   */
+  feeSplit: { legacyFeeCents: number; tolsonFeeCents: number } | null;
 };
 
 export const TONU_RATE_NOTE = "TONU rate unconfirmed";
@@ -87,8 +92,8 @@ export const SHEET_FEE_DIFFERS = "sheet fee differs";
 /**
  * Owner-week figures from the Load Ledger, Weekly Expenses, and Week Report.
  * Fuel, tolls, fees, and miles are the sheet cells. They are not recomputed from imports.
- * A held or pending TONU stays out of gross. Its deadhead miles and toll count in the
- * week after delivery, which is the week that TONU is counted.
+ * A held or pending TONU stays out of gross. Its deadhead miles and its toll move with
+ * the TONU into the week it is counted. They are not held in the delivery week.
  */
 export function buildOwnerTruckWeek(input: {
   ledger: SheetGrid | null;
@@ -205,9 +210,7 @@ export function buildOwnerTruckWeek(input: {
   const arrivingTollCents = tonuCounted.reduce((sum, row) => sum + row.tollCents, 0);
   const tollFromSheet = categories.some((row) => row.category === "Toll fees");
   const chosenTollCents = categories.find((row) => row.category === "Toll fees")?.cents ?? 0;
-  const tollCents = tollFromSheet
-    ? chosenTollCents
-    : adjustForTonu(0, countedTollCents, 0, arrivingTollCents);
+  const tollCents = tollFromSheet ? chosenTollCents : addArriving(chosenTollCents, countedTollCents, arrivingTollCents);
   if (tollCents !== chosenTollCents) replaceCategory(categories, "Toll fees", tollCents);
   miscCents = categories.find((row) => row.category === "Misc")?.cents ?? 0;
   const countedDeadhead = parsed?.allocatedDeadheadColumn ? allocatedMilesOnce(counted, "deadhead") : 0;
@@ -244,6 +247,15 @@ export function buildOwnerTruckWeek(input: {
     });
   const fees = feeSplitFromUnit(statement);
   const sheetFeeDiffers = sheetManagement != null && sheetManagement !== fees.managementFeeCents;
+  const feeTotal = sheetManagement ?? 0;
+  let legacyPart = weekly?.legacyFeeCents ?? null;
+  let tolsonPart = weekly?.tolsonFeeCents ?? null;
+  if (reportApplies && report.legacyFeeCents != null) legacyPart = report.legacyFeeCents;
+  if (reportApplies && report.tolsonFeeCents != null) tolsonPart = report.tolsonFeeCents;
+  const feeSplit =
+    legacyPart != null && tolsonPart != null && legacyPart + tolsonPart === feeTotal
+      ? { legacyFeeCents: legacyPart, tolsonFeeCents: tolsonPart }
+      : null;
   // Sheet and Week Report driver pay already include Tarps. Do not add that column again.
   expenseCents = categories.reduce((sum, row) => sum + row.cents, 0);
   const netCents = grossCents - expenseCents;
@@ -267,13 +279,20 @@ export function buildOwnerTruckWeek(input: {
     loads,
     fees,
     sheetFeeDiffers,
+    feeSplit,
     appliedWeekReport: reportGrid,
   };
 }
 
+/** A counted TONU's toll is added once when this week has no toll cell yet. */
+function addArriving(shown: number, counted: number, arriving: number): number {
+  if (arriving <= 0) return shown;
+  return shown >= counted + arriving ? shown : shown + arriving;
+}
+
 /**
- * Take a held TONU out of this week when the sheet total still sits above the counted rows,
- * then put a counted TONU's miles or toll into this week, once.
+ * Take a held TONU's miles out of this week when the sheet total still sits above the counted rows,
+ * then put a counted TONU's miles into this week, once.
  */
 function adjustForTonu(shown: number, counted: number, held: number, arriving: number): number {
   const stripped = held > 0 && shown - held >= counted ? shown - held : shown;
@@ -418,6 +437,8 @@ type WeekReportMoney = {
   driverCents: number | null;
   dispatchCents: number | null;
   factoringCents: number | null;
+  legacyFeeCents: number | null;
+  tolsonFeeCents: number | null;
   managementCents: number | null;
   fuelCents: number | null;
   tollCents: number | null;
@@ -435,6 +456,8 @@ export function readWeekReportMoney(grid: SheetGrid | null | undefined): WeekRep
     driverCents: null,
     dispatchCents: null,
     factoringCents: null,
+    legacyFeeCents: null,
+    tolsonFeeCents: null,
     managementCents: null,
     fuelCents: null,
     tollCents: null,
@@ -448,13 +471,15 @@ export function readWeekReportMoney(grid: SheetGrid | null | undefined): WeekRep
     expenseCents: reportMoney(grid, ["total expenses", "total weekly expense"], 3, 5),
     milesHundredths: reportMoney(grid, ["total miles"], 18, 2),
     dispatchCents: reportMoney(grid, ["dispatch fee"], 21, 2),
-    factoringCents: reportMoney(grid, ["factoring fee", "factoring fee (rounded to cents)"], 22, 2),
+    factoringCents: moneyByLabel(grid, ["factoring fee", "factoring fee (rounded to cents)"]) ?? 0,
     driverCents: reportMoney(grid, ["driver pay", "driver compensation"], 23, 2),
     managementCents: reportMoney(grid, ["management fee", "total fees (legacy+tolson)", "total fees (legacy + tolson)"], 24, 2),
     fuelCents: reportMoney(grid, ["fuel total cost", "fuel total"], 28, 2),
     tollCents: reportMoney(grid, ["toll fees"], 29, 14),
     miscCents: reportMoney(grid, ["misc expenses", "misc expenses (1-5)"], 25, 14),
     deadheadHundredths: reportMoney(grid, ["deadhead miles", "deadhead", "alloc deadhead"], 17, 2),
+    legacyFeeCents: moneyByLabel(grid, ["legacy fee", "legacy fee (in total)"]),
+    tolsonFeeCents: moneyByLabel(grid, ["tolson fee", "tolson fee (in total)"]),
     mpg: empty.mpg,
   };
 }

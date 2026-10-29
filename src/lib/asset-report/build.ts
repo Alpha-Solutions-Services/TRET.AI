@@ -10,7 +10,6 @@ import {
 } from "@/lib/reports/format";
 import { buildOwnerTruckWeek } from "@/lib/reports/owner-week";
 import { weekMpg } from "@/lib/reports/trip-metrics";
-import { percentFeeStatement } from "@/lib/statements/engine";
 import {
   columnIndex,
   columnIndexes,
@@ -424,13 +423,11 @@ function columnTotal(header: string[], rows: string[][], names: readonly string[
   return sum;
 }
 
-function feeBreakdown(unitNumber: string, grossCents: number, weekStart: string): AssetExpenseLine[] {
-  const unit = percentFeeStatement({ unitNumber, grossCents, weekStart });
-  const legacy = unit.legacyRetainedCents;
-  const total = unit.managementFeeCents > 0 ? unit.managementFeeCents : unit.tolsonPayableCents;
+function feeBreakdown(split: { legacyFeeCents: number; tolsonFeeCents: number } | null): AssetExpenseLine[] {
+  if (!split) return [];
   return [
-    { label: "Legacy fee", cents: legacy, detail: true },
-    { label: "Tolson lease fee", cents: total - legacy, detail: true },
+    { label: "Legacy fee", cents: split.legacyFeeCents, detail: true },
+    { label: "Tolson lease fee", cents: split.tolsonFeeCents, detail: true },
   ];
 }
 
@@ -643,13 +640,15 @@ export function buildAssetReport(input: {
       dispatchMilesHundredths = input.importTotals.dispatchMilesHundredths;
     }
   }
-  const sheetDriver = read(["driver compensation"]);
+  const ownerCents = (name: string) => owner.categories.find((row) => row.category === name)?.cents ?? 0;
+  const sheetDriver = ownerCents("Driver compensation");
   const lines = {
     driver: sheetDriver,
-    management: read(["management fee"]),
+    management: ownerCents("Management fee"),
+    otherManual: ownerCents("Other (manual)"),
     dispatch: read(["dispatch fee"]),
-    factoring: read(["factoring fee"]),
-    fuel: fuelCents,
+    factoring: ownerCents("Factoring fee"),
+    fuel: input.weekly ? ownerCents("Fuel") : fuelCents,
     insurance: read(["insurance"]),
     escrow: read(["maintenance escrow weekly", "weekly escrow"]),
     escrowBalance: readOptional(weekly, ["escrow balance", "maintenance escrow balance", "running escrow"]),
@@ -657,13 +656,13 @@ export function buildAssetReport(input: {
     yard: read(["yard fee", "yard parking"]),
     gps: read(["gps tracker"]),
     tollPass: read(["toll pass"]),
-    tolls: tollCents,
+    tolls: input.weekly ? ownerCents("Toll fees") : tollCents,
     permits: read(["permit fees", "permits"]),
   };
   const leftExpenses: AssetExpenseLine[] = [
     { label: percentLabel("Driver Compensation", "20%", weekly, ["driver compensation %", "driver compensation percent"]), cents: lines.driver },
-    { label: percentLabel("Management Fee", "10%", weekly, ["management fee %", "management fee percent", "mgmt fee %"]), cents: owner.fees.managementFeeCents },
-    ...feeBreakdown(input.unitNumber, owner.grossCents, input.weekStart),
+    { label: percentLabel("Management Fee", "10%", weekly, ["management fee %", "management fee percent", "mgmt fee %"]), cents: lines.management },
+    ...feeBreakdown(owner.feeSplit),
     { label: "Dispatch Fee", cents: lines.dispatch },
     { label: percentLabel("Factoring Fee", "1.75%", weekly, ["factoring fee %", "factoring fee percent"]), cents: lines.factoring },
     { label: "Fuel (Diesel + DEF)", cents: lines.fuel },
@@ -683,6 +682,7 @@ export function buildAssetReport(input: {
   if (truckPay !== 0) rightExpenses.push({ label: "Truck payments", cents: truckPay });
   if (trailerPay !== 0) rightExpenses.push({ label: "Trailer payments", cents: trailerPay });
   if (owner.miscCents !== 0) rightExpenses.push({ label: "Misc", cents: owner.miscCents });
+  if (lines.otherManual !== 0) rightExpenses.push({ label: "Other (manual)", cents: lines.otherManual });
   const expenseCents = [...leftExpenses, ...rightExpenses].reduce(
     (sum, line) => sum + (line.detail ? 0 : line.cents),
     0,

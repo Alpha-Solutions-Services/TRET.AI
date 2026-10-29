@@ -41,8 +41,8 @@ const TRUCK8_LEDGER = [
 ];
 
 const TRUCK8_WEEKLY = [
-  ["Week Start Date", "Driver", "Driver Compensation", "Management Fee", "Dispatch Fee", "Factoring Fee", "Maintenance Escrow Weekly", "ELD Fee", "Yard Fee", "GPS Tracker", "Insurance", "Truck Pymts", "Trailer Pymts", "Toll Fees", "Toll Pass", "Permit Fees", "Fuel"],
-  ["10/05/2026", "Brison", "$1,400.00", "$700.00", "$350.00", "$122.50", "$200.00", "$47.25", "$12.93", "$8.50", "$288.71", "$300.00", "$147.23", "$18.06", "$0.00", "$0.00", "$456.59"],
+  ["Week Start Date", "Driver", "Driver Compensation", "Management Fee", "Dispatch Fee", "Factoring Fee", "Maintenance Escrow Weekly", "ELD Fee", "Yard Fee", "GPS Tracker", "Insurance", "Truck Pymts", "Trailer Pymts", "Toll Fees", "Toll Pass", "Permit Fees", "Fuel", "Legacy Fee", "Tolson Fee"],
+  ["10/05/2026", "Brison", "$1,400.00", "$1,260.00", "$350.00", "$122.50", "$200.00", "$47.25", "$12.93", "$8.50", "$288.71", "$300.00", "$147.23", "$18.06", "$0.00", "$0.00", "$456.59", "$700.00", "$560.00"],
 ];
 
 const TRUCK8_FUEL = [
@@ -121,7 +121,7 @@ describe("weekly asset report", () => {
     expect(report.leftExpenses.map((line) => line.label)).not.toContain("MC Lease");
     expect(report.leftExpenses.find((line) => line.label.startsWith("Driver"))?.cents).toBe(96_000);
     expect(report.leftExpenses.find((line) => line.label.startsWith("Management"))?.label).toBe("Management Fee - 10%");
-    expect(report.expenseCents).toBe(269_841);
+    expect(report.expenseCents).toBe(217_841);
     expect(report.fuelCostCents).toBe(4_000);
     expect(report.fuelEconomy).toBe("15.00");
     expect(report.netCents).toBe(report.grossCents - report.expenseCents);
@@ -202,7 +202,7 @@ describe("weekly asset report", () => {
     expect(report.fuelEconomy).toBe("28.17");
     expect(report.fuelUnitPriceCents).toBe(555);
     expect(report.fuelPerMileCents).toBe(20);
-    expect(report.notes).toEqual(["sheet fee differs"]);
+    expect(report.notes).toEqual([]);
     expect(report.notes.join(" ")).not.toContain(DEFAULT_DISPATCHER);
     const bytes = await renderAssetReportPdf(report);
     const text = pdfText(bytes);
@@ -241,8 +241,8 @@ describe("weekly asset report", () => {
       ["10/08/2026", "TBH--1195", "$900.00", "384", "0", "LANDSTAR TRANSPORTATION LOGISTICS, INC", "Chester, SC", "Fredericksburg, VA", "M-1195", "", "0"],
     ];
     const weekly = [
-      ["Week Start Date", "Driver Compensation", "Driver Compensation %", "Management Fee", "Management Fee %", "Dispatch Fee", "Factoring Fee", "Factoring Fee %", "Fuel", "Insurance", "Maintenance Escrow Weekly", "Escrow Balance", "ELD Fee", "Yard Parking", "GPS Tracker", "Toll Pass", "Toll Fees", "Permit Fees"],
-      ["10/05/2026", "$1,580.00", "20%", "$790.00", "10%", "$395.00", "$138.25", "1.75%", "$1,161.83", "$288.71", "$0.00", "$200.00", "$47.25", "$12.93", "$8.50", "$0.00", "$18.06", "$0.00"],
+      ["Week Start Date", "Driver Compensation", "Driver Compensation %", "Management Fee", "Management Fee %", "Dispatch Fee", "Factoring Fee", "Factoring Fee %", "Fuel", "Insurance", "Maintenance Escrow Weekly", "Escrow Balance", "ELD Fee", "Yard Parking", "GPS Tracker", "Toll Pass", "Toll Fees", "Permit Fees", "Legacy Fee", "Tolson Fee"],
+      ["10/05/2026", "$1,580.00", "20%", "$1,422.00", "18%", "$395.00", "$138.25", "1.75%", "$1,161.83", "$288.71", "$0.00", "$200.00", "$47.25", "$12.93", "$8.50", "$0.00", "$18.06", "$0.00", "$790.00", "$632.00"],
     ];
     const fuel = [
       ["Date", "Gallons", "Total Cost", "Miles"],

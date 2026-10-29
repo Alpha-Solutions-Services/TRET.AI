@@ -61,6 +61,10 @@ export type WeeklyExpenseOuts = {
   categories: ExpenseCategoryTotal[];
   headerFound: boolean;
   rowFound: boolean;
+  /** Column AN. Null when that header is absent. Not added on top of column H. */
+  legacyFeeCents: number | null;
+  /** Column AO. Null when that header is absent. Not added on top of column H. */
+  tolsonFeeCents: number | null;
 };
 
 export function weeklyExpensesCandidates(unitNumber: string): string[] {
@@ -83,6 +87,12 @@ function lineCents(header: string[], row: string[], names: readonly string[]): n
     (sum, index) => sum + (sheetAmountToCents(row[index] ?? "") ?? 0),
     0,
   );
+}
+
+/** Null when the header is missing. Zero is a real cell. */
+function optionalLineCents(header: string[], row: string[], names: readonly string[]): number | null {
+  if (columnIndexes(header, names).length === 0) return null;
+  return lineCents(header, row, names);
 }
 
 /** The Weekly Expenses row for this Monday, or another row dated inside the week. */
@@ -112,11 +122,11 @@ export function outsFromWeeklyExpenses(
 ): WeeklyExpenseOuts {
   const headerIndex = findHeaderRow(grid, [["week start date", "date"], ["driver compensation"]]);
   if (headerIndex < 0) {
-    return { outsCents: 0, categories: [], headerFound: false, rowFound: false };
+    return { outsCents: 0, categories: [], headerFound: false, rowFound: false, legacyFeeCents: null, tolsonFeeCents: null };
   }
   const found = findWeeklyExpenseRow(grid, weekStart, weekEnd);
   if (!found) {
-    return { outsCents: 0, categories: [], headerFound: true, rowFound: false };
+    return { outsCents: 0, categories: [], headerFound: true, rowFound: false, legacyFeeCents: null, tolsonFeeCents: null };
   }
   const categories: ExpenseCategoryTotal[] = [];
   let outsCents = 0;
@@ -131,7 +141,14 @@ export function outsFromWeeklyExpenses(
     categories.push(line);
     outsCents += line.cents;
   }
-  return { outsCents, categories, headerFound: true, rowFound: true };
+  return {
+    outsCents,
+    categories,
+    headerFound: true,
+    rowFound: true,
+    legacyFeeCents: optionalLineCents(found.header, found.row, ["legacy fee"]),
+    tolsonFeeCents: optionalLineCents(found.header, found.row, ["tolson fee"]),
+  };
 }
 
 /** Extra Misc or receipt rows under the weekly summary. The summary row itself is not counted twice. */

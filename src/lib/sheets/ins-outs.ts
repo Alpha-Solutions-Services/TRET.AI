@@ -100,6 +100,8 @@ export type TruckWeekInsOuts = {
   legacyFeeCents?: number;
   tolsonLeaseFeeCents?: number;
   managementFeeCents?: number;
+  /** AN and AO when they add up to column H. Absent when those columns are missing. */
+  feeSplit?: { legacyFeeCents: number; tolsonFeeCents: number } | null;
   /** True when Outs came from the Weekly Expenses tab. */
   outsFromWeekly: boolean;
   /** Easy-language cause when the sheet could not be read, a tab was missing, or a header did not parse. */
@@ -507,9 +509,11 @@ export function buildTruckWeekInsOuts(input: {
     miscCents: owner.miscCents,
     weekLoads: owner.loads,
     pending: owner.pending,
-    legacyFeeCents: owner.fees.legacyFeeCents,
-    tolsonLeaseFeeCents: owner.fees.tolsonLeaseFeeCents,
-    managementFeeCents: owner.fees.managementFeeCents,
+    legacyFeeCents: owner.feeSplit?.legacyFeeCents ?? 0,
+    tolsonLeaseFeeCents: owner.feeSplit?.tolsonFeeCents ?? 0,
+    managementFeeCents:
+      owner.categories.find((item) => item.category === "Management fee")?.cents ?? owner.fees.managementFeeCents,
+    feeSplit: owner.feeSplit,
     categories: owner.categories,
     outsFromWeekly: useWeekly,
     ledgerLoads: ins?.loads ?? [],

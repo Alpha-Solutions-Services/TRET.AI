@@ -115,7 +115,7 @@ function ledger(spec: Spec): string[][] {
     tonu[2] = "$2,000.00";
     tonu[3] = "TONU";
     tonu[15] = miles(sheet.milesHundredths - spec.milesHundredths);
-    tonu[44] = "$12.00";
+    tonu[44] = "$50.00";
     tonu[47] = miles(sheet.deadheadHundredths - spec.deadheadHundredths);
     rows.push(tonu);
   }
@@ -390,10 +390,10 @@ describe("owner PDF and dashboard parity", () => {
     expect(row.deadheadMilesHundredths).toBe(1_000);
     expect(statement.deadheadMilesHundredths).toBe(1_000);
     expect(row.truckMilesHundredths).toBe(1_000);
-    expect(tollCents(row)).toBe(1_200);
-    expect(statement.tollsCents).toBe(1_200);
-    expect(row.netCents).toBe(-1_200);
-    expect(statement.netCents).toBe(-1_200);
+    expect(tollCents(row)).toBe(5_000);
+    expect(statement.tollsCents).toBe(5_000);
+    expect(row.netCents).toBe(-5_000);
+    expect(statement.netCents).toBe(-5_000);
   });
 
   it("uses truck miles over diesel gallons for fleet MPG", () => {

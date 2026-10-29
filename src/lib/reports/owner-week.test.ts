@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { centsPerLoadedMile } from "@/lib/reports/format";
 import { buildOwnerTruckWeek, readWeekReportMoney, SHEET_FEE_DIFFERS, TONU_RATE_NOTE, weekReportApplies, weekReportGallons } from "@/lib/reports/owner-week";
+import { buildAssetReport } from "@/lib/asset-report/build";
 import { buildTruckWeekInsOuts, fuelLogGallons } from "@/lib/sheets/ins-outs";
 import { percentFeeStatement } from "@/lib/statements/engine";
 import { applySheetWeek } from "@/lib/statements/sheet-week";
@@ -44,11 +45,11 @@ const TRUCKS: TruckFixture[] = [
   { unit: "1", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, driverCents: 0, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 0, managementCents: 0, fuelCents: 0, tollCents: 0, fixedCents: 72_945, expenseCents: 72_945, netCents: -72_945, mpg: null, legacyCents: 0, tolsonCents: 0, deadheadHundredths: 0, sheetFeeDiffers: false },
   { unit: "2", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, driverCents: 0, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 0, managementCents: 0, fuelCents: 139_665, tollCents: 0, fixedCents: 78_292, expenseCents: 217_957, netCents: -217_957, mpg: null, legacyCents: 0, tolsonCents: 0, deadheadHundredths: 0, sheetFeeDiffers: false },
   { unit: "3", loads: 4, grossCents: 855_000, milesHundredths: 285_200, miscCents: 97_488, driverCents: 171_000, dispatchCents: 47_025, factoringCents: 14_963, sheetManagementCents: 85_500, managementCents: 85_500, fuelCents: 156_430, tollCents: 64_213, fixedCents: 67_041, expenseCents: 703_660, netCents: 151_340, mpg: "7.16", rpmLabel: "2.9979", legacyCents: 85_500, tolsonCents: 0, deadheadHundredths: 22_100, sheetFeeDiffers: false },
-  { unit: "4", loads: 1, grossCents: 250_000, milesHundredths: 150_700, miscCents: 227_502, driverCents: 68_125, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 25_000, managementCents: 45_000, fuelCents: 106_556, tollCents: 0, fixedCents: 67_726, expenseCents: 494_909, netCents: -244_909, mpg: "8.29", rpmLabel: "1.6589", legacyCents: 25_000, tolsonCents: 20_000, deadheadHundredths: 8_100, sheetFeeDiffers: true },
-  { unit: "5", loads: 5, grossCents: 720_000, milesHundredths: 258_839, miscCents: 0, driverCents: 192_600, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 72_000, managementCents: 129_600, fuelCents: 108_260, tollCents: 0, fixedCents: 76_762, expenseCents: 449_622, netCents: 270_378, mpg: "10.65", rpmLabel: "2.7817", legacyCents: 72_000, tolsonCents: 57_600, deadheadHundredths: 28_839, sheetFeeDiffers: true },
-  { unit: "6", loads: 2, grossCents: 200_000, milesHundredths: 69_880, miscCents: 0, driverCents: 53_500, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 20_000, managementCents: 36_000, fuelCents: 116_586, tollCents: 0, fixedCents: 83_455, expenseCents: 273_541, netCents: -73_541, mpg: null, rpmLabel: "2.8621", legacyCents: 20_000, tolsonCents: 16_000, deadheadHundredths: 2_987, sheetFeeDiffers: true, pending: [{ loadId: "TBH--1181", delivery: "10/12/2026" }, { loadId: "TBH--1191", delivery: "10/12/2026" }] },
-  { unit: "7", loads: 2, grossCents: 470_000, milesHundredths: 130_076, miscCents: 10_598, driverCents: 128_075, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 47_000, managementCents: 84_600, fuelCents: 158_464, tollCents: 3_647, fixedCents: 70_112, expenseCents: 417_896, netCents: 52_104, mpg: "7.42", rpmLabel: "3.6133", legacyCents: 47_000, tolsonCents: 37_600, deadheadHundredths: 2_734, sheetFeeDiffers: true, pending: [{ loadId: "TBH--1200", delivery: "10/12/2026" }, { loadId: "TBH--1202", delivery: "10/12/2026" }] },
-  { unit: "8", loads: 5, grossCents: 790_000, milesHundredths: 266_000, miscCents: 33_420, driverCents: 264_825, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 99_000, managementCents: 142_200, fuelCents: 158_816, tollCents: 4_861, fixedCents: 80_462, expenseCents: 641_384, netCents: 148_616, mpg: "7.04", rpmLabel: "3.7218", legacyCents: 79_000, tolsonCents: 63_200, deadheadHundredths: 25_100, sheetFeeDiffers: true, sheetGrossCents: 990_000, tonu: { loadId: "TBH--1201", delivery: "10/09/2026" } },
+  { unit: "4", loads: 1, grossCents: 250_000, milesHundredths: 150_700, miscCents: 227_502, driverCents: 68_125, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 45_000, managementCents: 45_000, fuelCents: 106_556, tollCents: 0, fixedCents: 67_726, expenseCents: 514_909, netCents: -264_909, mpg: "8.29", rpmLabel: "1.6589", legacyCents: 25_000, tolsonCents: 20_000, deadheadHundredths: 8_100, sheetFeeDiffers: false },
+  { unit: "5", loads: 5, grossCents: 720_000, milesHundredths: 258_839, miscCents: 0, driverCents: 192_600, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 129_600, managementCents: 129_600, fuelCents: 108_260, tollCents: 0, fixedCents: 76_762, expenseCents: 507_222, netCents: 212_778, mpg: "10.65", rpmLabel: "2.7817", legacyCents: 72_000, tolsonCents: 57_600, deadheadHundredths: 28_839, sheetFeeDiffers: false },
+  { unit: "6", loads: 2, grossCents: 200_000, milesHundredths: 69_880, miscCents: 0, driverCents: 53_500, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 36_000, managementCents: 36_000, fuelCents: 116_586, tollCents: 0, fixedCents: 83_455, expenseCents: 289_541, netCents: -89_541, mpg: null, rpmLabel: "2.8621", legacyCents: 20_000, tolsonCents: 16_000, deadheadHundredths: 2_987, sheetFeeDiffers: false, pending: [{ loadId: "TBH--1181", delivery: "10/12/2026" }, { loadId: "TBH--1191", delivery: "10/12/2026" }] },
+  { unit: "7", loads: 2, grossCents: 470_000, milesHundredths: 130_076, miscCents: 10_598, driverCents: 128_075, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 84_600, managementCents: 84_600, fuelCents: 158_464, tollCents: 3_647, fixedCents: 70_112, expenseCents: 455_496, netCents: 14_504, mpg: "7.42", rpmLabel: "3.6133", legacyCents: 47_000, tolsonCents: 37_600, deadheadHundredths: 2_734, sheetFeeDiffers: false, pending: [{ loadId: "TBH--1200", delivery: "10/12/2026" }, { loadId: "TBH--1202", delivery: "10/12/2026" }] },
+  { unit: "8", loads: 5, grossCents: 790_000, milesHundredths: 266_000, miscCents: 33_420, driverCents: 264_825, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 142_200, managementCents: 142_200, fuelCents: 158_816, tollCents: 4_861, fixedCents: 80_462, expenseCents: 684_584, netCents: 105_416, mpg: "7.04", rpmLabel: "3.7218", legacyCents: 79_000, tolsonCents: 63_200, deadheadHundredths: 25_100, sheetFeeDiffers: false, sheetGrossCents: 990_000, tonu: { loadId: "TBH--1201", delivery: "10/09/2026" } },
   { unit: "9", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, driverCents: 0, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 0, managementCents: 0, fuelCents: 0, tollCents: 0, fixedCents: 0, expenseCents: 0, netCents: 0, mpg: null, legacyCents: 0, tolsonCents: 0, deadheadHundredths: 0, sheetFeeDiffers: false },
   { unit: "10", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, driverCents: 0, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 0, managementCents: 0, fuelCents: 0, tollCents: 0, fixedCents: 0, expenseCents: 0, netCents: 0, mpg: null, legacyCents: 0, tolsonCents: 0, deadheadHundredths: 0, sheetFeeDiffers: false },
 ];
@@ -120,7 +121,7 @@ function ledgerFor(truck: TruckFixture): string[][] {
 
 function weeklyFor(truck: TruckFixture): string[][] {
   return [
-    ["Week Start Date", "Driver Compensation", "Total Fees (Legacy+Tolson)", "Dispatch Fee", "Factoring Fee", "Fuel", "Toll Fees", "Insurance"],
+    ["Week Start Date", "Driver Compensation", "Total Fees (Legacy+Tolson)", "Dispatch Fee", "Factoring Fee", "Fuel", "Toll Fees", "Insurance", "Legacy Fee", "Tolson Fee"],
     [
       "10/05/2026",
       dollars(truck.driverCents),
@@ -130,6 +131,8 @@ function weeklyFor(truck: TruckFixture): string[][] {
       dollars(truck.fuelCents),
       dollars(truck.tollCents),
       dollars(truck.fixedCents),
+      dollars(truck.legacyCents),
+      dollars(truck.tolsonCents),
     ],
   ];
 }
@@ -198,8 +201,8 @@ describe("week 41 owner sheet", () => {
     }
     expect(loads).toBe(19);
     expect(TRUCKS.reduce((sum, truck) => sum + truck.grossCents, 0)).toBe(3_285_000);
-    expect(TRUCKS.reduce((sum, truck) => sum + truck.expenseCents, 0)).toBe(3_271_914);
-    expect(TRUCKS.reduce((sum, truck) => sum + truck.netCents, 0)).toBe(13_086);
+    expect(TRUCKS.reduce((sum, truck) => sum + truck.expenseCents, 0)).toBe(3_446_314);
+    expect(TRUCKS.reduce((sum, truck) => sum + truck.netCents, 0)).toBe(-161_314);
     const legacyIncome = TRUCKS.reduce((sum, truck) => sum + truck.legacyCents, 0);
     const tolsonPayable = TRUCKS.reduce((sum, truck) => sum + truck.tolsonCents, 0);
     expect(legacyIncome).toBe(328_500);
@@ -405,15 +408,15 @@ describe("week 41 owner sheet", () => {
     tonu[2] = "$2,000.00";
     tonu[3] = "TONU";
     tonu[15] = "10.00";
-    tonu[44] = "$12.00";
+    tonu[44] = "$50.00";
     tonu[47] = "10.00";
     const report = weekReport(TRUCKS[7]!);
     report[3]![2] = "$7,900.00";
     report[17]![2] = "241.00";
     report[18]![2] = "2650.00";
-    report[29]![14] = "$36.61";
+    report[29]![14] = "$48.61";
     const weekly = weeklyFor(TRUCKS[7]!);
-    weekly[1]![6] = "$36.61";
+    weekly[1]![6] = "$48.61";
     const week = buildOwnerTruckWeek({
       ledger: [cells, delivered, tonu],
       weekly,
@@ -425,8 +428,8 @@ describe("week 41 owner sheet", () => {
     expect(week.grossCents).toBe(790_000);
     expect(week.deadheadHundredths).toBe(24_100);
     expect(week.milesHundredths).toBe(265_000);
-    expect(week.categories.find((row) => row.category === "Toll fees")?.cents).toBe(3_661);
-    expect(week.expenseCents).toBe(TRUCKS[7]!.expenseCents - TRUCKS[7]!.tollCents + 3_661);
+    expect(week.categories.find((row) => row.category === "Toll fees")?.cents).toBe(4_861);
+    expect(week.expenseCents).toBe(TRUCKS[7]!.expenseCents);
     expect(week.netCents).toBe(790_000 - week.expenseCents);
     const week42 = buildOwnerTruckWeek({
       ledger: [cells, delivered, tonu],
@@ -441,8 +444,8 @@ describe("week 41 owner sheet", () => {
     expect(week42.pending).toEqual([{ loadId: "TBH--1201", reason: TONU_RATE_NOTE }]);
     expect(week42.deadheadHundredths).toBe(1_000);
     expect(week42.milesHundredths).toBe(1_000);
-    expect(week42.categories.find((row) => row.category === "Toll fees")?.cents).toBe(1_200);
-    expect(week42.netCents).toBe(-1_200);
+    expect(week42.categories.find((row) => row.category === "Toll fees")?.cents).toBe(5_000);
+    expect(week42.netCents).toBe(-5_000);
   });
 
   it("does not count the TONU miles twice when the count week already includes them", () => {
@@ -467,7 +470,7 @@ describe("week 41 owner sheet", () => {
     tonu[2] = "$2,000.00";
     tonu[3] = "TONU";
     tonu[15] = "10.00";
-    tonu[44] = "$12.00";
+    tonu[44] = "$50.00";
     tonu[47] = "10.00";
     const week = buildOwnerTruckWeek({
       ledger: [cells, delivered, tonu],
@@ -489,10 +492,10 @@ describe("week 41 owner sheet", () => {
     countedWeek[18]![1] = "Total Miles";
     countedWeek[18]![2] = "10.00";
     countedWeek[29]![13] = "Toll Fees";
-    countedWeek[29]![14] = "$12.00";
+    countedWeek[29]![14] = "$50.00";
     const week42 = buildOwnerTruckWeek({
       ledger: [cells, delivered, tonu],
-      weekly: [["Week Start Date", "Driver Compensation", "Toll Fees"], ["10/12/2026", "$0.00", "$12.00"]],
+      weekly: [["Week Start Date", "Driver Compensation", "Toll Fees"], ["10/12/2026", "$0.00", "$50.00"]],
       weekReport: countedWeek,
       unitNumber: "8",
       weekStart: "2026-10-12",
@@ -501,8 +504,8 @@ describe("week 41 owner sheet", () => {
     expect(week42.grossCents).toBe(0);
     expect(week42.deadheadHundredths).toBe(1_000);
     expect(week42.milesHundredths).toBe(1_000);
-    expect(week42.categories.find((row) => row.category === "Toll fees")?.cents).toBe(1_200);
-    expect(week42.netCents).toBe(-1_200);
+    expect(week42.categories.find((row) => row.category === "Toll fees")?.cents).toBe(5_000);
+    expect(week42.netCents).toBe(-5_000);
   });
 });
 
@@ -599,25 +602,30 @@ describe("week report scope", () => {
 
 describe("live weekly expense headers", () => {
   it("reads Truck 8 week 42 from the live column names and matches the sheet total", () => {
-    const ledgerHeader = Array.from({ length: 55 }, () => "");
-    ledgerHeader[0] = "Delivery Date";
-    ledgerHeader[1] = "Load ID";
-    ledgerHeader[2] = "Rate";
-    ledgerHeader[3] = "Status";
-    ledgerHeader[44] = "Toll Expense";
-    ledgerHeader[54] = "Tarps";
+    const width = 55;
+    const header = Array.from({ length: width }, () => "");
+    header[1] = "Delivery Date";
+    header[5] = "Load ID";
+    header[16] = "Rate";
+    header[44] = "Toll Expense";
+    header[52] = "Status";
+    header[54] = "Tarps";
     const load = (day: string, id: string, rate: string, status: string, tarp: string, toll: string) => {
-      const row = Array.from({ length: 55 }, () => "");
-      row[0] = day;
-      row[1] = id;
-      row[2] = rate;
-      row[3] = status;
+      const row = Array.from({ length: width }, () => "");
+      row[1] = day;
+      row[5] = id;
+      row[16] = rate;
       row[44] = toll;
+      row[52] = status;
       row[54] = tarp;
       return row;
     };
     const ledger = [
-      ledgerHeader,
+      ["Legacy Inc Global | Operational Log — T008"],
+      ["YELLOW = type."],
+      ["Truck ID", "T008", "Truck #", "8"],
+      ["Primary Driver", "Brison"],
+      header,
       load("10/12/2026", "TBH--1201", "$250.00", "TONU", "", "$50.00"),
       load("10/12/2026", "TBH--1203", "$1,600.00", "Delivered", "$50.00", "$32.36"),
       load("10/14/2026", "TBH--1207", "$1,750.00", "Delivered", "", "$21.21"),
@@ -625,6 +633,8 @@ describe("live weekly expense headers", () => {
       load("10/15/2026", "TBH--1217", "$150.00", "TONU", "", ""),
       load("10/17/2026", "TBH--1218", "$5,000.00", "Delivered", "$50.00", ""),
     ];
+    expect(ledger[4]?.[5]).toBe("Load ID");
+    expect(ledger[4]?.[16]).toBe("Rate");
     const weekly = [
       [
         "Week Start Date",
@@ -632,6 +642,8 @@ describe("live weekly expense headers", () => {
         "Total Fees (Legacy+Tolson)",
         "Dispatch Fee",
         "Factoring Fee",
+        "Legacy Fee",
+        "Tolson Fee",
         "ELD Fee",
         "Toll Fees",
         "Toll Pass",
@@ -648,7 +660,9 @@ describe("live weekly expense headers", () => {
         "$2,300.00",
         "$1,935.00",
         "$537.50",
-        "188.125",
+        "$188.13",
+        "$1,075.00",
+        "$860.00",
         "$47.25",
         "$103.57",
         "$5.49",
@@ -696,8 +710,28 @@ describe("live weekly expense headers", () => {
       row,
     );
     expect(statement.netCents).toBe(week.netCents);
-    expect(statement.lines.find((line) => line.lineCode === "DRIVER_PAY")?.label).toBe("Driver pay (20% + tarps)");
+    expect(statement.lines.find((line) => line.lineCode === "DRIVER_PAY")?.label).toBe("Driver pay (incl. tarps)");
     expect(statement.lines.some((line) => line.lineCode === "TARPS")).toBe(false);
+    expect(statement.managementFeeCents).toBe(193_500);
+    expect(statement.legacyRetainedCents).toBe(107_500);
+    expect(statement.tolsonPayableCents).toBe(86_000);
+    expect(statement.legacyRetainedCents + statement.tolsonPayableCents).toBe(statement.managementFeeCents);
+    const asset = buildAssetReport({
+      weekStart: "2026-10-12",
+      weekEnd: "2026-10-18",
+      unitNumber: "8",
+      ownerName: null,
+      ledger,
+      weekly,
+      fuelLog: null,
+      fleet: null,
+      sheetNote: null,
+    });
+    expect(asset.expenseCents).toBe(week.expenseCents);
+    expect(asset.netCents).toBe(week.netCents);
+    expect(asset.leftExpenses.find((line) => line.label.startsWith("Management"))?.cents).toBe(193_500);
+    expect(asset.rightExpenses.find((line) => line.label === "Other (manual)")?.cents).toBe(10_000);
+    expect(asset.leftExpenses.some((line) => line.label === "Tarps")).toBe(false);
   });
 
   it("reads Week Report factoring from the rounded-cents label, not the MPG cell", () => {
@@ -712,6 +746,9 @@ describe("live weekly expense headers", () => {
     const money = readWeekReportMoney(grid);
     expect(money.factoringCents).toBe(13_388);
     expect(money.managementCents).toBe(137_700);
+    const unlabeled = Array.from({ length: 32 }, () => Array.from({ length: 3 }, () => ""));
+    unlabeled[22]![2] = "6.34";
+    expect(readWeekReportMoney(unlabeled).factoringCents).toBe(0);
   });
 });
 

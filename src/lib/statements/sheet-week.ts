@@ -16,8 +16,9 @@ export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): Unit
     .filter((load) => load.status === "Delivered")
     .reduce((sum, load) => sum + (load.tarpCents ?? 0), 0);
   const management = cents(row, "Management fee");
-  const legacy = row.legacyFeeCents ?? 0;
-  const tolson = row.tolsonLeaseFeeCents ?? 0;
+  const split = row.feeSplit ?? null;
+  const legacy = split?.legacyFeeCents ?? 0;
+  const tolsonPart = split?.tolsonFeeCents ?? 0;
   const dispatch = cents(row, "Dispatch fee");
   const factoring = cents(row, "Factoring fee");
   const fuel = cents(row, "Fuel");
@@ -33,7 +34,7 @@ export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): Unit
     grossCents: row.insCents,
     driverPayCents: driver,
     managementFeeCents: paysTotal ? management : 0,
-    tolsonPayableCents: paysTotal ? tolson : management,
+    tolsonPayableCents: paysTotal ? tolsonPart : management,
     legacyRetainedCents: legacy,
     dispatchFeeCents: dispatch,
     factoringFeeCents: factoring,
@@ -51,7 +52,7 @@ export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): Unit
     lines: syncSheetLines(unit.lines, {
       driver,
       management: paysTotal ? management : 0,
-      tolson: paysTotal ? tolson : management,
+      tolson: paysTotal ? tolsonPart : management,
       legacy,
       dispatch,
       factoring,
@@ -66,7 +67,7 @@ export function applySheetWeek(unit: UnitStatement, row: TruckWeekInsOuts): Unit
   next.netCents = expectedNetCents(next);
   if (tarps > 0) {
     const driverLine = next.lines.find((line) => line.lineCode === "DRIVER_PAY");
-    if (driverLine) driverLine.label = "Driver pay (20% + tarps)";
+    if (driverLine) driverLine.label = "Driver pay (incl. tarps)";
   }
   return next;
 }
@@ -90,9 +91,9 @@ type SheetLineAmounts = {
 function syncSheetLines(existing: readonly StatementLine[], amounts: SheetLineAmounts): StatementLine[] {
   const lines = existing.map((line) => ({ ...line }));
   putLine(lines, "DRIVER_PAY", "Driver pay", amounts.driver, 10, true);
-  putLine(lines, "MANAGEMENT_FEE", "Management fee", amounts.management, 20, amounts.chargeManagement);
-  putLine(lines, "TOLSON_PAYABLE", "Tolson lease fee", amounts.tolson, 21, amounts.chargeTolson);
-  putLine(lines, "LEGACY_RETAINED", "Legacy fee", amounts.legacy, 22, false);
+  putLine(lines, "MANAGEMENT_FEE", "Management fee", amounts.management, 20, amounts.chargeManagement, amounts.management > 0);
+  putLine(lines, "TOLSON_PAYABLE", "Tolson lease fee", amounts.tolson, 21, amounts.chargeTolson, amounts.tolson > 0);
+  putLine(lines, "LEGACY_RETAINED", "Legacy fee", amounts.legacy, 22, false, amounts.legacy > 0);
   putLine(lines, "DISPATCH_FEE", "Dispatch fee", amounts.dispatch, 30, true);
   putLine(lines, "FACTORING_FEE", "Factoring fee", amounts.factoring, 40, true);
   putLine(lines, "FUEL", "Fuel", amounts.fuel, 50, true);
@@ -128,6 +129,7 @@ function putLine(
   cents: number,
   sortOrder: number,
   charge: boolean,
+  visible = true,
 ): void {
   const line = lines.find((row) => row.lineCode === code);
   const next: StatementLine = {
@@ -137,7 +139,7 @@ function putLine(
     rateBp: line?.rateBp ?? null,
     basePctBp: line?.basePctBp ?? null,
     chargedTo: charge && cents > 0 ? "owner" : null,
-    ownerVisible: true,
+    ownerVisible: visible,
     sortOrder,
   };
   if (line) Object.assign(line, next);
