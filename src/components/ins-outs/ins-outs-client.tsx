@@ -48,9 +48,9 @@ export function InsOutsClient({
   const fleet = fleetInsOutsTotals(rows);
   const feeTotals = rows.filter((row) => row.readable).reduce(
     (sum, row) => ({
-      legacy: sum.legacy + (row.legacyFeeCents ?? 0),
-      tolson: sum.tolson + (row.tolsonLeaseFeeCents ?? 0),
-      management: sum.management + (row.managementFeeCents ?? 0),
+      legacy: sum.legacy + (row.feeSplit?.legacyFeeCents ?? 0),
+      tolson: sum.tolson + (row.feeSplit?.tolsonFeeCents ?? 0),
+      management: sum.management + (row.categories.find((item) => item.category === "Management fee")?.cents ?? 0),
     }),
     { legacy: 0, tolson: 0, management: 0 },
   );
@@ -187,9 +187,9 @@ export function InsOutsClient({
                     )}
                   </td>
                   <td className="px-3 py-2">{row.readable ? money(row.insCents) : ""}</td>
-                  <td className="px-3 py-2">{row.readable ? money(row.legacyFeeCents ?? 0) : ""}</td>
-                  <td className="px-3 py-2">{row.readable ? money(row.tolsonLeaseFeeCents ?? 0) : ""}</td>
-                  <td className="px-3 py-2">{row.readable ? money(row.managementFeeCents ?? 0) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.feeSplit?.legacyFeeCents ?? 0) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.feeSplit?.tolsonFeeCents ?? 0) : ""}</td>
+                  <td className="px-3 py-2">{row.readable ? money(row.categories.find((item) => item.category === "Management fee")?.cents ?? 0) : ""}</td>
                   {columns.map((category) => (
                     <td key={category} className="px-3 py-2 whitespace-nowrap">
                       {row.readable ? money(categoryCents(row, category)) : ""}

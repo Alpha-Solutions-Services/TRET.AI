@@ -96,11 +96,7 @@ export type TruckWeekInsOuts = {
   /** Owner PDF DEF gallons when the Week Report or Fuel Log splits them. */
   reportDefGallonsMilli?: number;
   categories: ExpenseCategoryTotal[];
-  /** Sheet Management Fee cell, split into the two fee lines. */
-  legacyFeeCents?: number;
-  tolsonLeaseFeeCents?: number;
-  managementFeeCents?: number;
-  /** AN and AO when they add up to column H. Absent when those columns are missing. */
+  /** The Legacy and Tolson lines for this week. Sheet AN and AO when they add up to H, otherwise the calculated split. */
   feeSplit?: { legacyFeeCents: number; tolsonFeeCents: number } | null;
   /** True when Outs came from the Weekly Expenses tab. */
   outsFromWeekly: boolean;
@@ -509,10 +505,6 @@ export function buildTruckWeekInsOuts(input: {
     miscCents: owner.miscCents,
     weekLoads: owner.loads,
     pending: owner.pending,
-    legacyFeeCents: owner.feeSplit?.legacyFeeCents ?? 0,
-    tolsonLeaseFeeCents: owner.feeSplit?.tolsonFeeCents ?? 0,
-    managementFeeCents:
-      owner.categories.find((item) => item.category === "Management fee")?.cents ?? owner.fees.managementFeeCents,
     feeSplit: owner.feeSplit,
     categories: owner.categories,
     outsFromWeekly: useWeekly,
@@ -523,7 +515,7 @@ export function buildTruckWeekInsOuts(input: {
       input.mgmtExpenses,
       input.weeklyExpenses ?? null,
     ),
-    note: notes.length ? notes.join(" ") : null,
+    note: [...notes, ...owner.warnings].join(" ") || null,
     noteDetail,
     readable: true,
   };

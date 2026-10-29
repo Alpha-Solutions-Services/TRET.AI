@@ -27,6 +27,8 @@ export type SheetGrid = string[][];
 export type AssetExpenseLine = {
   label: string;
   cents: number;
+  /** Owner-week category this line copies. Detail lines have none. */
+  category?: string;
   /** Shown on the PDF. Left out of the expense total so the management fee is not added twice. */
   detail?: boolean;
 };
@@ -617,6 +619,7 @@ export function buildAssetReport(input: {
   });
   if (input.ledger) grossCents = owner.grossCents;
   if (owner.sheetFeeDiffers) notes.push("sheet fee differs");
+  for (const warning of owner.warnings) notes.push(warning);
   if (owner.milesFromAllocated) {
     dispatchMilesHundredths = owner.milesHundredths;
   }
@@ -640,49 +643,46 @@ export function buildAssetReport(input: {
       dispatchMilesHundredths = input.importTotals.dispatchMilesHundredths;
     }
   }
-  const ownerCents = (name: string) => owner.categories.find((row) => row.category === name)?.cents ?? 0;
-  const sheetDriver = ownerCents("Driver compensation");
-  const lines = {
-    driver: sheetDriver,
-    management: ownerCents("Management fee"),
-    otherManual: ownerCents("Other (manual)"),
-    dispatch: read(["dispatch fee"]),
-    factoring: ownerCents("Factoring fee"),
-    fuel: input.weekly ? ownerCents("Fuel") : fuelCents,
-    insurance: read(["insurance"]),
-    escrow: read(["maintenance escrow weekly", "weekly escrow"]),
-    escrowBalance: readOptional(weekly, ["escrow balance", "maintenance escrow balance", "running escrow"]),
-    eld: read(["eld fee"]),
-    yard: read(["yard fee", "yard parking"]),
-    gps: read(["gps tracker"]),
-    tollPass: read(["toll pass"]),
-    tolls: input.weekly ? ownerCents("Toll fees") : tollCents,
-    permits: read(["permit fees", "permits"]),
-  };
+  const categoryCents = (name: string) => owner.categories.find((row) => row.category === name)?.cents;
+  const expenseLine = (category: string, label: string, fallback = 0): AssetExpenseLine => ({
+    category,
+    label,
+    cents: categoryCents(category) ?? fallback,
+  });
+  const fuelLine = input.weekly ? (categoryCents("Fuel") ?? 0) : fuelCents;
+  const tollLine = input.weekly ? (categoryCents("Toll fees") ?? 0) : tollCents;
+  const escrowBalance = readOptional(weekly, ["escrow balance", "maintenance escrow balance", "running escrow"]);
   const leftExpenses: AssetExpenseLine[] = [
-    { label: percentLabel("Driver Compensation", "20%", weekly, ["driver compensation %", "driver compensation percent"]), cents: lines.driver },
-    { label: percentLabel("Management Fee", "10%", weekly, ["management fee %", "management fee percent", "mgmt fee %"]), cents: lines.management },
+    expenseLine(
+      "Driver compensation",
+      percentLabel("Driver Compensation", "20%", weekly, ["driver compensation %", "driver compensation percent"]),
+    ),
+    expenseLine(
+      "Management fee",
+      percentLabel("Management Fee", "10%", weekly, ["management fee %", "management fee percent", "mgmt fee %"]),
+    ),
     ...feeBreakdown(owner.feeSplit),
-    { label: "Dispatch Fee", cents: lines.dispatch },
-    { label: percentLabel("Factoring Fee", "1.75%", weekly, ["factoring fee %", "factoring fee percent"]), cents: lines.factoring },
-    { label: "Fuel (Diesel + DEF)", cents: lines.fuel },
-    { label: "Insurance", cents: lines.insurance },
+    expenseLine("Dispatch fee", "Dispatch Fee"),
+    expenseLine("Factoring fee", percentLabel("Factoring Fee", "1.75%", weekly, ["factoring fee %", "factoring fee percent"])),
+    { category: "Fuel", label: "Fuel (Diesel + DEF)", cents: fuelLine },
+    expenseLine("Insurance", "Insurance"),
   ];
   const rightExpenses: AssetExpenseLine[] = [
-    { label: "Maintenance Escrow Weekly", cents: lines.escrow },
-    { label: "ELD Fee", cents: lines.eld },
-    { label: "Yard Parking", cents: lines.yard },
-    { label: "GPS Tracker", cents: lines.gps },
-    { label: "Toll Pass", cents: lines.tollPass },
-    { label: "Toll Charges", cents: lines.tolls },
-    { label: "Permits", cents: lines.permits },
+    expenseLine("Maintenance Escrow Weekly", "Maintenance Escrow Weekly"),
+    expenseLine("ELD fee", "ELD Fee"),
+    expenseLine("Yard fee", "Yard Parking"),
+    expenseLine("GPS tracker", "GPS Tracker"),
+    expenseLine("Toll pass", "Toll Pass"),
+    { category: "Toll fees", label: "Toll Charges", cents: tollLine },
+    expenseLine("Permit fees", "Permits"),
   ];
-  const truckPay = read(["truck pymts", "truck payments"]);
-  const trailerPay = read(["trailer pymts", "trailer payments"]);
-  if (truckPay !== 0) rightExpenses.push({ label: "Truck payments", cents: truckPay });
-  if (trailerPay !== 0) rightExpenses.push({ label: "Trailer payments", cents: trailerPay });
-  if (owner.miscCents !== 0) rightExpenses.push({ label: "Misc", cents: owner.miscCents });
-  if (lines.otherManual !== 0) rightExpenses.push({ label: "Other (manual)", cents: lines.otherManual });
+  const placed = new Set(
+    [...leftExpenses, ...rightExpenses].map((line) => line.category).filter((name): name is string => Boolean(name)),
+  );
+  for (const row of owner.categories) {
+    if (placed.has(row.category)) continue;
+    rightExpenses.push({ category: row.category, label: row.category, cents: row.cents });
+  }
   const expenseCents = [...leftExpenses, ...rightExpenses].reduce(
     (sum, line) => sum + (line.detail ? 0 : line.cents),
     0,
@@ -770,10 +770,10 @@ export function buildAssetReport(input: {
     loads,
     leftExpenses,
     rightExpenses,
-    escrowWeekCents: lines.escrow,
-    escrowBalanceCents: lines.escrowBalance,
-    escrowCents: lines.escrowBalance ?? lines.escrow,
-    escrowCardLabel: lines.escrowBalance == null ? "Escrow Balance (this week)" : "Escrow Balance",
+    escrowWeekCents: categoryCents("Maintenance Escrow Weekly") ?? 0,
+    escrowBalanceCents: escrowBalance,
+    escrowCents: escrowBalance ?? (categoryCents("Maintenance Escrow Weekly") ?? 0),
+    escrowCardLabel: escrowBalance == null ? "Escrow Balance (this week)" : "Escrow Balance",
     fuelGallonsLabel: gallonsMilli > 0 ? formatGallonsMilli(gallonsMilli) : "0.000",
     fuelCostCents: fuelCents,
     fuelUnitPriceCents:

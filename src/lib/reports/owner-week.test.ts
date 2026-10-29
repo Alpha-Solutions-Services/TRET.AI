@@ -400,7 +400,7 @@ describe("week 41 owner sheet", () => {
     delivered[2] = "$7,900.00";
     delivered[5] = "Yes";
     delivered[15] = "2650.00";
-    delivered[44] = "$36.61";
+    delivered[44] = "$48.61";
     delivered[47] = "241.00";
     const tonu = Array.from({ length: 48 }, () => "");
     tonu[0] = "10/09/2026";
@@ -462,7 +462,7 @@ describe("week 41 owner sheet", () => {
     delivered[1] = "TBH--1178";
     delivered[2] = "$7,900.00";
     delivered[15] = "2650.00";
-    delivered[44] = "$36.61";
+    delivered[44] = "$48.61";
     delivered[47] = "241.00";
     const tonu = Array.from({ length: 48 }, () => "");
     tonu[0] = "10/09/2026";
@@ -660,7 +660,7 @@ describe("live weekly expense headers", () => {
         "$2,300.00",
         "$1,935.00",
         "$537.50",
-        "$188.13",
+        "188.125",
         "$1,075.00",
         "$860.00",
         "$47.25",
@@ -742,13 +742,53 @@ describe("live weekly expense headers", () => {
     grid[22]![13] = "Total Fees (Legacy+Tolson)";
     grid[22]![14] = "$1,377.00";
     grid[24]![13] = "Factoring Fee (rounded to cents)";
-    grid[24]![14] = "$133.88";
+    grid[24]![14] = "188.125";
+    grid[24]![15] = "$9.00";
     const money = readWeekReportMoney(grid);
-    expect(money.factoringCents).toBe(13_388);
+    expect(money.factoringCents).toBe(18_813);
     expect(money.managementCents).toBe(137_700);
     const unlabeled = Array.from({ length: 32 }, () => Array.from({ length: 3 }, () => ""));
     unlabeled[22]![2] = "6.34";
-    expect(readWeekReportMoney(unlabeled).factoringCents).toBe(0);
+    expect(readWeekReportMoney(unlabeled).factoringCents).toBeNull();
+    const zero = Array.from({ length: 32 }, () => Array.from({ length: 16 }, () => ""));
+    zero[24]![13] = "Factoring Fee";
+    zero[24]![14] = "0";
+    zero[24]![15] = "$9.00";
+    expect(readWeekReportMoney(zero).factoringCents).toBe(0);
+  });
+
+  it("uses the calculated split and warns when Legacy and Tolson do not add up to H", () => {
+    const week = buildOwnerTruckWeek({
+      ledger: [
+        ["Delivery Date", "Load ID", "Rate"],
+        ["10/06/2026", "TBH--1", "$1,000.00"],
+      ],
+      weekly: [
+        ["Week Start Date", "Driver Compensation", "Total Fees (Legacy+Tolson)", "Legacy Fee", "Tolson Fee"],
+        ["10/05/2026", "$0.00", "$180.00", "$100.00", "$50.00"],
+      ],
+      weekReport: null,
+      unitNumber: "8",
+      ...WEEK,
+    });
+    expect(week.categories.find((row) => row.category === "Management fee")?.cents).toBe(18_000);
+    expect(week.warnings).toEqual(["Sheet fee split does not add up to Total Fees (Legacy+Tolson)."]);
+    expect(week.feeSplit).toEqual({ legacyFeeCents: 10_000, tolsonFeeCents: 8_000 });
+    const missing = buildOwnerTruckWeek({
+      ledger: [
+        ["Delivery Date", "Load ID", "Rate"],
+        ["10/06/2026", "TBH--1", "$1,000.00"],
+      ],
+      weekly: [
+        ["Week Start Date", "Driver Compensation", "Total Fees (Legacy+Tolson)"],
+        ["10/05/2026", "$0.00", "$180.00"],
+      ],
+      weekReport: null,
+      unitNumber: "8",
+      ...WEEK,
+    });
+    expect(missing.warnings).toEqual([]);
+    expect(missing.feeSplit).toEqual({ legacyFeeCents: 10_000, tolsonFeeCents: 8_000 });
   });
 });
 

@@ -1,6 +1,7 @@
 import { inflateSync } from "node:zlib";
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
+import { buildOwnerTruckWeek } from "@/lib/reports/owner-week";
 import { buildAssetReport, DEFAULT_DISPATCHER } from "./build";
 import { manifestRefsByLoad } from "./manifest-refs";
 import { PAGE_H, PAGE_W, renderAssetReportPdf } from "./pdf";
@@ -226,7 +227,7 @@ describe("weekly asset report", () => {
     expect(text).not.toContain("Weekly Escrow");
     expect(text).not.toContain("MC Lease");
     expect(text).not.toContain("Not stored");
-    expect(text).not.toContain("447.23");
+    expect(text).not.toContain("$447.23");
     expect(text).not.toContain("2,999.00");
   });
 
@@ -278,9 +279,9 @@ describe("weekly asset report", () => {
     expect(report.revenuePerLoadCents).toBe(158_000);
     expect(report.fuelPerMileCents).toBe(50);
     expect(report.fuelEconomy).toBe("11.09");
-    expect(report.expenseCents).toBe(507_253);
-    expect(report.netCents).toBe(282_747);
-    expect(report.rightExpenses.find((line) => line.label === "Maintenance Escrow Weekly")?.cents).toBe(0);
+    expect(report.expenseCents).toBe(527_253);
+    expect(report.netCents).toBe(262_747);
+    expect(report.rightExpenses.find((line) => line.label === "Maintenance Escrow Weekly")?.cents).toBe(20_000);
     expect(report.escrowCardLabel).toBe("Escrow Balance");
     expect(report.escrowBalanceCents).toBe(20_000);
     expect(report.rightExpenses.map((line) => line.label)).not.toContain("Escrow Balance (this week)");
@@ -371,5 +372,47 @@ describe("weekly asset report", () => {
       sheetNote: null,
     });
     expect(blank.fuelEconomy).toBe("n/a");
+  });
+
+  it("copies every owner-week category, including a Week Report dispatch figure", () => {
+    const week = { weekStart: "2026-10-12", weekEnd: "2026-10-18" };
+    const ledger = [
+      ["Delivery Date", "Load ID", "Rate"],
+      ["10/13/2026", "TBH--9", "$1,000.00"],
+    ];
+    const weekly = [
+      ["Week Start Date", "Driver Compensation", "Dispatch Fee", "Insurance", "Maintenance Escrow Weekly", "Escrow Balance", "ELD Fee", "Yard Fee", "GPS Tracker", "Toll Pass", "Permit Fees", "Truck Pymts", "Trailer Pymts", "Total Fees (Legacy+Tolson)"],
+      ["10/12/2026", "$200.00", "$10.00", "$40.00", "$7.00", "$25.00", "$5.00", "$3.00", "$2.00", "$1.00", "$4.00", "$30.00", "$20.00", "$180.00"],
+    ];
+    const weekReport = [
+      ["Week start", "10/12/2026"],
+      ["Total Revenue", "$1,000.00"],
+      ["Dispatch Fee", "$80.00"],
+    ];
+    const owner = buildOwnerTruckWeek({
+      ledger,
+      weekly,
+      weekReport,
+      unitNumber: "8",
+      ...week,
+    });
+    const asset = buildAssetReport({
+      ...week,
+      unitNumber: "8",
+      ownerName: null,
+      ledger,
+      weekly,
+      fuelLog: null,
+      fleet: null,
+      weekReport,
+      sheetNote: null,
+    });
+    const lines = [...asset.leftExpenses, ...asset.rightExpenses];
+    expect(owner.categories.find((row) => row.category === "Dispatch fee")?.cents).toBe(8_000);
+    for (const category of owner.categories) {
+      expect(lines.find((line) => line.category === category.category)?.cents, category.category).toBe(category.cents);
+    }
+    expect(asset.expenseCents).toBe(owner.expenseCents);
+    expect(asset.netCents).toBe(owner.netCents);
   });
 });

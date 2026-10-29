@@ -92,8 +92,8 @@ function syncSheetLines(existing: readonly StatementLine[], amounts: SheetLineAm
   const lines = existing.map((line) => ({ ...line }));
   putLine(lines, "DRIVER_PAY", "Driver pay", amounts.driver, 10, true);
   putLine(lines, "MANAGEMENT_FEE", "Management fee", amounts.management, 20, amounts.chargeManagement, amounts.management > 0);
-  putLine(lines, "TOLSON_PAYABLE", "Tolson lease fee", amounts.tolson, 21, amounts.chargeTolson, amounts.tolson > 0);
-  putLine(lines, "LEGACY_RETAINED", "Legacy fee", amounts.legacy, 22, false, amounts.legacy > 0);
+  putLine(lines, "TOLSON_PAYABLE", "Tolson lease fee", amounts.tolson, 21, amounts.chargeTolson);
+  putLine(lines, "LEGACY_RETAINED", "Legacy fee", amounts.legacy, 22, false);
   putLine(lines, "DISPATCH_FEE", "Dispatch fee", amounts.dispatch, 30, true);
   putLine(lines, "FACTORING_FEE", "Factoring fee", amounts.factoring, 40, true);
   putLine(lines, "FUEL", "Fuel", amounts.fuel, 50, true);

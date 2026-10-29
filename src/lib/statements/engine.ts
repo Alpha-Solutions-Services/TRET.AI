@@ -85,12 +85,18 @@ function includeTarpInDriverPay(unit: UnitStatement, tarpCents: number): UnitSta
   const tarp = tarpCents > 0 ? tarpCents : 0;
   if (tarp === 0) return unit;
   const driver = unit.lines.find((line) => line.lineCode === "DRIVER_PAY");
-  if (!driver || driver.rateBp == null) return unit;
+  if (!driver || driver.rateBp == null) {
+    if (driver && driver.rateBp == null) {
+      console.warn(`Truck ${unit.unitNumber}: tarp skipped because driver pay has no rate.`);
+    }
+    return unit;
+  }
+  const rateBp = driver.rateBp;
   const lines = unit.lines.map((line) => {
     if (line.lineCode !== "DRIVER_PAY") return line;
     return {
       ...line,
-      label: `Driver pay (${bpToPercentString(line.rateBp ?? 0)}% + tarps)`,
+      label: `Driver pay (${bpToPercentString(rateBp)}% + tarps)`,
       amountCents: line.amountCents + tarp,
       chargedTo: "owner" as const,
       ownerVisible: true,

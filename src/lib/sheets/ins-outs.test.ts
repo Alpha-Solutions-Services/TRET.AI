@@ -47,9 +47,12 @@ describe("sheet Ins and Outs", () => {
     expect(sheetAmountToCents("$2,750.00")).toBe(275_000);
     expect(sheetAmountToCents("")).toBeNull();
     expect(sheetAmountToCents("$0.00")).toBe(0);
-    expect(sheetAmountToCents("$188.13")).toBe(18_813);
-    expect(sheetAmountToCents("188.125")).toBeNull();
-    expect(sheetAmountToCents("133.875")).toBeNull();
+    expect(sheetAmountToCents("188.125")).toBe(18_813);
+    expect(sheetAmountToCents("133.875")).toBe(13_388);
+    expect(sheetAmountToCents("188.124")).toBe(18_812);
+    expect(sheetAmountToCents("0")).toBe(0);
+    expect(sheetAmountToCents("21474836.47")).toBe(2_147_483_647);
+    expect(sheetAmountToCents("21474836.48")).toBeNull();
   });
 
   it("sums Rate by delivery date and management expenses by date", () => {

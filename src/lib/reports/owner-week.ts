@@ -8,7 +8,7 @@ import { percentFeeStatement } from "@/lib/statements/engine";
 import type { UnitStatement } from "@/lib/statements/types";
 import { gallonsStringToMilli } from "@/lib/fuel-tolls/quantity";
 import { tonuHoldWeekStart } from "@/lib/loads/tonu";
-import { inWeek, normalizeHeader, sheetAmountToCents, sheetDay } from "@/lib/sheets/cell";
+import { inWeek, isEmptyCell, normalizeHeader, sheetAmountToCents, sheetDay } from "@/lib/sheets/cell";
 import { parseLoadLedger, type LedgerLoadRow } from "@/lib/sheets/ledger";
 import { outsFromWeeklyExpenses } from "@/lib/sheets/weekly-expenses";
 
@@ -79,6 +79,8 @@ export type OwnerTruckWeek = {
   fees: FeeSplit;
   /** True when the sheet Management Fee cell is not the percent-of-gross total. */
   sheetFeeDiffers: boolean;
+  /** Shown on the truck week when column AN plus AO is present and is not column H. */
+  warnings: string[];
   /**
    * Weekly Expenses AN and AO when they add up to column H.
    * Null when those columns are absent.
@@ -92,8 +94,9 @@ export const SHEET_FEE_DIFFERS = "sheet fee differs";
 /**
  * Owner-week figures from the Load Ledger, Weekly Expenses, and Week Report.
  * Fuel, tolls, fees, and miles are the sheet cells. They are not recomputed from imports.
- * A held or pending TONU stays out of gross. Its deadhead miles and its toll move with
- * the TONU into the week it is counted. They are not held in the delivery week.
+ * A held or pending TONU stays out of gross. Its deadhead miles count in the week it is
+ * counted. Tolls follow the load's own week: a sheet toll cell is kept, and a counted
+ * TONU toll is added only when that week has no toll cell.
  */
 export function buildOwnerTruckWeek(input: {
   ledger: SheetGrid | null;
@@ -116,9 +119,9 @@ export function buildOwnerTruckWeek(input: {
 }): OwnerTruckWeek {
   const parsed = input.ledger ? parseLoadLedger(input.ledger, { unitNumber: input.unitNumber }) : null;
   const counted: LedgerLoadRow[] = [];
-  /** Delivered this week. Deadhead and toll wait until the count week. */
+  /** Delivered this week and held out of gross. Deadhead waits until the count week. */
   const tonuHeld: LedgerLoadRow[] = [];
-  /** Counted this week. Deadhead and toll land here, not in the delivery week. */
+  /** Counted this week. Deadhead lands here. Its toll is used only when this week has no toll cell. */
   const tonuCounted: LedgerLoadRow[] = [];
   const pending: OwnerPendingLoad[] = [];
   const loads: OwnerWeekLoad[] = [];
@@ -252,10 +255,15 @@ export function buildOwnerTruckWeek(input: {
   let tolsonPart = weekly?.tolsonFeeCents ?? null;
   if (reportApplies && report.legacyFeeCents != null) legacyPart = report.legacyFeeCents;
   if (reportApplies && report.tolsonFeeCents != null) tolsonPart = report.tolsonFeeCents;
-  const feeSplit =
-    legacyPart != null && tolsonPart != null && legacyPart + tolsonPart === feeTotal
-      ? { legacyFeeCents: legacyPart, tolsonFeeCents: tolsonPart }
-      : null;
+  const warnings: string[] = [];
+  let feeSplit = { legacyFeeCents: fees.legacyFeeCents, tolsonFeeCents: fees.tolsonLeaseFeeCents };
+  if (legacyPart != null && tolsonPart != null) {
+    if (legacyPart + tolsonPart === feeTotal) {
+      feeSplit = { legacyFeeCents: legacyPart, tolsonFeeCents: tolsonPart };
+    } else {
+      warnings.push("Sheet fee split does not add up to Total Fees (Legacy+Tolson).");
+    }
+  }
   // Sheet and Week Report driver pay already include Tarps. Do not add that column again.
   expenseCents = categories.reduce((sum, row) => sum + row.cents, 0);
   const netCents = grossCents - expenseCents;
@@ -279,6 +287,7 @@ export function buildOwnerTruckWeek(input: {
     loads,
     fees,
     sheetFeeDiffers,
+    warnings,
     feeSplit,
     appliedWeekReport: reportGrid,
   };
@@ -471,7 +480,7 @@ export function readWeekReportMoney(grid: SheetGrid | null | undefined): WeekRep
     expenseCents: reportMoney(grid, ["total expenses", "total weekly expense"], 3, 5),
     milesHundredths: reportMoney(grid, ["total miles"], 18, 2),
     dispatchCents: reportMoney(grid, ["dispatch fee"], 21, 2),
-    factoringCents: moneyByLabel(grid, ["factoring fee", "factoring fee (rounded to cents)"]) ?? 0,
+    factoringCents: moneyByLabel(grid, ["factoring fee", "factoring fee (rounded to cents)"]),
     driverCents: reportMoney(grid, ["driver pay", "driver compensation"], 23, 2),
     managementCents: reportMoney(grid, ["management fee", "total fees (legacy+tolson)", "total fees (legacy + tolson)"], 24, 2),
     fuelCents: reportMoney(grid, ["fuel total cost", "fuel total"], 28, 2),
@@ -497,8 +506,9 @@ function moneyByLabel(grid: SheetGrid, labels: readonly string[]): number | null
       const label = normalizeHeader(row[index] ?? "");
       if (!wanted.has(label)) continue;
       for (let next = index + 1; next < row.length; next += 1) {
-        const cents = sheetAmountToCents(row[next] ?? "");
-        if (cents != null) return cents;
+        const raw = row[next] ?? "";
+        if (isEmptyCell(raw)) continue;
+        return sheetAmountToCents(raw);
       }
     }
   }

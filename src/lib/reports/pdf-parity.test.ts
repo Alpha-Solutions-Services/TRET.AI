@@ -330,7 +330,9 @@ describe("owner PDF and dashboard parity", () => {
       expect(report.totalsHeading, spec.unit).toBe(`Truck ${spec.unit} totals`);
       expect(report.fleetChart.summary, spec.unit).toContain(`Truck ${spec.unit} earned`);
       if (!ownerPaysManagementTotal(spec.truckClass)) {
-        expect(statement.tolsonPayableCents, spec.unit).toBe(row.managementFeeCents ?? 0);
+        expect(statement.tolsonPayableCents, spec.unit).toBe(
+          row.categories.find((item) => item.category === "Management fee")?.cents ?? 0,
+        );
       }
     }
     warn.mockRestore();

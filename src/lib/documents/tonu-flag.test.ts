@@ -13,7 +13,7 @@ describe("confirmed TONU rate", () => {
       loadLedger: [
         ["Delivery Date", "Load ID", "Rate", "Status", "Allocated Miles", "Toll"],
         ["10/07/2026", "TBH--1", "$1,000.00", "", "100", ""],
-        ["10/09/2026", "TBH--1201", "$2,000.00", "TONU", "10", "$12.00"],
+        ["10/09/2026", "TBH--1201", "$2,000.00", "TONU", "10", "$50.00"],
       ],
       mgmtExpenses: null,
       weeklyExpenses: [["Week Start Date", "Fuel"], ["10/05/2026", "$0.00"]],
