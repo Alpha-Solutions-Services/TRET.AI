@@ -7,6 +7,7 @@ import { manifestRefsByLoad } from "@/lib/asset-report/manifest-refs";
 import { loadTruckWorkbook } from "@/lib/sheets/read";
 import { createClient } from "@/lib/supabase/server";
 import { listTrucks } from "@/lib/trucks/queries";
+import { listConfirmedTonuRates } from "@/lib/documents/store";
 
 export async function buildAssetReportPdf(weekStart: string, unitNumber: string): Promise<Uint8Array> {
   const bounds = weekBoundsForDate(weekStart);
@@ -42,6 +43,7 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
     dbGallonsMilli: extras.gallonsMilli,
     dbTollCents: extras.tollCents,
     manifestRefs: await loadManifestRefs(truck.unit_number),
+    confirmedCentsByLoadId: await listConfirmedTonuRates().catch(() => ({})),
     importTotals: imported
       ? {
           fuelCostCents: imported.fuelCostCents,

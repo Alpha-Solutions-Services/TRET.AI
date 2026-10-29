@@ -2,7 +2,7 @@ import { compareUnitNumbers } from "@/lib/fees/two-lines";
 import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { expectedNetCents } from "@/lib/statements/engine";
-import type { FleetStatement, StatementLine, UnitStatement, WeekStatements } from "@/lib/statements/types";
+import type { FleetStatement, StatementBlocker, StatementLine, UnitStatement, WeekStatements } from "@/lib/statements/types";
 
 function cents(row: TruckWeekInsOuts, category: string): number {
   return row.categories.find((item) => item.category === category)?.cents ?? 0;
@@ -143,6 +143,22 @@ function putLine(
   };
   if (line) Object.assign(line, next);
   else lines.push(next);
+}
+
+/** Close and the PDF stay blocked while a filled Weekly Expenses cell cannot be read. */
+export function unreadExpenseBlockers(rows: readonly TruckWeekInsOuts[]): StatementBlocker[] {
+  const blockers: StatementBlocker[] = [];
+  for (const row of rows) {
+    if (!row.readable) continue;
+    for (const label of row.unreadExpenses) {
+      blockers.push({
+        rule: "sheet_cell_unreadable",
+        message: `Truck ${row.unitNumber}: Weekly Expenses ${label} could not be read or is over the cap. Net leaves that line out until it is fixed.`,
+        ref: row.unitNumber,
+      });
+    }
+  }
+  return blockers;
 }
 
 export function overlaySheetStatements(

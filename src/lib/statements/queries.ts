@@ -13,7 +13,7 @@ import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { buildWeekStatements, lockPayload } from "./engine";
-import { overlaySheetStatements } from "./sheet-week";
+import { overlaySheetStatements, unreadExpenseBlockers } from "./sheet-week";
 import { milesValueToHundredths } from "./miles";
 import type {
   CloseImportRun,
@@ -348,6 +348,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
   } catch (err) {
     return failed(bounds, err instanceof Error ? err.message : "Could not compute this week.");
   }
+  live.blockers.push(...unreadExpenseBlockers(sheets.rows));
   live.blockers.push(...schemaNotes);
   live.closeAllowed = live.blockers.length === 0;
 

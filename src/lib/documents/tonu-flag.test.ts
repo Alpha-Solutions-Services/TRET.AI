@@ -26,7 +26,7 @@ describe("confirmed TONU rate", () => {
     expect(tonu?.rateCents).toBe(25_000);
     expect(tonu?.reason).toBeNull();
     expect(next.pending?.some((item) => item.reason === TONU_RATE_NOTE)).toBe(false);
-    expect(next.insCents).toBe(gross);
+    expect(next.insCents).toBe(gross + 25_000);
   });
 
   it("confirms only the loads in the confirmation map", () => {
@@ -53,6 +53,6 @@ describe("confirmed TONU rate", () => {
     expect(tonu?.reason).toBeNull();
     expect(next.pending?.some((item) => item.loadId === "TBH--1221")).toBe(false);
     expect(next.weekLoads?.find((load) => load.loadId === "TBH--1217")?.reason).toBe(TONU_RATE_NOTE);
-    expect(next.insCents).toBe(gross);
+    expect(next.insCents).toBe(gross + 25_000);
   });
 });

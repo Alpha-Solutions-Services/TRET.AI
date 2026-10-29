@@ -120,6 +120,7 @@ describe("sheet week snapshot", () => {
         loadCount: 1,
         categories,
         feeSplit: { legacyFeeCents: 0, tolsonFeeCents: 0 },
+        unreadExpenses: [],
         outsFromWeekly: true,
         note: null,
         noteDetail: null,

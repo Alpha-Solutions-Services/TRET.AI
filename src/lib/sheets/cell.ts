@@ -6,10 +6,16 @@ export function cleanCell(raw: string): string {
   return raw.replace(/\u00a0/g, " ").replace(/[\r\n]+/g, " ").trim();
 }
 
-/** N/A and a lone hyphen are empty. A negative amount is not. */
+/** N/A and a lone hyphen are empty. A negative amount is not. `$`, `$-`, and `$ -` are sheet zeros, not empty. */
 export function isEmptyCell(raw: string): boolean {
   const text = cleanCell(raw);
   return text === "" || text === "-" || /^n\/a$/i.test(text);
+}
+
+/** Sheets show a zero as `$`, `$-`, or `$ -`. */
+export function isSheetDisplayZero(raw: string): boolean {
+  const text = cleanCell(raw);
+  return text === "$" || text === "$-" || /^\$\s+-\s*$/.test(text);
 }
 
 export function cleanLoadId(raw: string): string {
@@ -20,6 +26,7 @@ export function cleanLoadId(raw: string): string {
 
 /** Sheet dollars, including `$` and commas. Extra decimals round half up through `dollarStringToCents`. */
 export function sheetAmountToCents(raw: string): number | null {
+  if (isSheetDisplayZero(raw)) return 0;
   if (isEmptyCell(raw)) return null;
   const trimmed = cleanCell(raw);
   if (!trimmed) return null;

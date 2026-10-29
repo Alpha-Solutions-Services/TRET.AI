@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { compareSheetLoads, unitKey, type SheetLedgerRef, type SheetMismatch } from "@/lib/sheets/mismatch";
+import { compareSheetLoads, type SheetLedgerRef, type SheetMismatch } from "@/lib/sheets/mismatch";
 
 export async function syncSheetMismatches(input: {
   weekStart: string;

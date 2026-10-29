@@ -597,10 +597,11 @@ function feesFromContract(
       throw new Error(`Rates change inside week ${weekStart} (contracts ${contract.id} and ${day.id})`);
     }
   }
+  const missingDriverRate = full.rules.some((rule) => rule.kind === "DRIVER_PAY" && rule.rateBp == null);
   const calculated = calculateFeeLines({
     grossCents,
     truckClass: truck.truckClass,
-    rules: full.rules,
+    rules: missingDriverRate ? full.rules.filter((rule) => !(rule.kind === "DRIVER_PAY" && rule.rateBp == null)) : full.rules,
   });
   const tolsonFixed =
     truck.tolsonFixedCents != null && feeIsActive(truck.tolsonEffectiveFrom, weekStart) ? truck.tolsonFixedCents : null;
@@ -611,6 +612,18 @@ function feesFromContract(
       ? truck.legacyFixedCents
       : null;
   const lines = calculated.map((line) => feeLineFromResult(truck.truckClass, line));
+  if (missingDriverRate) {
+    lines.push({
+      lineCode: "DRIVER_PAY",
+      label: "Driver pay",
+      amountCents: 0,
+      rateBp: null,
+      basePctBp: null,
+      chargedTo: "owner",
+      ownerVisible: true,
+      sortOrder: 10,
+    });
+  }
   const tolsonPayableCents = tolsonFixed ?? feeAmount(calculated, "TOLSON_PAYABLE");
   const legacyRetainedCents = legacyFixed ?? feeAmount(calculated, "LEGACY_RETAINED");
   if (tolsonFixed != null) applyFixedAmount(lines, "TOLSON_PAYABLE", tolsonFixed);

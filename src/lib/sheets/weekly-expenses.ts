@@ -66,8 +66,12 @@ export type WeeklyExpenseOuts = {
   legacyFeeCents: number | null;
   /** Column AO. Null when that header is absent. Not added on top of column H. */
   tolsonFeeCents: number | null;
-  /** Filled cells that could not be read, or that are over the cap. They are not counted as $0. */
+  /** Filled cells that could not be read, or that are over the cap. Net leaves those lines out until they are fixed. */
   warnings: string[];
+  /** Labels of those filled cells. Close and the PDF stay blocked while this list is not empty. */
+  unreadable: string[];
+  /** Column H, including a real zero. Null when that header is absent. */
+  managementFeeCents: number | null;
 };
 
 export function weeklyExpensesCandidates(unitNumber: string): string[] {
@@ -99,7 +103,7 @@ function lineRead(
     const value = sheetAmountToCents(raw);
     if (value == null) {
       warnings.push(
-        `Weekly Expenses ${label} is filled but could not be read or is over the cap, so it was not counted as $0.`,
+        `Weekly Expenses ${label} could not be read or is over the cap. Net leaves that line out until it is fixed.`,
       );
       continue;
     }
@@ -148,18 +152,20 @@ export function outsFromWeeklyExpenses(
 ): WeeklyExpenseOuts {
   const headerIndex = findHeaderRow(grid, [["week start date", "date"], ["driver compensation"]]);
   if (headerIndex < 0) {
-    return { outsCents: 0, categories: [], headerFound: false, rowFound: false, legacyFeeCents: null, tolsonFeeCents: null, warnings: [] };
+    return { outsCents: 0, categories: [], headerFound: false, rowFound: false, legacyFeeCents: null, tolsonFeeCents: null, warnings: [], unreadable: [], managementFeeCents: null };
   }
   const found = findWeeklyExpenseRow(grid, weekStart, weekEnd);
   if (!found) {
-    return { outsCents: 0, categories: [], headerFound: true, rowFound: false, legacyFeeCents: null, tolsonFeeCents: null, warnings: [] };
+    return { outsCents: 0, categories: [], headerFound: true, rowFound: false, legacyFeeCents: null, tolsonFeeCents: null, warnings: [], unreadable: [], managementFeeCents: null };
   }
   const categories: ExpenseCategoryTotal[] = [];
   const warnings: string[] = [];
+  const unreadable: string[] = [];
   let outsCents = 0;
   for (const line of WEEKLY_EXPENSE_LINES) {
     const read = lineRead(found.header, found.row, line.label, line.names);
     warnings.push(...read.warnings);
+    if (read.warnings.length > 0) unreadable.push(line.label);
     if (read.cents === 0) continue;
     categories.push({ category: line.label, cents: read.cents });
     outsCents += read.cents;
@@ -172,6 +178,13 @@ export function outsFromWeeklyExpenses(
   const legacy = optionalLineCents(found.header, found.row, "Legacy Fee", ["legacy fee"]);
   const tolson = optionalLineCents(found.header, found.row, "Tolson Fee", ["tolson fee"]);
   warnings.push(...legacy.warnings, ...tolson.warnings);
+  if (legacy.warnings.length > 0) unreadable.push("Legacy Fee");
+  if (tolson.warnings.length > 0) unreadable.push("Tolson Fee");
+  const management = optionalLineCents(found.header, found.row, "Management fee", [
+    "management fee",
+    "total fees (legacy+tolson)",
+    "total fees (legacy + tolson)",
+  ]);
   return {
     outsCents,
     categories,
@@ -180,6 +193,8 @@ export function outsFromWeeklyExpenses(
     legacyFeeCents: legacy.cents,
     tolsonFeeCents: tolson.cents,
     warnings,
+    unreadable,
+    managementFeeCents: management.cents,
   };
 }
 

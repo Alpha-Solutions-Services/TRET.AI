@@ -7,7 +7,8 @@ import type { TruckClass } from "@/lib/fee-engine";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { buildWeekStatements } from "@/lib/statements/engine";
 import type { StatementsPageData } from "@/lib/statements/queries";
-import { overlaySheetStatements } from "@/lib/statements/sheet-week";
+import { overlaySheetStatements, unreadExpenseBlockers } from "@/lib/statements/sheet-week";
+import { buildTruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import type { UnitStatement, WeekStatementInput, WeekStatements } from "@/lib/statements/types";
 
 const { loadStatementsMock, sheetsMock, clientMock } = vi.hoisted(() => ({
@@ -177,6 +178,39 @@ describe("GET /api/statements/pdf", () => {
     expect(response.status).toBe(409);
     const body = (await response.json()) as { error: string };
     expect(body.error).toContain("Fuel is not linked.");
+  });
+
+  it("refuses the PDF when a Weekly Expenses cell cannot be read", async () => {
+    const row = buildTruckWeekInsOuts({
+      unitNumber: "8",
+      truckName: "Truck 8",
+      weekStart: WEEK,
+      weekEnd: "2026-10-11",
+      loadLedger: [
+        ["Delivery Date", "Load ID", "Rate"],
+        ["10/06/2026", "TBH--1", "$100.00"],
+      ],
+      mgmtExpenses: null,
+      weeklyExpenses: [
+        ["Week Start Date", "Driver Compensation", "Fuel"],
+        ["10/05/2026", "$10.00", "nope"],
+      ],
+      note: null,
+    });
+    const blockers = unreadExpenseBlockers([row]);
+    expect(blockers[0]?.message).toContain("Fuel");
+    loadStatementsMock.mockResolvedValue(
+      pageFrom(input, {
+        warnings: [],
+        blockers,
+        closeAllowed: false,
+      }),
+    );
+    const response = await GET(new Request(`http://localhost/api/statements/pdf?week=${WEEK}`));
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toContain("Weekly Expenses Fuel");
+    expect(body.error).toContain("Net leaves that line out until it is fixed");
   });
 
   it("returns the PDF when imported rows disagree and there are no warnings", async () => {
@@ -417,6 +451,7 @@ function week41Row(truck: Week41Truck): TruckWeekInsOuts {
     truckMilesHundredths: truck.milesHundredths,
     miscCents: truck.miscCents,
     feeSplit: { legacyFeeCents: truck.legacyCents, tolsonFeeCents: truck.tolsonCents },
+    unreadExpenses: [],
     outsFromWeekly: true,
     note: null,
     noteDetail: null,

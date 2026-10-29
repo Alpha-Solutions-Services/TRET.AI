@@ -527,6 +527,7 @@ export function buildAssetReport(input: {
   fuelLog: SheetGrid | null;
   fleet: SheetGrid | null;
   weekReport?: SheetGrid | null;
+  confirmedCentsByLoadId?: Readonly<Record<string, number>>;
   sheetNote: string | null;
   dbFuelCents?: number;
   dbGallonsMilli?: number;
@@ -615,6 +616,7 @@ export function buildAssetReport(input: {
     weekStart: input.weekStart,
     weekEnd: input.weekEnd,
     unitNumber: input.unitNumber,
+    confirmedCentsByLoadId: input.confirmedCentsByLoadId,
   });
   if (input.ledger) grossCents = owner.grossCents;
   if (owner.sheetFeeDiffers) notes.push("sheet fee differs");

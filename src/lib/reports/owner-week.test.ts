@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { centsPerLoadedMile } from "@/lib/reports/format";
 import { buildOwnerTruckWeek, readWeekReportMoney, SHEET_FEE_DIFFERS, TONU_RATE_NOTE, weekReportApplies, weekReportGallons } from "@/lib/reports/owner-week";
+import { unreadExpenseBlockers } from "@/lib/statements/sheet-week";
+import { lockPayload } from "@/lib/statements/engine";
 import { buildAssetReport } from "@/lib/asset-report/build";
 import { buildTruckWeekInsOuts, fuelLogGallons } from "@/lib/sheets/ins-outs";
 import { percentFeeStatement } from "@/lib/statements/engine";
@@ -679,13 +681,14 @@ describe("live weekly expense headers", () => {
     expect(week.grossCents).toBe(1_035_000);
     expect(week.loads.find((row) => row.loadId === "TBH--1207")?.tarpCents).toBe(0);
     expect(week.loads.find((row) => row.loadId === "TBH--1203")?.tarpCents).toBe(5_000);
-    expect(week.categories.find((row) => row.category === "Management fee")?.cents).toBe(193_500);
+    expect(week.categories.find((row) => row.category === "Management fee")?.cents).toBe(186_300);
+    expect(week.warnings.join(" ")).toContain("Sheet fee is $1,935.00");
     expect(week.categories.find((row) => row.category === "Other (manual)")?.cents).toBe(10_000);
     expect(week.categories.find((row) => row.category === "Factoring fee")?.cents).toBe(18_813);
     expect(week.categories.find((row) => row.category === "Toll fees")?.cents).toBe(10_357);
     expect(week.categories.find((row) => row.category === "Tarps")).toBeUndefined();
-    expect(week.expenseCents).toBe(832_386);
-    expect(week.netCents).toBe(202_614);
+    expect(week.expenseCents).toBe(825_186);
+    expect(week.netCents).toBe(209_814);
     expect(week.netCents).toBe(week.grossCents - week.expenseCents);
     const row = buildTruckWeekInsOuts({
       unitNumber: "8",
@@ -705,9 +708,9 @@ describe("live weekly expense headers", () => {
     expect(statement.netCents).toBe(week.netCents);
     expect(statement.lines.find((line) => line.lineCode === "DRIVER_PAY")?.label).toBe("Driver pay (incl. tarps)");
     expect(statement.lines.some((line) => line.lineCode === "TARPS")).toBe(false);
-    expect(statement.managementFeeCents).toBe(193_500);
-    expect(statement.legacyRetainedCents).toBe(107_500);
-    expect(statement.tolsonPayableCents).toBe(86_000);
+    expect(statement.managementFeeCents).toBe(186_300);
+    expect(statement.legacyRetainedCents).toBe(103_500);
+    expect(statement.tolsonPayableCents).toBe(82_800);
     expect(statement.legacyRetainedCents + statement.tolsonPayableCents).toBe(statement.managementFeeCents);
     const asset = buildAssetReport({
       weekStart: "2026-10-12",
@@ -722,7 +725,7 @@ describe("live weekly expense headers", () => {
     });
     expect(asset.expenseCents).toBe(week.expenseCents);
     expect(asset.netCents).toBe(week.netCents);
-    expect(asset.leftExpenses.find((line) => line.label.startsWith("Management"))?.cents).toBe(193_500);
+    expect(asset.leftExpenses.find((line) => line.label.startsWith("Management"))?.cents).toBe(186_300);
     expect(asset.rightExpenses.find((line) => line.label === "Other (manual)")?.cents).toBe(10_000);
     expect(asset.leftExpenses.some((line) => line.label === "Tarps")).toBe(false);
   });
@@ -875,7 +878,8 @@ describe("live weekly expense headers", () => {
     const week = buildOwnerTruckWeek({ ledger, weekly, weekReport: null, unitNumber: "8", ...WEEK });
     expect(week.categories.find((row) => row.category === "Fuel")).toBeUndefined();
     expect(week.warnings[0]).toContain("Fuel");
-    expect(week.warnings[0]).toContain("not counted as $0");
+    expect(week.warnings[0]).toContain("Net leaves that line out until it is fixed");
+    expect(week.warnings[0]).not.toContain("not counted as $0");
     expect(week.netCents).toBe(week.grossCents - 1_000);
     const row = buildTruckWeekInsOuts({
       unitNumber: "8",
@@ -886,7 +890,8 @@ describe("live weekly expense headers", () => {
       weeklyExpenses: weekly,
       note: null,
     });
-    expect(row.note).toContain("not counted as $0");
+    expect(row.note).toContain("Net leaves that line out until it is fixed");
+    expect(row.unreadExpenses).toEqual(["Fuel"]);
     const asset = buildAssetReport({
       ...WEEK,
       unitNumber: "8",
@@ -897,8 +902,184 @@ describe("live weekly expense headers", () => {
       fleet: null,
       sheetNote: null,
     });
-    expect(asset.notes.join(" ")).toContain("not counted as $0");
+    expect(asset.notes.join(" ")).toContain("Net leaves that line out until it is fixed");
     expect(asset.netCents).toBe(week.netCents);
+  });
+
+  it("treats a sheet zero as zero and does not block the week", () => {
+    const ledger = [
+      ["Delivery Date", "Load ID", "Rate"],
+      ["10/06/2026", "TBH--1", "$100.00"],
+    ];
+    const weekly = [
+      ["Week Start Date", "Driver Compensation", "Fuel"],
+      ["10/05/2026", "$10.00", "$ -"],
+    ];
+    const week = buildOwnerTruckWeek({ ledger, weekly, weekReport: null, unitNumber: "8", ...WEEK });
+    expect(week.unreadExpenses).toEqual([]);
+    expect(week.categories.find((row) => row.category === "Fuel")).toBeUndefined();
+    const row = buildTruckWeekInsOuts({
+      unitNumber: "8",
+      truckName: "Truck 8",
+      ...WEEK,
+      loadLedger: ledger,
+      mgmtExpenses: null,
+      weeklyExpenses: weekly,
+      note: null,
+    });
+    expect(unreadExpenseBlockers([row])).toEqual([]);
+  });
+
+  it("warns when a filled Week Report factoring cell cannot be read and keeps the weekly amount", () => {
+    const ledger = [
+      ["Delivery Date", "Load ID", "Rate"],
+      ["10/06/2026", "TBH--1", "$1,000.00"],
+    ];
+    const weekly = [
+      ["Week Start Date", "Driver Compensation", "Factoring Fee"],
+      ["10/05/2026", "$0.00", "$10.00"],
+    ];
+    const weekReport = [
+      ["Week start", "10/05/2026"],
+      ["Total Revenue", "$1,000.00"],
+      ["Factoring Fee", "not-a-fee", "$1.00"],
+    ];
+    const week = buildOwnerTruckWeek({ ledger, weekly, weekReport, unitNumber: "8", ...WEEK });
+    expect(week.categories.find((row) => row.category === "Factoring fee")?.cents).toBe(1_000);
+    expect(week.warnings.join(" ")).toContain("Week Report Factoring Fee could not be read");
+  });
+
+  it("counts a confirmed TONU in gross and leaves an unconfirmed TONU out", () => {
+    const ledger = [
+      ["Delivery Date", "Load ID", "Rate", "Status"],
+      ["10/13/2026", "TBH--1203", "$1,000.00", "Delivered"],
+      ["10/12/2026", "TBH--1201", "$250.00", "TONU"],
+      ["10/15/2026", "TBH--1217", "$150.00", "TONU"],
+    ];
+    const weekly = [
+      ["Week Start Date", "Driver Compensation"],
+      ["10/12/2026", "$0.00"],
+    ];
+    const confirmed = { "TBH--1201": 25_000 };
+    const input = {
+      ledger,
+      weekly,
+      weekReport: null,
+      unitNumber: "8",
+      weekStart: "2026-10-12",
+      weekEnd: "2026-10-18",
+      confirmedCentsByLoadId: confirmed,
+    };
+    const owner = buildOwnerTruckWeek(input);
+    expect(owner.grossCents).toBe(125_000);
+    expect(owner.loadIds).toContain("TBH--1201");
+    expect(owner.loadIds).not.toContain("TBH--1217");
+    expect(owner.loads.find((load) => load.loadId === "TBH--1217")?.reason).toBe(TONU_RATE_NOTE);
+    const row = buildTruckWeekInsOuts({
+      unitNumber: "8",
+      truckName: "Truck 8",
+      weekStart: "2026-10-12",
+      weekEnd: "2026-10-18",
+      loadLedger: ledger,
+      mgmtExpenses: null,
+      weeklyExpenses: weekly,
+      note: null,
+      confirmedCentsByLoadId: confirmed,
+    });
+    const statement = applySheetWeek(
+      percentFeeStatement({ unitNumber: "8", grossCents: row.insCents, weekStart: "2026-10-12" }),
+      row,
+    );
+    const asset = buildAssetReport({
+      weekStart: "2026-10-12",
+      weekEnd: "2026-10-18",
+      unitNumber: "8",
+      ownerName: null,
+      ledger,
+      weekly,
+      fuelLog: null,
+      fleet: null,
+      sheetNote: null,
+      confirmedCentsByLoadId: confirmed,
+    });
+    expect(row.insCents).toBe(owner.grossCents);
+    expect(statement.grossCents).toBe(owner.grossCents);
+    expect(asset.grossCents).toBe(owner.grossCents);
+    expect(statement.netCents).toBe(owner.netCents);
+    expect(asset.netCents).toBe(owner.netCents);
+    const deliveredFleet = 3_500_000;
+    const confirmedTonu = 25_000 + 25_000;
+    const unconfirmedTonu = 15_000;
+    expect(deliveredFleet + confirmedTonu).toBe(3_550_000);
+    expect(deliveredFleet + confirmedTonu + unconfirmedTonu).toBe(3_565_000);
+  });
+
+  it("blocks Close and the PDF while a Weekly Expenses cell cannot be read", () => {
+    const ledger = [
+      ["Delivery Date", "Load ID", "Rate"],
+      ["10/06/2026", "TBH--1", "$100.00"],
+    ];
+    const weekly = [
+      ["Week Start Date", "Driver Compensation", "Fuel"],
+      ["10/05/2026", "$10.00", "21474836.48"],
+    ];
+    const row = buildTruckWeekInsOuts({
+      unitNumber: "8",
+      truckName: "Truck 8",
+      ...WEEK,
+      loadLedger: ledger,
+      mgmtExpenses: null,
+      weeklyExpenses: weekly,
+      note: null,
+    });
+    const blockers = unreadExpenseBlockers([row]);
+    expect(blockers).toEqual([
+      {
+        rule: "sheet_cell_unreadable",
+        message:
+          "Truck 8: Weekly Expenses Fuel could not be read or is over the cap. Net leaves that line out until it is fixed.",
+        ref: "8",
+      },
+    ]);
+    const fixed = buildTruckWeekInsOuts({
+      unitNumber: "8",
+      truckName: "Truck 8",
+      ...WEEK,
+      loadLedger: ledger,
+      mgmtExpenses: null,
+      weeklyExpenses: [
+        ["Week Start Date", "Driver Compensation", "Fuel"],
+        ["10/05/2026", "$10.00", "$1.00"],
+      ],
+      note: null,
+    });
+    expect(unreadExpenseBlockers([fixed])).toEqual([]);
+    expect(() =>
+      lockPayload({
+        weekStart: WEEK.weekStart,
+        weekEnd: WEEK.weekEnd,
+        units: [],
+        fleet: {
+          grossCents: 0,
+          driverPayCents: 0,
+          managementFeeCents: 0,
+          tolsonPayableCents: 0,
+          legacyRetainedCents: 0,
+          dispatchFeeCents: 0,
+          factoringFeeCents: 0,
+          fuelCents: 0,
+          tollsCents: 0,
+          fixedOwnerCents: 0,
+          fixedManagementCents: 0,
+          netCents: 0,
+          loadCount: 0,
+          unitCount: 0,
+        },
+        blockers,
+        warnings: [],
+        closeAllowed: blockers.length === 0,
+      }),
+    ).toThrow(/blockers/);
   });
 });
 

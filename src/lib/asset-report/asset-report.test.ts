@@ -122,7 +122,7 @@ describe("weekly asset report", () => {
     expect(report.leftExpenses.map((line) => line.label)).not.toContain("MC Lease");
     expect(report.leftExpenses.find((line) => line.label.startsWith("Driver"))?.cents).toBe(96_000);
     expect(report.leftExpenses.find((line) => line.label.startsWith("Management"))?.label).toBe("Management Fee - 10%");
-    expect(report.expenseCents).toBe(217_841);
+    expect(report.expenseCents).toBe(265_841);
     expect(report.fuelCostCents).toBe(4_000);
     expect(report.fuelEconomy).toBe("15.00");
     expect(report.netCents).toBe(report.grossCents - report.expenseCents);

@@ -1,5 +1,5 @@
 -- Not a migration. Run by hand after truck_documents exists.
--- Owner-confirmed TONU fees. Gross is unchanged. TBH--1217 stays unconfirmed.
+-- Owner-confirmed TONU fees. Those amounts count in gross. TBH--1217 stays unconfirmed.
 -- Match the canonical load id (TBH--####).
 
 insert into public.truck_documents (

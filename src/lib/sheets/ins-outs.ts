@@ -96,6 +96,8 @@ export type TruckWeekInsOuts = {
   /** Owner PDF DEF gallons when the Week Report or Fuel Log splits them. */
   reportDefGallonsMilli?: number;
   categories: ExpenseCategoryTotal[];
+  /** Weekly Expenses labels that could not be read. Empty when every filled cell was read. */
+  unreadExpenses: string[];
   /** The Legacy and Tolson lines for this week. Sheet AN and AO when they add up to H, otherwise the calculated split. */
   feeSplit: { legacyFeeCents: number; tolsonFeeCents: number };
   /** True when Outs came from the Weekly Expenses tab. */
@@ -403,6 +405,7 @@ export function buildTruckWeekInsOuts(input: {
   note: string | null;
   noteDetail?: string | null;
   feeRates?: FeeRatePair;
+  confirmedCentsByLoadId?: Readonly<Record<string, number>>;
 }): TruckWeekInsOuts {
   const noteDetail = input.noteDetail ?? null;
   const truckClass = input.truckClass ?? "legacy_owned";
@@ -418,6 +421,7 @@ export function buildTruckWeekInsOuts(input: {
     netCents: 0,
     loadCount: 0,
     categories: [] as ExpenseCategoryTotal[],
+    unreadExpenses: [] as string[],
     feeSplit: { legacyFeeCents: 0, tolsonFeeCents: 0 },
     outsFromWeekly: false,
     ledgerLoads: [] as LedgerLoadRef[],
@@ -468,6 +472,7 @@ export function buildTruckWeekInsOuts(input: {
     unitNumber: input.unitNumber,
     truckClass: input.truckClass,
     feeRates: input.feeRates,
+    confirmedCentsByLoadId: input.confirmedCentsByLoadId,
     fallbackOutsCents: useWeekly ? 0 : (outs?.outsCents ?? 0),
     fallbackCategories: useWeekly ? [] : (outs?.categories ?? []),
   });
@@ -508,6 +513,7 @@ export function buildTruckWeekInsOuts(input: {
     pending: owner.pending,
     feeSplit: owner.feeSplit,
     categories: owner.categories,
+    unreadExpenses: owner.unreadExpenses,
     outsFromWeekly: useWeekly,
     ledgerLoads: ins?.loads ?? [],
     recentWeeks: recentWeeksFromGrids(

@@ -186,6 +186,7 @@ function sampleTruck(): TruckWeekInsOuts {
     dieselGallonsMilli: 75_965,
     categories: [{ category: "Fuel", cents: 45_000 }],
     feeSplit: { legacyFeeCents: 0, tolsonFeeCents: 0 },
+    unreadExpenses: [],
     outsFromWeekly: true,
     note: null,
     noteDetail: null,

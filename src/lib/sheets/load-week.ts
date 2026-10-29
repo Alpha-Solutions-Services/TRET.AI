@@ -17,6 +17,7 @@ export async function loadActiveTruckInsOuts(
   try {
     const [{ trucks }, fees] = await Promise.all([listTrucks(), loadFeeSettings().catch(() => null)]);
     const active = trucks.filter((truck) => truck.active);
+    const confirmed = await listConfirmedTonuRates().catch(() => ({}));
     const rows = ensureFleetUnits(
       await loadTruckWeekInsOuts(
         active.map((truck) => ({
@@ -28,11 +29,11 @@ export async function loadActiveTruckInsOuts(
         })),
         weekStart,
         weekEnd,
+        { confirmedCentsByLoadId: confirmed },
       ),
       weekStart,
       weekEnd,
     );
-    const confirmed = await listConfirmedTonuRates().catch(() => ({}));
     return { rows: applyTonuConfirmations(rows, confirmed), error: null };
   } catch (err) {
     return {

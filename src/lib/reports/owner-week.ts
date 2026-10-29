@@ -7,6 +7,8 @@ import { tripOpenAtSunday } from "@/lib/reports/trip-metrics";
 import { percentFeeStatement } from "@/lib/statements/engine";
 import type { UnitStatement } from "@/lib/statements/types";
 import { gallonsStringToMilli } from "@/lib/fuel-tolls/quantity";
+import { canonicalLoadId } from "@/lib/loads/load-id";
+import { formatStatementDollars } from "@/lib/reports/format";
 import { tonuHoldWeekStart } from "@/lib/loads/tonu";
 import { inWeek, isEmptyCell, normalizeHeader, sheetAmountToCents, sheetDay } from "@/lib/sheets/cell";
 import { parseLoadLedger, type LedgerLoadRow } from "@/lib/sheets/ledger";
@@ -79,8 +81,10 @@ export type OwnerTruckWeek = {
   fees: FeeSplit;
   /** True when the sheet Management Fee cell is not the percent-of-gross total. */
   sheetFeeDiffers: boolean;
-  /** Shown on the truck week. A bad fee split, or a Weekly Expenses cell that could not be read. */
+  /** Shown on the truck week. A bad fee split, a sheet fee that was not used, or a cell that could not be read. */
   warnings: string[];
+  /** Weekly Expenses labels that could not be read. Close and the PDF stay blocked while this is not empty. */
+  unreadExpenses: string[];
   /** Sheet AN and AO when they add up to column H. Otherwise the calculated split. */
   feeSplit: { legacyFeeCents: number; tolsonFeeCents: number };
 };
@@ -113,6 +117,8 @@ export function buildOwnerTruckWeek(input: {
    * Sheet-only callers omit this and the same engine builds the unit.
    */
   statement?: UnitStatement;
+  /** Owner-confirmed TONU amounts. Those rates count in gross in the delivery week. */
+  confirmedCentsByLoadId?: Readonly<Record<string, number>>;
 }): OwnerTruckWeek {
   const parsed = input.ledger ? parseLoadLedger(input.ledger, { unitNumber: input.unitNumber }) : null;
   const counted: LedgerLoadRow[] = [];
@@ -130,6 +136,12 @@ export function buildOwnerTruckWeek(input: {
     const inNext = Boolean(row.deliveryDay) && row.deliveryDay > input.weekEnd && row.deliveryDay <= nextEnd;
     const inTransit = !row.deliveryDay && row.pickupDay != null && row.pickupDay <= input.weekEnd;
     if (tonu) {
+      const confirmed = confirmedTonuCents(input.confirmedCentsByLoadId, row.loadId);
+      if (inThis && confirmed != null) {
+        counted.push({ ...row, rateCents: confirmed });
+        loads.push(weekLoad({ ...row, rateCents: confirmed }, "TONU", null));
+        continue;
+      }
       const countWeek = row.deliveryDay ? tonuHoldWeekStart(row.deliveryDay) : null;
       if (countWeek === input.weekStart) {
         tonuCounted.push(row);
@@ -191,6 +203,7 @@ export function buildOwnerTruckWeek(input: {
   const reportApplies = weekReportApplies(input.weekReport, input.weekStart, grossCents, heldTonuCents);
   const reportGrid = reportApplies ? (input.weekReport ?? null) : null;
   const report = readWeekReportMoney(reportGrid);
+  const earlyWarnings: string[] = [];
   if (report.grossCents != null) {
     const includesHeldTonu = heldTonuCents > 0 && report.grossCents === grossCents + heldTonuCents;
     if (!includesHeldTonu) grossCents = report.grossCents;
@@ -203,6 +216,11 @@ export function buildOwnerTruckWeek(input: {
   if (report.driverCents != null) replaceCategory(categories, "Driver compensation", report.driverCents);
   if (report.dispatchCents != null) replaceCategory(categories, "Dispatch fee", report.dispatchCents);
   if (report.factoringCents != null) replaceCategory(categories, "Factoring fee", report.factoringCents);
+  else if (report.factoringUnreadable) {
+    earlyWarnings.push(
+      "Week Report Factoring Fee could not be read, so the Weekly Expenses amount is used until it is fixed.",
+    );
+  }
   if (report.managementCents != null) replaceCategory(categories, "Management fee", report.managementCents);
   if (report.fuelCents != null) replaceCategory(categories, "Fuel", report.fuelCents);
   if (report.tollCents != null) replaceCategory(categories, "Toll fees", report.tollCents);
@@ -234,7 +252,7 @@ export function buildOwnerTruckWeek(input: {
     input.weekEnd,
   );
   const mpg = report.mpg ?? weekReportMpg(reportGrid);
-  const sheetManagement = categories.find((row) => row.category === "Management fee")?.cents ?? null;
+  const sheetManagement = weekly?.managementFeeCents ?? categories.find((row) => row.category === "Management fee")?.cents ?? null;
   const statement =
     input.statement ??
     percentFeeStatement({
@@ -247,14 +265,22 @@ export function buildOwnerTruckWeek(input: {
     });
   const fees = feeSplitFromUnit(statement);
   const sheetFeeDiffers = sheetManagement != null && sheetManagement !== fees.managementFeeCents;
+  if (sheetFeeDiffers && sheetManagement != null) {
+    replaceCategory(categories, "Management fee", fees.managementFeeCents);
+  }
   const feeTotal = sheetManagement ?? 0;
   let legacyPart = weekly?.legacyFeeCents ?? null;
   let tolsonPart = weekly?.tolsonFeeCents ?? null;
   if (reportApplies && report.legacyFeeCents != null) legacyPart = report.legacyFeeCents;
   if (reportApplies && report.tolsonFeeCents != null) tolsonPart = report.tolsonFeeCents;
-  const warnings: string[] = [...(weekly?.warnings ?? [])];
+  const warnings: string[] = [...(weekly?.warnings ?? []), ...earlyWarnings];
+  if (sheetFeeDiffers && sheetManagement != null) {
+    warnings.push(
+      `Sheet fee is ${formatStatementDollars(sheetManagement)}. The total uses the calculated fee.`,
+    );
+  }
   let feeSplit = { legacyFeeCents: fees.legacyFeeCents, tolsonFeeCents: fees.tolsonLeaseFeeCents };
-  if (legacyPart != null && tolsonPart != null) {
+  if (!sheetFeeDiffers && legacyPart != null && tolsonPart != null) {
     if (legacyPart + tolsonPart === feeTotal) {
       feeSplit = { legacyFeeCents: legacyPart, tolsonFeeCents: tolsonPart };
     } else {
@@ -285,9 +311,22 @@ export function buildOwnerTruckWeek(input: {
     fees,
     sheetFeeDiffers,
     warnings,
+    unreadExpenses: weekly?.unreadable ?? [],
     feeSplit,
     appliedWeekReport: reportGrid,
   };
+}
+
+function confirmedTonuCents(
+  map: Readonly<Record<string, number>> | undefined,
+  loadId: string,
+): number | null {
+  if (!map) return null;
+  const key = canonicalLoadId(loadId);
+  for (const [id, cents] of Object.entries(map)) {
+    if (canonicalLoadId(id) === key && Number.isInteger(cents) && cents >= 0) return cents;
+  }
+  return null;
 }
 
 /** A counted TONU's toll is added once when this week has no toll cell yet. */
@@ -443,6 +482,7 @@ type WeekReportMoney = {
   driverCents: number | null;
   dispatchCents: number | null;
   factoringCents: number | null;
+  factoringUnreadable: boolean;
   legacyFeeCents: number | null;
   tolsonFeeCents: number | null;
   managementCents: number | null;
@@ -462,6 +502,7 @@ export function readWeekReportMoney(grid: SheetGrid | null | undefined): WeekRep
     driverCents: null,
     dispatchCents: null,
     factoringCents: null,
+    factoringUnreadable: false,
     legacyFeeCents: null,
     tolsonFeeCents: null,
     managementCents: null,
@@ -472,31 +513,34 @@ export function readWeekReportMoney(grid: SheetGrid | null | undefined): WeekRep
     mpg: weekReportMpg(grid),
   };
   if (!grid) return empty;
+  const factoring = moneyByLabel(grid, ["factoring fee", "factoring fee (rounded to cents)"]);
   return {
     grossCents: reportMoney(grid, ["total revenue"], 3, 2),
     expenseCents: reportMoney(grid, ["total expenses", "total weekly expense"], 3, 5),
     milesHundredths: reportMoney(grid, ["total miles"], 18, 2),
     dispatchCents: reportMoney(grid, ["dispatch fee"], 21, 2),
-    factoringCents: moneyByLabel(grid, ["factoring fee", "factoring fee (rounded to cents)"]),
+    factoringCents: factoring.cents,
+    factoringUnreadable: factoring.unreadable,
     driverCents: reportMoney(grid, ["driver pay", "driver compensation"], 23, 2),
     managementCents: reportMoney(grid, ["management fee", "total fees (legacy+tolson)", "total fees (legacy + tolson)"], 24, 2),
     fuelCents: reportMoney(grid, ["fuel total cost", "fuel total"], 28, 2),
     tollCents: reportMoney(grid, ["toll fees"], 29, 14),
     miscCents: reportMoney(grid, ["misc expenses", "misc expenses (1-5)"], 25, 14),
     deadheadHundredths: reportMoney(grid, ["deadhead miles", "deadhead", "alloc deadhead"], 17, 2),
-    legacyFeeCents: moneyByLabel(grid, ["legacy fee", "legacy fee (in total)"]),
-    tolsonFeeCents: moneyByLabel(grid, ["tolson fee", "tolson fee (in total)"]),
+    legacyFeeCents: moneyByLabel(grid, ["legacy fee", "legacy fee (in total)"]).cents,
+    tolsonFeeCents: moneyByLabel(grid, ["tolson fee", "tolson fee (in total)"]).cents,
     mpg: empty.mpg,
   };
 }
 
 function reportMoney(grid: SheetGrid, labels: readonly string[], rowIndex: number, colIndex: number): number | null {
   const labeled = moneyByLabel(grid, labels);
-  if (labeled != null) return labeled;
+  if (labeled.cents != null) return labeled.cents;
+  if (labeled.unreadable) return null;
   return sheetAmountToCents(grid[rowIndex]?.[colIndex] ?? "");
 }
 
-function moneyByLabel(grid: SheetGrid, labels: readonly string[]): number | null {
+function moneyByLabel(grid: SheetGrid, labels: readonly string[]): { cents: number | null; unreadable: boolean } {
   const wanted = new Set(labels);
   for (const row of grid) {
     for (let index = 0; index < row.length; index += 1) {
@@ -505,11 +549,12 @@ function moneyByLabel(grid: SheetGrid, labels: readonly string[]): number | null
       for (let next = index + 1; next < row.length; next += 1) {
         const raw = row[next] ?? "";
         if (isEmptyCell(raw)) continue;
-        return sheetAmountToCents(raw);
+        const cents = sheetAmountToCents(raw);
+        return { cents, unreadable: cents == null };
       }
     }
   }
-  return null;
+  return { cents: null, unreadable: false };
 }
 
 export type WeekReportGallons = {
