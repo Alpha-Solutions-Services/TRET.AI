@@ -21,22 +21,5 @@ comment on column public.loads.tarp_cents is
   'Tarps amount in integer cents. Zero when the load is not tarped. A tarped load uses this amount when it is above zero, otherwise tarp_cents_per_load.';
 
 insert into public.import_settings (key, value_int, note) values
-  ('tarp_cents_per_load', 5000, 'Default tarps amount in cents added to driver pay for each tarped load. Default is $50.')
+  ('tarp_cents_per_load', 5000, 'Default tarps amount in cents for a tarped load entered in TRET with no sheet amount. Default is $50. Sheet Tarps cells are stored on loads.tarp_cents and are not overwritten here.')
 on conflict (key) do nothing;
-
-update public.loads
-set tarped = true,
-    tarp_cents = 5000
-where load_id in (
-  'TBH--1203',
-  'TBH--1204',
-  'TBH--1206',
-  'TBH--1208',
-  'TBH--1209',
-  'TBH--1212',
-  'TBH--1214',
-  'TBH--1216',
-  'TBH--1218',
-  'TBH--1225'
-)
-  and tarped = false;

@@ -3,7 +3,7 @@ import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
 import { bpToPercentString } from "@/lib/fees/percent";
 import { truckClassLabel } from "@/lib/fees/kinds";
 import { reportDeliveryLabel } from "@/lib/reports/delivery";
-import { linesMatchNet, miscOwnerCents } from "@/lib/statements/engine";
+import { linesMatchNet, miscOwnerCents, tarpLineCents } from "@/lib/statements/engine";
 import type { FleetStatement, StatementLine, UnitStatement } from "@/lib/statements/types";
 import { fleetMpgFromTrucks, tripMilesHundredths, tripOpenAtSunday, weekMpg, type MetricLoad } from "@/lib/reports/trip-metrics";
 import {
@@ -71,7 +71,11 @@ export function prepareWeeklyReport(source: WeeklyReportSource): PreparedReport 
       ? `Locked${source.closedAt ? ` ${source.closedAt.slice(0, 10)}` : ""}`
       : "Computed, not locked",
     units,
-    fleetRows: fleetRows(source.fleet, source.units.reduce((sum, unit) => sum + miscOwnerCents(unit), 0)),
+    fleetRows: fleetRows(
+      source.fleet,
+      source.units.reduce((sum, unit) => sum + miscOwnerCents(unit), 0),
+      source.units.reduce((sum, unit) => sum + tarpLineCents(unit), 0),
+    ),
     fleetNote: FLEET_NOTE,
     deliveryLabel: reportDeliveryLabel(source.weekStart),
     fleetChart: buildFleetChart(source, perTruck),
@@ -376,12 +380,15 @@ function presentEarning(line: StatementLine): PreparedPair {
   return { label: `${line.label}${rate}`, value: formatStatementDollars(line.amountCents) };
 }
 
-function fleetRows(fleet: FleetStatement, miscCents: number): PreparedPair[] {
-  return [
+function fleetRows(fleet: FleetStatement, miscCents: number, tarpCents: number): PreparedPair[] {
+  const rows: PreparedPair[] = [
     { label: "Units", value: String(fleet.unitCount) },
     { label: "Loads", value: String(fleet.loadCount) },
     { label: "Gross", value: formatStatementDollars(fleet.grossCents) },
     { label: "Driver pay", value: formatStatementDollars(fleet.driverPayCents) },
+  ];
+  if (tarpCents > 0) rows.push({ label: "Tarps", value: formatStatementDollars(tarpCents) });
+  rows.push(
     { label: "Management fee", value: formatStatementDollars(fleet.managementFeeCents) },
     { label: "Tolson lease fee", value: formatStatementDollars(fleet.tolsonPayableCents) },
     { label: "Legacy fee", value: formatStatementDollars(fleet.legacyRetainedCents) },
@@ -393,7 +400,8 @@ function fleetRows(fleet: FleetStatement, miscCents: number): PreparedPair[] {
     { label: "Fixed expenses (owner)", value: formatStatementDollars(fleet.fixedOwnerCents) },
     { label: "Fixed expenses (management, not in net)", value: formatStatementDollars(fleet.fixedManagementCents) },
     { label: "Net to owner", value: formatStatementDollars(fleet.netCents) },
-  ];
+  );
+  return rows;
 }
 
 function requireLine(unit: UnitStatement, code: string, amount: number): void {
@@ -415,6 +423,7 @@ const NOT_FIXED = new Set([
   "FUEL",
   "TOLLS",
   "MISC",
+  "TARPS",
   "DRIVER_PAY",
   "MANAGEMENT_FEE",
   "DISPATCH_FEE",

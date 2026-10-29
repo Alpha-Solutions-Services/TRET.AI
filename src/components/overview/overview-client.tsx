@@ -24,7 +24,7 @@ import { ConnectionBanner } from "@/components/connection-banner";
 import { rereadSheetsAction } from "@/app/sheets/actions";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { PrepareReportButtons, ReportWeekLabel } from "@/components/reports/report-week";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClassName } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
 import { TruckCardGrid } from "@/components/dashboard/truck-cards";
 
@@ -62,12 +62,6 @@ function formatMpgCount(value: number): string {
   const frac = Math.abs(value) % 100;
   return `${whole}.${String(frac).padStart(2, "0")}`;
 }
-
-const weekLinkClass =
-  "pressable inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] border border-transparent bg-[#7eb6ff] px-4 text-sm font-semibold text-[#041018] no-underline shadow-[0_0_18px_color-mix(in_srgb,#7eb6ff_55%,transparent)] hover:bg-[#a9cdff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]";
-
-const weekLinkAltClass =
-  "pressable inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] border border-transparent bg-[#c084fc] px-4 text-sm font-semibold text-[#140818] no-underline shadow-[0_0_18px_color-mix(in_srgb,#c084fc_55%,transparent)] hover:bg-[#d7b4fd] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]";
 
 function shiftWeek(weekStart: string, delta: number): string {
   const date = new Date(`${weekStart}T00:00:00Z`);
@@ -220,7 +214,7 @@ export function OverviewClient({
       ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
-        <a href={weekHref(shiftWeek(data.weekStart, -1))} className={weekLinkClass}>
+        <a href={weekHref(shiftWeek(data.weekStart, -1))} className={buttonClassName("vivid")}>
           Previous week
         </a>
         <form action="/" method="get" className="text-sm">
@@ -238,7 +232,7 @@ export function OverviewClient({
             />
           </label>
         </form>
-        <a href={weekHref(shiftWeek(data.weekStart, 1))} className={weekLinkAltClass}>
+        <a href={weekHref(shiftWeek(data.weekStart, 1))} className={buttonClassName("vividAlt")}>
           Next week
         </a>
         <div className="space-y-1">

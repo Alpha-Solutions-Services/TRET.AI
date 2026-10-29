@@ -2,17 +2,9 @@ import { TONU_RATE_NOTE, type OwnerWeekLoad } from "@/lib/reports/owner-week";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 
 /**
- * Owner-confirmed TONU fees. TBH--1221 is truck 6. TBH--1201 is truck 8.
- * Each fee replaces the unconfirmed flag. Gross stays the sheet total.
- */
-export const OWNER_CONFIRMED_TONU_CENTS: Readonly<Record<string, number>> = {
-  "TBH--1201": 25_000,
-  "TBH--1221": 25_000,
-};
-
-/**
  * A confirmed TONU rate replaces the unconfirmed flag and the placeholder amount.
  * The week's gross is left as the sheet already counted it.
+ * Owner-confirmed rows for TBH--1201 and TBH--1221 live in supabase/data, not in code.
  */
 export function applyTonuConfirmations<T extends TruckWeekInsOuts>(
   rows: readonly T[],

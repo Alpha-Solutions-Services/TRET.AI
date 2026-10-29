@@ -6,7 +6,6 @@ import { tripOpenAtSunday } from "@/lib/reports/trip-metrics";
 import { percentFeeStatement } from "@/lib/statements/engine";
 import type { UnitStatement } from "@/lib/statements/types";
 import { gallonsStringToMilli } from "@/lib/fuel-tolls/quantity";
-import { DEFAULT_TARP_CENTS, defaultTarpByLoadId, listedTarpCents, tarpCentsForLoad } from "@/lib/loads/tarps";
 import { tonuHoldWeekStart } from "@/lib/loads/tonu";
 import { inWeek, normalizeHeader, sheetAmountToCents, sheetDay } from "@/lib/sheets/cell";
 import { parseLoadLedger, type LedgerLoadRow } from "@/lib/sheets/ledger";
@@ -39,7 +38,7 @@ export type OwnerWeekLoad = {
   deadheadMilesHundredths: number | null;
   /** Ledger column M. Null when that cell is blank. */
   ledgerMilesHundredths: number | null;
-  /** Tarps amount added to driver pay when this load is delivered. Zero when it is not tarped. */
+  /** Load Ledger Tarps column, in cents. Already inside sheet driver pay. Zero when the cell is blank. */
   tarpCents?: number;
 };
 
@@ -73,6 +72,8 @@ export type OwnerTruckWeek = {
   loadIds: string[];
   /** Delivered, pending, and TONU rows for this week. The Loads page uses this list. */
   loads: OwnerWeekLoad[];
+  /** Week Report grid when weekReportApplies is true. Null when this report is another week. */
+  appliedWeekReport?: SheetGrid | null;
   /** Legacy fee and Tolson lease fee, each a percent of weekly gross. Expenses use the total. */
   fees: FeeSplit;
   /** True when the sheet Management Fee cell is not the percent-of-gross total. */
@@ -106,14 +107,8 @@ export function buildOwnerTruckWeek(input: {
    * Sheet-only callers omit this and the same engine builds the unit.
    */
   statement?: UnitStatement;
-  /** Default tarps amount for a tarped load. Omitted uses $50. */
-  tarpCentsPerLoad?: number;
-  /** Per-load tarps cents. Omitted uses the week 42 tarped loads at the default rate. */
-  tarpByLoadId?: ReadonlyMap<string, number>;
 }): OwnerTruckWeek {
-  const parsed = input.ledger ? parseLoadLedger(input.ledger) : null;
-  const tarpRate = input.tarpCentsPerLoad ?? DEFAULT_TARP_CENTS;
-  const tarpByLoadId = input.tarpByLoadId ?? defaultTarpByLoadId(tarpRate);
+  const parsed = input.ledger ? parseLoadLedger(input.ledger, { unitNumber: input.unitNumber }) : null;
   const counted: LedgerLoadRow[] = [];
   /** Delivered this week. Deadhead and toll wait until the count week. */
   const tonuHeld: LedgerLoadRow[] = [];
@@ -133,7 +128,7 @@ export function buildOwnerTruckWeek(input: {
       if (countWeek === input.weekStart) {
         tonuCounted.push(row);
         pending.push({ loadId: row.loadId, reason: TONU_RATE_NOTE });
-        loads.push(weekLoad(row, "TONU", TONU_RATE_NOTE, tarpRate, tarpByLoadId));
+        loads.push(weekLoad(row, "TONU", TONU_RATE_NOTE));
         continue;
       }
       if (inThis || inNext || inTransit) {
@@ -142,21 +137,21 @@ export function buildOwnerTruckWeek(input: {
           tonuHeld.push(row);
         }
         pending.push({ loadId: row.loadId, reason: TONU_RATE_NOTE });
-        loads.push(weekLoad(row, "TONU", TONU_RATE_NOTE, tarpRate, tarpByLoadId));
+        loads.push(weekLoad(row, "TONU", TONU_RATE_NOTE));
         continue;
       }
     }
     if (inThis) {
       counted.push(row);
-      loads.push(weekLoad(row, "Delivered", null, tarpRate, tarpByLoadId));
+      loads.push(weekLoad(row, "Delivered", null));
       continue;
     }
     if (inNext) {
       pending.push({ loadId: row.loadId, reason: "Delivers next week" });
-      loads.push(weekLoad(row, "Pending", "Delivers next week", tarpRate, tarpByLoadId));
+      loads.push(weekLoad(row, "Pending", "Delivers next week"));
     } else if (inTransit) {
       pending.push({ loadId: row.loadId, reason: "In transit" });
-      loads.push(weekLoad(row, "Pending", "In transit", tarpRate, tarpByLoadId));
+      loads.push(weekLoad(row, "Pending", "In transit"));
     }
   }
 
@@ -187,11 +182,8 @@ export function buildOwnerTruckWeek(input: {
 
   let milesFromAllocated = Boolean(parsed?.allocatedColumn);
   let milesHundredths = milesFromAllocated ? allocatedMilesOnce(counted, "allocated") : 0;
-  const labeled = labeledWeekStart(input.weekReport);
-  const reportForThisWeek = labeled != null && labeled !== input.weekStart ? null : (input.weekReport ?? null);
-  const reportGrid = weekReportApplies(reportForThisWeek, input.weekStart, grossCents, heldTonuCents)
-    ? reportForThisWeek
-    : null;
+  const reportApplies = weekReportApplies(input.weekReport, input.weekStart, grossCents, heldTonuCents);
+  const reportGrid = reportApplies ? (input.weekReport ?? null) : null;
   const report = readWeekReportMoney(reportGrid);
   if (report.grossCents != null) {
     const includesHeldTonu = heldTonuCents > 0 && report.grossCents === grossCents + heldTonuCents;
@@ -235,7 +227,7 @@ export function buildOwnerTruckWeek(input: {
     })),
     input.weekEnd,
   );
-  const mpg = report.mpg ?? weekReportMpg(reportForThisWeek);
+  const mpg = report.mpg ?? weekReportMpg(reportGrid);
   const sheetManagement = categories.find((row) => row.category === "Management fee")?.cents ?? null;
   const statement =
     input.statement ??
@@ -250,15 +242,9 @@ export function buildOwnerTruckWeek(input: {
   const fees = feeSplitFromUnit(statement);
   const sheetFeeDiffers = sheetManagement != null && sheetManagement !== fees.managementFeeCents;
   if (sheetManagement != null) replaceCategory(categories, "Management fee", fees.managementFeeCents);
-  const tarpTotal = loads
-    .filter((load) => load.status === "Delivered")
-    .reduce((sum, load) => sum + (load.tarpCents ?? 0), 0);
-  if (tarpTotal > 0) addToCategory(categories, "Driver compensation", tarpTotal);
+  // Sheet and Week Report driver pay already include Tarps. Do not add that column again.
   expenseCents = categories.reduce((sum, row) => sum + row.cents, 0);
-  const netCents =
-    input.statement && input.statement.grossCents === grossCents
-      ? input.statement.netCents
-      : grossCents - expenseCents;
+  const netCents = grossCents - expenseCents;
   return {
     loadCount,
     grossCents,
@@ -279,6 +265,7 @@ export function buildOwnerTruckWeek(input: {
     loads,
     fees,
     sheetFeeDiffers,
+    appliedWeekReport: reportGrid,
   };
 }
 
@@ -327,13 +314,7 @@ function tonuTruckMiles(rows: readonly LedgerLoadRow[], parsed: { allocatedColum
   return rows.reduce((sum, row) => sum + (row.allocatedDeadheadHundredths ?? row.deadheadMilesHundredths ?? 0), 0);
 }
 
-function weekLoad(
-  row: LedgerLoadRow,
-  status: OwnerLoadStatus,
-  reason: string | null,
-  tarpRate: number,
-  tarpByLoadId: ReadonlyMap<string, number>,
-): OwnerWeekLoad {
+function weekLoad(row: LedgerLoadRow, status: OwnerLoadStatus, reason: string | null): OwnerWeekLoad {
   return {
     loadId: row.loadId,
     status,
@@ -350,12 +331,7 @@ function weekLoad(
     loadedMilesHundredths: row.loadedMilesHundredths,
     deadheadMilesHundredths: row.allocatedDeadheadHundredths ?? row.deadheadMilesHundredths,
     ledgerMilesHundredths: row.ledgerMilesHundredths,
-    tarpCents: tarpCentsForLoad({
-      loadId: row.loadId,
-      tarpRaw: row.tarpRaw ?? null,
-      rateCents: tarpRate,
-      listedCents: listedTarpCents(row.loadId, tarpByLoadId),
-    }),
+    tarpCents: row.tarpCents,
   };
 }
 
@@ -363,13 +339,6 @@ function replaceCategory(categories: OwnerCategory[], name: string, cents: numbe
   const found = categories.find((row) => row.category === name);
   if (found) found.cents = cents;
   else if (cents !== 0) categories.push({ category: name, cents });
-}
-
-function addToCategory(categories: OwnerCategory[], name: string, cents: number): void {
-  if (cents === 0) return;
-  const found = categories.find((row) => row.category === name);
-  if (found) found.cents += cents;
-  else categories.push({ category: name, cents });
 }
 
 const WEEK_REPORT_LABELS = new Set([
@@ -381,7 +350,27 @@ const WEEK_REPORT_LABELS = new Set([
   "report week",
 ]);
 
-/** Monday named on the Week Report, when that label is present. */
+/** Monday of an ISO week. Week 1 is the week that contains January 4. */
+function mondayOfIsoWeek(year: number, week: number): string {
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Dow = jan4.getUTCDay() || 7;
+  const week1Monday = new Date(jan4);
+  week1Monday.setUTCDate(jan4.getUTCDate() - (jan4Dow - 1));
+  const monday = new Date(week1Monday);
+  monday.setUTCDate(week1Monday.getUTCDate() + (week - 1) * 7);
+  return monday.toISOString().slice(0, 10);
+}
+
+function wholeNumber(raw: string): number | null {
+  const text = raw.trim().replace(/\.0+$/, "");
+  if (!/^\d+$/.test(text)) return null;
+  return Number(text);
+}
+
+/**
+ * Monday the Week Report is for.
+ * A date label wins. Otherwise Week # and Year, which is how the live sheets are labeled.
+ */
 export function labeledWeekStart(grid: SheetGrid | null | undefined): string | null {
   if (!grid) return null;
   for (const row of grid) {
@@ -395,7 +384,19 @@ export function labeledWeekStart(grid: SheetGrid | null | undefined): string | n
       }
     }
   }
-  return null;
+  let weekNum: number | null = null;
+  let year: number | null = null;
+  for (const row of grid) {
+    for (let index = 0; index < row.length; index += 1) {
+      const label = normalizeHeader(row[index] ?? "");
+      const value = wholeNumber(row[index + 1] ?? "");
+      if (value == null) continue;
+      if ((label.startsWith("week #") || label === "week number") && value >= 1 && value <= 53) weekNum = value;
+      if (label.startsWith("year") && value >= 2000 && value <= 2100) year = value;
+    }
+  }
+  if (weekNum == null || year == null) return null;
+  return mondayOfIsoWeek(year, weekNum);
 }
 
 /**

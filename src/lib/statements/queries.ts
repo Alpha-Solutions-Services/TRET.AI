@@ -2,6 +2,8 @@ import { compareUnitNumbers } from "@/lib/fees/two-lines";
 import { SHEET_FEE_DIFFERS } from "@/lib/reports/owner-week";
 import { weekBoundsForDate, type FeeRuleKind, type TruckClass } from "@/lib/fee-engine";
 import { canonicalLoadId } from "@/lib/loads/load-id";
+import { readTarpCentsPerLoad } from "@/lib/loads/tarp-rate";
+import { resolveTarpCents } from "@/lib/loads/tarps";
 import { loadActiveTruckInsOuts } from "@/lib/sheets/load-week";
 import { statementMiscCents } from "@/lib/sheets/weekly-expenses";
 import { unitNumberFromRaw } from "@/lib/fuel-tolls/file/mappings";
@@ -251,16 +253,35 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
     rows: [],
     error: "Sheets were not read.",
   }));
-  const baseLoads = (loadsRes.error ? [] : (loadsRes.data ?? [])).map((load) => ({
-    id: load.id,
-    truckId: load.truck_id,
-    unitNumber: load.truck_unit_number,
-    deliveryDate: load.delivery_date,
-    storedWeekStart: load.week_start,
-    grossCents: load.rate_cents,
-    loadedMilesHundredths: milesValueToHundredths(load.loaded_distance_mi),
-    deadheadMilesHundredths: milesValueToHundredths(load.deadhead_miles),
-  }));
+  const tarpRate = await readTarpCentsPerLoad();
+  const storedTarps = await loadStoredTarps(supabase, bounds.start);
+  const sheetTarps = new Map<string, number>();
+  for (const row of sheets.rows) {
+    for (const load of row.weekLoads ?? []) {
+      if (load.status !== "Delivered") continue;
+      sheetTarps.set(canonicalLoadId(load.loadId), load.tarpCents ?? 0);
+    }
+  }
+  const baseLoads = (loadsRes.error ? [] : (loadsRes.data ?? [])).map((load) => {
+    const id = canonicalLoadId(load.load_id ?? "");
+    const stored = storedTarps.get(id);
+    return {
+      id: load.id,
+      truckId: load.truck_id,
+      unitNumber: load.truck_unit_number,
+      deliveryDate: load.delivery_date,
+      storedWeekStart: load.week_start,
+      grossCents: load.rate_cents,
+      loadedMilesHundredths: milesValueToHundredths(load.loaded_distance_mi),
+      deadheadMilesHundredths: milesValueToHundredths(load.deadhead_miles),
+      tarpCents: resolveTarpCents({
+        sheetCents: sheetTarps.has(id) ? (sheetTarps.get(id) ?? 0) : null,
+        storedCents: stored?.cents ?? null,
+        rateCents: tarpRate,
+        storedTarped: stored?.tarped ?? false,
+      }),
+    };
+  });
   const seenLoads = new Set(
     (loadsRes.error ? [] : (loadsRes.data ?? [])).map(
       (load) => `${unitNumberFromRaw(load.truck_unit_number ?? "")}:${canonicalLoadId(load.load_id ?? "")}`,
@@ -283,6 +304,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
         grossCents: load.rateCents,
         loadedMilesHundredths: load.loadedMilesHundredths ?? 0,
         deadheadMilesHundredths: load.deadheadMilesHundredths ?? 0,
+        tarpCents: sheetTarps.get(canonicalLoadId(load.loadId)) ?? 0,
       });
     }
   }
@@ -479,6 +501,23 @@ function failed(
     closeAllowed: false,
     pending: [],
   };
+}
+
+async function loadStoredTarps(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  weekStart: string,
+): Promise<Map<string, { cents: number; tarped: boolean }>> {
+  const map = new Map<string, { cents: number; tarped: boolean }>();
+  const { data, error } = await supabase
+    .from("loads")
+    .select("load_id, tarped, tarp_cents")
+    .eq("week_start", weekStart);
+  if (error || !data) return map;
+  for (const row of data) {
+    if (!row.load_id) continue;
+    map.set(canonicalLoadId(row.load_id), { cents: row.tarp_cents ?? 0, tarped: row.tarped === true });
+  }
+  return map;
 }
 
 function pageWarnings(

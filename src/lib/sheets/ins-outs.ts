@@ -3,7 +3,6 @@ import type { FeeRatePair } from "@/lib/fees/two-lines";
 import { loadsInWeek } from "@/lib/loads/week-membership";
 import {
   buildOwnerTruckWeek,
-  labeledWeekStart,
   SHEET_FEE_DIFFERS,
   weekReportGallons,
   type OwnerPendingLoad,
@@ -406,8 +405,6 @@ export function buildTruckWeekInsOuts(input: {
   note: string | null;
   noteDetail?: string | null;
   feeRates?: FeeRatePair;
-  tarpCentsPerLoad?: number;
-  tarpByLoadId?: ReadonlyMap<string, number>;
 }): TruckWeekInsOuts {
   const noteDetail = input.noteDetail ?? null;
   const truckClass = input.truckClass ?? "legacy_owned";
@@ -462,24 +459,20 @@ export function buildTruckWeekInsOuts(input: {
     };
   }
   const logGallons = fuelLogGallons(input.fuelLog ?? null, input.weekStart, input.weekEnd);
-  const reportWeek = labeledWeekStart(input.weekReport);
-  const reportForWeek = reportWeek == null || reportWeek === input.weekStart ? (input.weekReport ?? null) : null;
-  const reportGallons = weekReportGallons(reportForWeek);
   const tripMiles = milesForLoads(ins?.loads ?? [], logGallons.dieselMilli);
   const owner = buildOwnerTruckWeek({
     ledger: input.loadLedger,
     weekly: input.weeklyExpenses ?? null,
-    weekReport: reportForWeek,
+    weekReport: input.weekReport ?? null,
     weekStart: input.weekStart,
     weekEnd: input.weekEnd,
     unitNumber: input.unitNumber,
     truckClass: input.truckClass,
     feeRates: input.feeRates,
-    tarpCentsPerLoad: input.tarpCentsPerLoad,
-    tarpByLoadId: input.tarpByLoadId,
     fallbackOutsCents: useWeekly ? 0 : (outs?.outsCents ?? 0),
     fallbackCategories: useWeekly ? [] : (outs?.categories ?? []),
   });
+  const reportGallons = weekReportGallons(owner.appliedWeekReport);
   const grossCents = input.loadLedger ? owner.grossCents : (ins?.insCents ?? 0);
   const expenseCents = owner.expenseCents;
   if (owner.sheetFeeDiffers) notes.push(SHEET_FEE_DIFFERS);

@@ -234,6 +234,7 @@ describe("week 41 owner sheet", () => {
     later[2] = "$1,000.00";
     later[4] = "M-1202";
     const report = weekReport(TRUCKS[6]!);
+    report[3]![2] = "$1,000.00";
     report[30]![2] = "7.42";
     const week = buildOwnerTruckWeek({
       ledger: [cells, delivered, later],
@@ -263,6 +264,7 @@ describe("week 41 owner sheet", () => {
     later[2] = "$1,000.00";
     later[4] = "M-1191";
     const report = weekReport(TRUCKS[5]!);
+    report[3]![2] = "$1,000.00";
     report[30]![2] = "0";
     const week = buildOwnerTruckWeek({
       ledger: [cells, delivered, later],
@@ -502,6 +504,15 @@ describe("week 41 owner sheet", () => {
 });
 
 describe("week report scope", () => {
+  it("uses Week # and Year on the live Week Report label", () => {
+    const report = [
+      ["Week #  >>>", "42.0", "Year >>>", "2026.0"],
+      ["Total Revenue", "$100.00"],
+    ];
+    expect(weekReportApplies(report, "2026-10-05", 10_000, 0)).toBe(false);
+    expect(weekReportApplies(report, "2026-10-12", 10_000, 0)).toBe(true);
+  });
+
   it("keeps week 41 totals when the report belongs to week 42", () => {
     const truck = TRUCKS[2]!;
     const report = weekReport(truck);
@@ -535,47 +546,38 @@ describe("week report scope", () => {
     });
     expect(week.grossCents).toBe(truck.grossCents);
     expect(week.netCents).toBe(truck.netCents);
+    expect(week.mpg).toBeNull();
+    expect(week.appliedWeekReport).toBeNull();
   });
 
-  it("uses a week 42 report when that report matches the week 42 ledger", () => {
+  it("keeps sheet driver pay that already includes tarps and leaves a later delivery out", () => {
     const ledger = [
-      ["Delivery Date", "Load ID", "Rate", "Allocated Miles"],
-      ["10/13/2026", "TBH--1203", "$1,000.00", "100.00"],
-      ["10/14/2026", "TBH--1204", "$1,000.00", "100.00"],
+      ["Delivery Date", "Load ID", "Rate", "Tarps"],
+      ["10/13/2026", "TBH--1206", "$1,750.00", "$50.00"],
+      ["10/14/2026", "TBH--1209", "$1,200.00", ""],
+      ["10/19/2026", "TBH--1225", "$900.00", "$50.00"],
     ];
     const weekly = [
-      ["Week Start Date", "Driver Compensation", "Fuel"],
-      ["10/12/2026", "$400.00", "$100.00"],
-    ];
-    const report = [
-      ["Week start", "10/12/2026"],
-      [],
-      [],
-      ["", "Total Revenue", "$2,000.00", "", "", "$600.00"],
+      ["Week Start Date", "Driver Compensation"],
+      ["10/12/2026", "$640.00"],
     ];
     const week = buildOwnerTruckWeek({
       ledger,
       weekly,
-      weekReport: report,
-      unitNumber: "3",
+      weekReport: null,
+      unitNumber: "8",
       weekStart: "2026-10-12",
       weekEnd: "2026-10-18",
     });
-    expect(week.grossCents).toBe(200_000);
-    expect(week.loads.find((load) => load.loadId === "TBH--1203")?.tarpCents).toBe(5_000);
-    expect(week.loads.find((load) => load.loadId === "TBH--1204")?.tarpCents).toBe(5_000);
-    expect(week.categories.find((row) => row.category === "Driver compensation")?.cents).toBe(40_000 + 10_000);
-    expect(week.expenseCents).toBe(60_000);
-    expect(week.netCents).toBe(140_000);
-  });
-
-  it("records the checked week 42 fleet totals", () => {
-    const grossCents = 3_405_000;
-    const expenseCents = 3_104_805;
-    const netCents = grossCents - expenseCents;
-    expect(grossCents).toBe(3_405_000);
-    expect(expenseCents).toBe(3_104_805);
-    expect(netCents).toBe(300_195);
+    expect(week.loadIds).toEqual(["TBH--1206", "TBH--1209"]);
+    expect(week.loads.find((load) => load.loadId === "TBH--1206")?.tarpCents).toBe(5_000);
+    expect(week.loads.find((load) => load.loadId === "TBH--1209")?.tarpCents).toBe(0);
+    expect(week.loads.some((load) => load.loadId === "TBH--1225" && load.status === "Delivered")).toBe(false);
+    expect(week.grossCents).toBe(295_000);
+    expect(week.categories.find((row) => row.category === "Driver compensation")?.cents).toBe(64_000);
+    expect(week.categories.find((row) => row.category === "Tarps")).toBeUndefined();
+    expect(week.expenseCents).toBe(64_000);
+    expect(week.netCents).toBe(week.grossCents - week.expenseCents);
   });
 });
 

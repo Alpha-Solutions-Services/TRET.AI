@@ -4,25 +4,13 @@ import { SignedInShell } from "@/components/signed-in-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FEE_SETTINGS_MIGRATION } from "@/lib/fees/fee-settings";
 import { loadFeeSettings } from "@/lib/fees/load";
-import { DEFAULT_TARP_CENTS, TARP_SETTING_KEY } from "@/lib/loads/tarps";
+import { readTarpCentsPerLoad } from "@/lib/loads/tarp-rate";
 import { centsToDollarString } from "@/lib/money/cents";
-import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 async function tarpDollars(): Promise<string> {
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("import_settings")
-      .select("value_int")
-      .eq("key", TARP_SETTING_KEY)
-      .maybeSingle();
-    const cents = data?.value_int ?? DEFAULT_TARP_CENTS;
-    return centsToDollarString(cents >= 0 ? cents : DEFAULT_TARP_CENTS);
-  } catch {
-    return centsToDollarString(DEFAULT_TARP_CENTS);
-  }
+  return centsToDollarString(await readTarpCentsPerLoad());
 }
 
 async function Content() {

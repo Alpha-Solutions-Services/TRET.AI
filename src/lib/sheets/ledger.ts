@@ -57,7 +57,10 @@ const TOLL_EXPENSE_INDEX = 44;
 /** Load Ledger column M. A=0. */
 const LEDGER_M_INDEX = 12;
 const STATUS = ["status", "load status", "order status", "trip status"];
-const TARP = ["tarps", "tarp amount", "tarp", "tarped"];
+const TARP = ["tarps", "tarp amount", "tarp"];
+/** Column BC. A=0. Truck 3's Tarps column is BG because Order Status sits in BF. */
+export const TARP_COLUMN_BC = 54;
+export const TARP_COLUMN_TRUCK_3 = 58;
 /** Load Ledger columns AM through AQ. Misc receipts live here. */
 const MISC_START = 38;
 const MISC_END = 42;
@@ -91,8 +94,8 @@ export type LedgerLoadRow = {
   miscCents: number;
   /** Toll expense for this load, in cents. Zero when that cell is blank. */
   tollCents: number;
-  /** Tarps cell when that column is present. Null when the column is missing or blank. */
-  tarpRaw?: string | null;
+  /** Load Ledger Tarps column, in cents. Zero when the cell is blank. */
+  tarpCents: number;
   status: string | null;
   /** order: the delivery column. fallback: Destination Datetime. */
   deliverySource: "column" | "fallback" | null;
@@ -112,6 +115,11 @@ export type ParsedLoadLedger = {
   /** True when Alloc Deadhead or column AV was on the header row. */
   allocatedDeadheadColumn: boolean;
 };
+
+function positiveCents(raw: string): number {
+  const cents = sheetAmountToCents(raw);
+  return cents != null && cents > 0 ? cents : 0;
+}
 
 function cell(row: string[], index: number): string {
   if (index < 0) return "";
@@ -157,9 +165,17 @@ function neighbor(grid: SheetGrid, label: string): string | null {
   return null;
 }
 
+/** Tarps column. A header named Tarps wins. Otherwise BC, or BG on truck 3. */
+export function tarpColumnIndex(header: string[], unitNumber?: string | null): number {
+  const named = columnIndex(header, TARP);
+  if (named >= 0) return named;
+  const unit = (unitNumber ?? "").replace(/\D/g, "").replace(/^0+/, "");
+  return unit === "3" ? TARP_COLUMN_TRUCK_3 : TARP_COLUMN_BC;
+}
+
 export function parseLoadLedger(
   grid: SheetGrid,
-  opts?: { keepUndated?: boolean; deliveryFallback?: string[] },
+  opts?: { keepUndated?: boolean; deliveryFallback?: string[]; unitNumber?: string | null },
 ): ParsedLoadLedger {
   const headerIndex = findHeaderRow(grid, [DELIVERY, LOAD_ID, RATE]);
   if (headerIndex < 0) {
@@ -197,7 +213,7 @@ export function parseLoadLedger(
   const allocatedCol = allocatedColumnIndex(header);
   const deadheadAllocCol = allocatedDeadheadColumnIndex(header);
   const tollCol = tollExpenseColumnIndex(header);
-  const tarpCol = columnIndex(header, TARP);
+  const tarpCol = tarpColumnIndex(header, opts?.unitNumber);
   const statusCols = columnIndexes(header, STATUS);
   const rows: LedgerLoadRow[] = [];
   for (const row of grid.slice(headerIndex + 1)) {
@@ -230,7 +246,7 @@ export function parseLoadLedger(
       allocatedDeadheadHundredths: deadheadAllocCol >= 0 ? milesToHundredths(cell(row, deadheadAllocCol)) : null,
       miscCents: miscColumnsCents(row),
       tollCents: tollCol >= 0 ? (sheetAmountToCents(cell(row, tollCol)) ?? 0) : 0,
-      tarpRaw: tarpCol >= 0 ? textOrNull(cell(row, tarpCol)) : null,
+      tarpCents: tarpCol >= 0 ? positiveCents(cell(row, tarpCol)) : 0,
       status: tonu ? "TONU" : textOrNull(statusCols.map((index) => cell(row, index)).join(" ")),
       deliverySource: primaryDay ? "column" : fallbackDay ? "fallback" : deliveryDay ? "fallback" : null,
     });
@@ -367,6 +383,7 @@ function recoverTonuRows(grid: SheetGrid, existing: readonly LedgerLoadRow[]): L
       allocatedDeadheadHundredths: null,
       miscCents: 0,
       tollCents: 0,
+      tarpCents: 0,
       status: "TONU",
       deliverySource: firstDay(row) ? "fallback" : null,
     });

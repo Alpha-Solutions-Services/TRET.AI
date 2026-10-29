@@ -396,8 +396,6 @@ export async function loadTruckWeekInsOuts(
   opts?: {
     fetchImpl?: FetchLike;
     env?: Record<string, string | undefined>;
-    tarpCentsPerLoad?: number;
-    tarpByLoadId?: ReadonlyMap<string, number>;
   },
 ): Promise<TruckWeekInsOuts[]> {
   const fetchImpl = opts?.fetchImpl ?? fetch;
@@ -489,8 +487,6 @@ export async function loadTruckWeekInsOuts(
           fuelLog: tabs.fuelLog ?? null,
           weekReport: tabs.weekReport ?? null,
           note: tabs.note,
-          tarpCentsPerLoad: opts?.tarpCentsPerLoad,
-          tarpByLoadId: opts?.tarpByLoadId,
         });
       } catch (err) {
         const failure = authFailureFromError(err);

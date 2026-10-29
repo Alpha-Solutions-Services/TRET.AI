@@ -23,17 +23,21 @@ const variantClass: Record<ButtonVariant, string> = {
     "border border-transparent bg-[#c084fc] text-[#140818] shadow-[0_0_18px_color-mix(in_srgb,#c084fc_55%,transparent)] hover:bg-[#d7b4fd] disabled:bg-[#c084fc] disabled:text-[#140818] disabled:opacity-100",
 };
 
+export function buttonClassName(variant: ButtonVariant = "primary", className?: string): string {
+  return cn(
+    "pressable inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] px-4 text-sm font-semibold no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]",
+    variantClass[variant],
+    className,
+  );
+}
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   function Button({ className, variant = "primary", type = "button", ...props }, ref) {
     return (
       <button
         ref={ref}
         type={type}
-        className={cn(
-          "pressable inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] px-4 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:cursor-not-allowed motion-reduce:transition-none motion-reduce:active:scale-100",
-          variantClass[variant],
-          className,
-        )}
+        className={buttonClassName(variant, className)}
         {...props}
       />
     );

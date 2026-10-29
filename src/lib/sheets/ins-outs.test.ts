@@ -562,3 +562,24 @@ describe("sheet dates", () => {
     expect(pickLoadLedgerTitle(titles, "13")).toBeNull();
   });
 });
+
+describe("week report gallons", () => {
+  it("ignores gallons on a report whose revenue is another week", () => {
+    const row = buildTruckWeekInsOuts({
+      unitNumber: "8",
+      truckName: "Truck 8",
+      weekStart: "2026-10-12",
+      weekEnd: "2026-10-18",
+      loadLedger: [
+        ["Delivery Date", "Load ID", "Rate"],
+        ["10/13/2026", "TBH--1", "$100.00"],
+      ],
+      mgmtExpenses: null,
+      weeklyExpenses: [["Week Start Date", "Driver Compensation"], ["10/12/2026", "$0.00"]],
+      fuelLog: [["Date", "Gallons", "Item"], ["10/13/2026", "10", "ULSD"]],
+      weekReport: [["Total Revenue", "$9,999.00"], ["Diesel Gallons", "99"]],
+      note: null,
+    });
+    expect(row.reportDieselGallonsMilli).toBe(10_000);
+  });
+});
