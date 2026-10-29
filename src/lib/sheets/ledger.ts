@@ -226,8 +226,8 @@ export function parseLoadLedger(
     const primaryDay = sheetDay(cell(row, dateCol));
     const fallbackDay = primaryDay ? null : sheetDay(cell(row, fallbackCol));
     const tonu = rowIsTonu(row, statusCols);
-    let deliveryDay = primaryDay || fallbackDay || "";
-    if (!deliveryDay && tonu) deliveryDay = firstDay(row);
+    // A TONU delivery is the delivery column only. Column A on the live row is the pickup.
+    const deliveryDay = tonu ? primaryDay || "" : primaryDay || fallbackDay || "";
     if (!deliveryDay && !opts?.keepUndated && !tonu) continue;
     rows.push({
       loadId,
@@ -252,10 +252,10 @@ export function parseLoadLedger(
       tollCents: tollCol >= 0 ? (sheetAmountToCents(cell(row, tollCol)) ?? 0) : 0,
       tarpCents: tarpCol >= 0 ? positiveCents(cell(row, tarpCol)) : 0,
       status: tonu ? "TONU" : textOrNull(statusCols.map((index) => cell(row, index)).join(" ")),
-      deliverySource: primaryDay ? "column" : fallbackDay ? "fallback" : deliveryDay ? "fallback" : null,
+      deliverySource: primaryDay ? "column" : !tonu && fallbackDay ? "fallback" : null,
     });
   }
-  rows.push(...recoverTonuRows(grid, rows));
+  rows.push(...recoverTonuRows(grid, rows, dateCol));
   return {
     headerFound: true,
     rows,
@@ -326,14 +326,6 @@ function loadIdInRow(row: readonly string[]): string {
   return "";
 }
 
-function firstDay(row: readonly string[]): string {
-  for (const value of row) {
-    const day = sheetDay(value ?? "");
-    if (day) return day;
-  }
-  return "";
-}
-
 function dollarAmounts(row: readonly string[]): number[] {
   const found: number[] = [];
   for (const value of row) {
@@ -355,10 +347,15 @@ function tonuRateCents(row: readonly string[], rateCell: string): number | null 
 }
 
 /**
- * A TONU can sit above the detected header (Load Ledger row 11) or in columns
- * the header names do not cover. Keep it when the row says TONU and has a load id.
+ * A TONU can sit above the detected header (Load Ledger row 11).
+ * Keep it when the row says TONU and has a load id.
+ * The delivery date is that header's delivery column. A blank cell stays blank.
  */
-function recoverTonuRows(grid: SheetGrid, existing: readonly LedgerLoadRow[]): LedgerLoadRow[] {
+function recoverTonuRows(
+  grid: SheetGrid,
+  existing: readonly LedgerLoadRow[],
+  dateCol: number,
+): LedgerLoadRow[] {
   const seen = new Set(existing.map((row) => canonicalLoadId(row.loadId)));
   const extra: LedgerLoadRow[] = [];
   for (const row of grid) {
@@ -366,9 +363,10 @@ function recoverTonuRows(grid: SheetGrid, existing: readonly LedgerLoadRow[]): L
     const loadId = loadIdInRow(row);
     if (!loadId || seen.has(loadId)) continue;
     seen.add(loadId);
+    const deliveryDay = dateCol >= 0 ? sheetDay(cell(row, dateCol)) || "" : "";
     extra.push({
       loadId,
-      deliveryDay: firstDay(row),
+      deliveryDay,
       pickupDay: null,
       rateCents: tonuRateCents(row, ""),
       loadedMilesHundredths: null,
@@ -389,7 +387,7 @@ function recoverTonuRows(grid: SheetGrid, existing: readonly LedgerLoadRow[]): L
       tollCents: 0,
       tarpCents: 0,
       status: "TONU",
-      deliverySource: firstDay(row) ? "fallback" : null,
+      deliverySource: deliveryDay ? "column" : null,
     });
   }
   return extra;

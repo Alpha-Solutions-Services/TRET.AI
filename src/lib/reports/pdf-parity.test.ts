@@ -1,5 +1,5 @@
 import { inflateSync } from "node:zlib";
-import { TBH_1201 } from "@/lib/loads/tbh-1201";
+import { TBH_1201 } from "../../../fixtures/sheets/tbh-1201";
 import { describe, expect, it, vi } from "vitest";
 import type { TruckClass } from "@/lib/fee-engine";
 import { ownerPaysManagementTotal } from "@/lib/fees/kinds";

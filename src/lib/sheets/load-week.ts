@@ -6,7 +6,6 @@ import { loadTruckWeekInsOuts, missingGoogleServiceAccountEnv } from "@/lib/shee
 import { sheetLedgerRefs } from "@/lib/sheets/mismatch";
 import { syncSheetMismatches } from "@/lib/sheets/sync-mismatches";
 import { listTrucks } from "@/lib/trucks/queries";
-import { applyTonuConfirmations } from "@/lib/documents/tonu-flag";
 import { listConfirmedTonuRates } from "@/lib/documents/store";
 import { missingSheetLinkNote } from "@/lib/trucks/fields";
 
@@ -43,7 +42,7 @@ export async function loadActiveTruckInsOuts(
       weekStart,
       weekEnd,
     );
-    return { rows: applyTonuConfirmations(rows, confirmed), error: null, confirmationError: null };
+    return { rows, error: null, confirmationError: null };
   } catch (err) {
     return {
       rows: [],

@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { TBH_1201 } from "@/lib/loads/tbh-1201";
+import { TBH_1201 } from "../../../fixtures/sheets/tbh-1201";
 import { TONU_RATE_NOTE } from "@/lib/reports/owner-week";
 import { buildTruckWeekInsOuts } from "@/lib/sheets/ins-outs";
-import { applyTonuConfirmations } from "./tonu-flag";
 
 describe("confirmed TONU rate", () => {
   it("counts TBH--1201 in the delivery week and does not add it again", () => {
@@ -28,9 +27,6 @@ describe("confirmed TONU rate", () => {
     expect(tonu?.pickupDay).toBe(TBH_1201.pickupDay);
     expect(row.pending?.some((item) => item.reason === TONU_RATE_NOTE)).toBe(false);
     expect(row.insCents).toBe(125_000);
-    const next = applyTonuConfirmations([row], confirmed)[0]!;
-    expect(next.insCents).toBe(row.insCents);
-    expect(next.weekLoads?.find((load) => load.loadId === TBH_1201.loadId)?.rateCents).toBe(TBH_1201.rateCents);
   });
 
   it("confirms only the loads in the confirmation map", () => {
@@ -51,13 +47,11 @@ describe("confirmed TONU rate", () => {
       note: null,
       confirmedCentsByLoadId: confirmed,
     });
-    const next = applyTonuConfirmations([row], confirmed)[0]!;
-    const tonu = next.weekLoads?.find((load) => load.loadId === "TBH--1221");
+    const tonu = row.weekLoads?.find((load) => load.loadId === "TBH--1221");
     expect(tonu?.rateCents).toBe(25_000);
     expect(tonu?.reason).toBeNull();
-    expect(next.pending?.some((item) => item.loadId === "TBH--1221")).toBe(false);
-    expect(next.weekLoads?.find((load) => load.loadId === "TBH--1217")?.reason).toBe(TONU_RATE_NOTE);
-    expect(next.insCents).toBe(row.insCents);
-    expect(next.insCents).toBe(125_000);
+    expect(row.pending?.some((item) => item.loadId === "TBH--1221")).toBe(false);
+    expect(row.weekLoads?.find((load) => load.loadId === "TBH--1217")?.reason).toBe(TONU_RATE_NOTE);
+    expect(row.insCents).toBe(125_000);
   });
 });

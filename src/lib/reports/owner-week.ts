@@ -98,7 +98,7 @@ export const TONU_RATE_NOTE = "TONU rate unconfirmed";
 export const SHEET_FEE_DIFFERS = "sheet fee differs";
 
 export type TonuReportBlock = {
-  loadId: string;
+  loadId: string | null;
   message: string;
 };
 
@@ -110,6 +110,22 @@ export function tonuReportIncludedMessage(loadId: string): string {
 /** Close and the PDF use this text. It names the load. */
 export function tonuReportOmittedMessage(loadId: string): string {
   return `Week Report gross leaves out ${loadId}, which belongs to this week.`;
+}
+
+/** The report is higher by exactly this week's confirmed TONU. The ledger already counts it. */
+export function tonuReportRepeatedMessage(loadId: string): string {
+  return `Week Report gross includes ${loadId} again. The ledger already counts it this week.`;
+}
+
+/** A labeled report disagrees with the ledger, and confirmed TONUs do not make up the whole gap. */
+export function tonuReportGapMessage(reportCents: number, ledgerCents: number): string {
+  const gap = Math.abs(reportCents - ledgerCents);
+  return `Week Report gross is ${formatStatementDollars(reportCents)}. The ledger gross is ${formatStatementDollars(ledgerCents)}. The gap is ${formatStatementDollars(gap)}.`;
+}
+
+/** Close and the PDF use this text. It names the load. */
+export function missingDeliveryMessage(loadId: string): string {
+  return `${loadId} has no delivery date. Close stays blocked until the delivery column is filled.`;
 }
 
 /**
@@ -149,10 +165,10 @@ export function buildOwnerTruckWeek(input: {
   const tonuCounted: LedgerLoadRow[] = [];
   const pending: OwnerPendingLoad[] = [];
   const loads: OwnerWeekLoad[] = [];
+  const tonuReportBlocks: TonuReportBlock[] = [];
   let heldTonuCents = 0;
   const confirmedThisWeek: TonuAmount[] = [];
   const confirmedOtherWeeks: TonuAmount[] = [];
-  const unconfirmedTonuCents: number[] = [];
   const nextEnd = shiftDay(input.weekEnd, 7);
   for (const row of parsed?.rows ?? []) {
     const tonu = isTonu(row.status);
@@ -160,6 +176,10 @@ export function buildOwnerTruckWeek(input: {
     const inNext = Boolean(row.deliveryDay) && row.deliveryDay > input.weekEnd && row.deliveryDay <= nextEnd;
     const inTransit = !row.deliveryDay && row.pickupDay != null && row.pickupDay <= input.weekEnd;
     if (tonu) {
+      if (!row.deliveryDay) {
+        tonuReportBlocks.push({ loadId: row.loadId, message: missingDeliveryMessage(row.loadId) });
+        continue;
+      }
       const confirmed = confirmedTonuCents(input.confirmedCentsByLoadId, row.loadId);
       if (confirmed != null) {
         const amount = { loadId: row.loadId, cents: confirmed };
@@ -172,7 +192,6 @@ export function buildOwnerTruckWeek(input: {
         }
         continue;
       }
-      if (row.rateCents != null && row.rateCents > 0) unconfirmedTonuCents.push(row.rateCents);
       const countWeek = row.deliveryDay ? tonuHoldWeekStart(row.deliveryDay) : null;
       if (countWeek === input.weekStart) {
         tonuCounted.push(row);
@@ -235,27 +254,26 @@ export function buildOwnerTruckWeek(input: {
   const reportGrid = reportApplies ? (input.weekReport ?? null) : null;
   const report = readWeekReportMoney(reportGrid);
   const earlyWarnings: string[] = [];
-  const tonuReportBlocks: TonuReportBlock[] = [];
   const labeledForThisWeek = labeledWeekStart(input.weekReport) === input.weekStart;
-  if (report.grossCents != null && labeledForThisWeek) {
+  if (report.grossCents != null && labeledForThisWeek && report.grossCents !== grossCents) {
     const reportGross = report.grossCents;
-    const omitted = reportGross < grossCents ? subsetMatching(confirmedThisWeek, grossCents - reportGross, []) : null;
-    const included =
-      reportGross > grossCents ? subsetMatching(confirmedOtherWeeks, reportGross - grossCents, unconfirmedTonuCents) : null;
-    if (omitted != null && omitted.length > 0) {
-      for (const row of omitted) {
-        tonuReportBlocks.push({ loadId: row.loadId, message: tonuReportOmittedMessage(row.loadId) });
+    const gap = reportGross - grossCents;
+    const thisWeek = subsetMatching(confirmedThisWeek, Math.abs(gap), []);
+    const otherWeek = gap > 0 ? subsetMatching(confirmedOtherWeeks, gap, []) : null;
+    if (thisWeek != null && thisWeek.length > 0) {
+      // The report differs by exactly this week's confirmed TONUs. Keep the ledger, which already counts each one.
+      for (const row of thisWeek) {
+        tonuReportBlocks.push({
+          loadId: row.loadId,
+          message: gap < 0 ? tonuReportOmittedMessage(row.loadId) : tonuReportRepeatedMessage(row.loadId),
+        });
       }
-    } else if (included != null && included.length > 0) {
-      for (const row of included) {
+    } else if (otherWeek != null && otherWeek.length > 0) {
+      for (const row of otherWeek) {
         tonuReportBlocks.push({ loadId: row.loadId, message: tonuReportIncludedMessage(row.loadId) });
       }
-    } else if (
-      reportGross !== grossCents &&
-      reportGross !== grossCents + heldTonuCents &&
-      !subsetAddsTo(unconfirmedTonuCents, reportGross - grossCents)
-    ) {
-      grossCents = reportGross;
+    } else {
+      tonuReportBlocks.push({ loadId: null, message: tonuReportGapMessage(reportGross, grossCents) });
     }
   }
   if (report.milesHundredths != null) {
@@ -324,7 +342,9 @@ export function buildOwnerTruckWeek(input: {
       tolsonLeaseFeeBp: input.feeRates?.tolsonLeaseFeeBp,
     });
   const fees = feeSplitFromUnit(statement);
-  const sheetFeeDiffers = sheetManagement != null && sheetManagement !== fees.managementFeeCents;
+  const shownSheetFee =
+    sheetManagement != null && sheetManagement !== fees.managementFeeCents ? sheetManagement : null;
+  const sheetFeeDiffers = shownSheetFee != null;
   const reportFeeDiffers = !sheetFeeDiffers && reportManagement != null && reportManagement !== fees.managementFeeCents;
   if (sheetFeeDiffers || reportFeeDiffers) {
     replaceCategory(categories, "Management fee", fees.managementFeeCents);
@@ -334,8 +354,8 @@ export function buildOwnerTruckWeek(input: {
   if (reportApplies && report.legacyFeeCents != null && !report.legacyUnreadable) legacyPart = report.legacyFeeCents;
   if (reportApplies && report.tolsonFeeCents != null && !report.tolsonUnreadable) tolsonPart = report.tolsonFeeCents;
   const warnings: string[] = [...(weekly?.warnings ?? []), ...earlyWarnings];
-  if (sheetFeeDiffers && sheetManagement != null) {
-    warnings.push(`Sheet fee is ${formatStatementDollars(sheetManagement)}. The total uses the calculated fee.`);
+  if (shownSheetFee != null) {
+    warnings.push(`Sheet fee is ${formatStatementDollars(shownSheetFee)}. The total uses the calculated fee.`);
   } else if (reportFeeDiffers && reportManagement != null) {
     warnings.push(
       `Week Report management fee is ${formatStatementDollars(reportManagement)}. The total uses the calculated fee.`,
@@ -415,7 +435,7 @@ function subsetAddsTo(amounts: readonly number[], target: number): boolean {
   return false;
 }
 
-function confirmedTonuCents(
+export function confirmedTonuCents(
   map: Readonly<Record<string, number>> | undefined,
   loadId: string,
 ): number | null {
