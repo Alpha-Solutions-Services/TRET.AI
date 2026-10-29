@@ -1,9 +1,10 @@
-import { TONU_RATE_NOTE, type OwnerWeekLoad } from "@/lib/reports/owner-week";
+import { canonicalLoadId } from "@/lib/loads/load-id";
+import { TONU_RATE_NOTE } from "@/lib/reports/owner-week";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 
 /**
- * A confirmed TONU rate replaces the unconfirmed flag and the placeholder amount.
- * Gross is counted once, in the delivery week, by the owner week. This does not add it again.
+ * Drops the unconfirmed flag for a TONU the owner already confirmed.
+ * Gross, the rate, and the delivery week are counted once by the owner week.
  * Owner-confirmed rows for TBH--1201 and TBH--1221 live in supabase/data, not in code.
  */
 export function applyTonuConfirmations<T extends TruckWeekInsOuts>(
@@ -11,19 +12,18 @@ export function applyTonuConfirmations<T extends TruckWeekInsOuts>(
   confirmedCentsByLoadId: Readonly<Record<string, number>>,
 ): T[] {
   return rows.map((row) => {
-    const weekLoads = (row.weekLoads ?? []).map((load) => confirmLoad(load, confirmedCentsByLoadId));
     const pending = (row.pending ?? []).filter((item) => {
-      const confirmed = confirmedCentsByLoadId[item.loadId];
-      if (confirmed == null) return true;
+      if (confirmedCents(confirmedCentsByLoadId, item.loadId) == null) return true;
       return item.reason !== TONU_RATE_NOTE;
     });
-    return { ...row, weekLoads, pending };
+    return pending.length === (row.pending ?? []).length ? row : { ...row, pending };
   });
 }
 
-function confirmLoad(load: OwnerWeekLoad, confirmedCentsByLoadId: Readonly<Record<string, number>>): OwnerWeekLoad {
-  if (load.status !== "TONU") return load;
-  const confirmed = confirmedCentsByLoadId[load.loadId];
-  if (confirmed == null) return load;
-  return { ...load, rateCents: confirmed, reason: null };
+function confirmedCents(map: Readonly<Record<string, number>>, loadId: string): number | null {
+  const key = canonicalLoadId(loadId);
+  for (const [id, cents] of Object.entries(map)) {
+    if (canonicalLoadId(id) === key && Number.isInteger(cents) && cents >= 0) return cents;
+  }
+  return null;
 }

@@ -105,6 +105,8 @@ export type AssetReport = {
   eldCompliance: string;
   summary: string;
   notes: string[];
+  /** Close and the asset PDF stay blocked while this list is not empty. */
+  exportBlockers: string[];
 };
 
 /** Shown when no dispatcher is stored on the truck or the sheet. */
@@ -619,8 +621,14 @@ export function buildAssetReport(input: {
     confirmedCentsByLoadId: input.confirmedCentsByLoadId,
   });
   if (input.ledger) grossCents = owner.grossCents;
-  if (owner.sheetFeeDiffers) notes.push("sheet fee differs");
   for (const warning of owner.warnings) notes.push(warning);
+  const exportBlockers = [
+    ...owner.unreadExpenses.map(
+      (label) =>
+        `Weekly Expenses ${label} could not be read or is over the cap. Net leaves that line out until it is fixed.`,
+    ),
+    ...owner.tonuReportBlocks.map((block) => block.message),
+  ];
   if (owner.milesFromAllocated) {
     dispatchMilesHundredths = owner.milesHundredths;
   }
@@ -861,6 +869,7 @@ export function buildAssetReport(input: {
     ),
     summary: `Truck ${input.unitNumber} delivered ${loads.length} loads for ${dollars(grossCents)} gross. Owner expenses were ${dollars(expenseCents)}. Net owner earnings were ${dollars(netCents)}.`,
     notes,
+    exportBlockers,
   };
 }
 

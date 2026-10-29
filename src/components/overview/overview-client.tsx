@@ -115,6 +115,11 @@ export function OverviewClient({
         </p>
       </div>
 
+      {data.insOutsError ? (
+        <div role="alert">
+          <CopyableError headline="This week could not be loaded." detail={data.insOutsError} />
+        </div>
+      ) : (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           label="Ins"
@@ -190,6 +195,7 @@ export function OverviewClient({
           status={issueStatus}
         />
       </div>
+      )}
 
       <ConnectionBanner feeds={hub} />
       <HubFlow feeds={hub} />
@@ -276,31 +282,34 @@ export function OverviewClient({
       </div>
 
       <SheetsEnvBanner missing={data.sheetEnvMissing} />
-      <FleetCharts rows={data.insOuts} />
-      <TruckCardGrid rows={data.insOuts} />
-
-      {data.mismatchCount != null ? (
-        <Link
-          href={`/sheet-compare?week=${data.weekStart}`}
-          className="pressable material inline-flex rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline"
-        >
-          Sheet vs Vektor: {data.mismatchCount} open rate or missing-load checks
-        </Link>
-      ) : data.mismatchError ? (
-        <div role="status">
-          <CopyableError headline="Sheet comparison could not be loaded." detail={data.mismatchError} />
-        </div>
-      ) : null}
-
-      {data.error ? (
+      {data.error && data.error !== data.insOutsError ? (
         <div role="alert">
           <CopyableError headline="This week could not be loaded." detail={data.error} />
         </div>
       ) : null}
+      {data.insOutsError ? null : (
+        <>
+          <FleetCharts rows={data.insOuts} />
+          <TruckCardGrid rows={data.insOuts} />
 
-      {data.snapshot ? <SnapshotTable snapshot={data.snapshot} /> : null}
-      <InsOutsTable rows={data.insOuts} error={data.insOutsError} weekStart={data.weekStart} />
-      <ManagementSummaryTable summary={cards} />
+          {data.mismatchCount != null ? (
+            <Link
+              href={`/sheet-compare?week=${data.weekStart}`}
+              className="pressable material inline-flex rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-accent)] no-underline"
+            >
+              Sheet vs Vektor: {data.mismatchCount} open rate or missing-load checks
+            </Link>
+          ) : data.mismatchError ? (
+            <div role="status">
+              <CopyableError headline="Sheet comparison could not be loaded." detail={data.mismatchError} />
+            </div>
+          ) : null}
+
+          {data.snapshot ? <SnapshotTable snapshot={data.snapshot} /> : null}
+          <InsOutsTable rows={data.insOuts} error={data.insOutsError} weekStart={data.weekStart} />
+          <ManagementSummaryTable summary={cards} />
+        </>
+      )}
     </div>
   );
 }

@@ -168,6 +168,53 @@ describe("dashboard display", () => {
     expect(html).not.toContain("TRET.AI v");
     expect(html).not.toContain("—");
   });
+
+  it("shows a confirmation error instead of an empty week", () => {
+    const html = renderToStaticMarkup(
+      createElement(OverviewClient, {
+        data: {
+          ...pageData(),
+          insOuts: [],
+          insOutsError: "TONU confirmations could not be loaded.",
+          snapshot: {
+            units: [],
+            fleet: {
+              unitNumber: "Fleet",
+              truckClass: null,
+              grossCents: 0,
+              feesCents: 0,
+              legacyFeeCents: 0,
+              tolsonLeaseFeeCents: 0,
+              managementFeeCents: 0,
+              fuelCents: 0,
+              tollsCents: 0,
+              fixedCents: 0,
+              netCents: 0,
+            },
+          },
+        },
+        cards: {
+          incomeCents: 0,
+          expenseCents: 0,
+          netCents: 0,
+          tolsonPayableCents: 0,
+          legacyKeptCents: 0,
+          expenseMonth: "2026-10",
+        },
+        hub: buildHubFeeds({
+          vektor: "not_set",
+          sheets: "connected",
+          fuelCount: 0,
+          tollCount: 0,
+          gemini: "Not set",
+        }),
+      }),
+    );
+    expect(html).toContain("TONU confirmations could not be loaded.");
+    expect(html).toContain("This week could not be loaded.");
+    expect(html).not.toContain("Load rates this week");
+    expect(html).not.toContain("Week snapshot");
+  });
 });
 
 function sampleTruck(): TruckWeekInsOuts {
@@ -187,6 +234,7 @@ function sampleTruck(): TruckWeekInsOuts {
     categories: [{ category: "Fuel", cents: 45_000 }],
     feeSplit: { legacyFeeCents: 0, tolsonFeeCents: 0 },
     unreadExpenses: [],
+    tonuReportBlocks: [],
     outsFromWeekly: true,
     note: null,
     noteDetail: null,

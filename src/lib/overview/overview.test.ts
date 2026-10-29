@@ -121,6 +121,7 @@ describe("sheet week snapshot", () => {
         categories,
         feeSplit: { legacyFeeCents: 0, tolsonFeeCents: 0 },
         unreadExpenses: [],
+        tonuReportBlocks: [],
         outsFromWeekly: true,
         note: null,
         noteDetail: null,

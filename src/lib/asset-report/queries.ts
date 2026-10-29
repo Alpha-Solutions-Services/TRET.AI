@@ -62,9 +62,10 @@ export async function buildAssetReportPdf(weekStart: string, unitNumber: string)
         }
       : null,
   });
-  const unread = report.notes.find((note) => note.includes("could not be read or is over the cap"));
-  if (unread) {
-    throw new ReportBlockedError(`Truck ${truck.unit_number}: ${unread}`);
+  if (report.exportBlockers.length > 0) {
+    throw new ReportBlockedError(
+      report.exportBlockers.map((message) => `Truck ${truck.unit_number}: ${message}`).join(" "),
+    );
   }
   return renderAssetReportPdf(report);
 }

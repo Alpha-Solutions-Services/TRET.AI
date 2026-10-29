@@ -13,7 +13,7 @@ import { isMissingSchemaError } from "@/lib/supabase/schema-errors";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { buildWeekStatements, lockPayload } from "./engine";
-import { overlaySheetStatements, unreadExpenseBlockers } from "./sheet-week";
+import { overlaySheetStatements, tonuReportBlockers, unreadExpenseBlockers } from "./sheet-week";
 import { milesValueToHundredths } from "./miles";
 import type {
   CloseImportRun,
@@ -232,10 +232,10 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
 
   const contracts = groupContracts(contractsRes.data ?? [], rulesRes.data ?? []);
   const trucks = (trucksRes.data ?? []).map(mapStatementTruck);
-  const sheets = await loadActiveTruckInsOuts(bounds.start, bounds.end).catch(() => ({
+  const sheets = await loadActiveTruckInsOuts(bounds.start, bounds.end).catch((err: unknown) => ({
     rows: [],
-    error: "Sheets were not read.",
-    confirmationError: null as string | null,
+    error: null as string | null,
+    confirmationError: err instanceof Error ? err.message : "TONU confirmations could not be loaded.",
   }));
   const tarpRate = await readTarpCentsPerLoad();
   const storedTarps = await loadStoredTarps(supabase, bounds.start);
@@ -349,7 +349,7 @@ export async function loadStatements(weekStart: string): Promise<StatementsPageD
   } catch (err) {
     return failed(bounds, err instanceof Error ? err.message : "Could not compute this week.");
   }
-  live.blockers.push(...unreadExpenseBlockers(sheets.rows));
+  live.blockers.push(...unreadExpenseBlockers(sheets.rows), ...tonuReportBlockers(sheets.rows));
   if (sheets.confirmationError) {
     live.blockers.push({
       rule: "tonu_confirmations_unread",

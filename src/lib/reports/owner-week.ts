@@ -85,6 +85,11 @@ export type OwnerTruckWeek = {
   warnings: string[];
   /** Weekly Expenses labels that could not be read. Close and the PDF stay blocked while this is not empty. */
   unreadExpenses: string[];
+  /**
+   * A labeled Week Report gross includes a confirmed TONU from another week,
+   * or leaves out one that belongs to this week. Close and the PDF stay blocked.
+   */
+  tonuReportBlocks: TonuReportBlock[];
   /** Sheet AN and AO when they add up to column H. Otherwise the calculated split. */
   feeSplit: { legacyFeeCents: number; tolsonFeeCents: number };
 };
@@ -92,12 +97,28 @@ export type OwnerTruckWeek = {
 export const TONU_RATE_NOTE = "TONU rate unconfirmed";
 export const SHEET_FEE_DIFFERS = "sheet fee differs";
 
+export type TonuReportBlock = {
+  loadId: string;
+  message: string;
+};
+
+/** Close and the PDF use this text. It names the load. */
+export function tonuReportIncludedMessage(loadId: string): string {
+  return `Week Report gross includes ${loadId}, which belongs to another week.`;
+}
+
+/** Close and the PDF use this text. It names the load. */
+export function tonuReportOmittedMessage(loadId: string): string {
+  return `Week Report gross leaves out ${loadId}, which belongs to this week.`;
+}
+
 /**
  * Owner-week figures from the Load Ledger, Weekly Expenses, and Week Report.
  * Fuel, tolls, fees, and miles are the sheet cells. They are not recomputed from imports.
- * A held or pending TONU stays out of gross. Its deadhead miles count in the week it is
- * counted. Tolls follow the load's own week: a sheet toll cell is kept, and a counted
- * TONU toll is added only when that week has no toll cell.
+ * A held or pending TONU stays out of gross. Its deadhead miles count in the week after
+ * delivery. An owner-confirmed TONU counts in the delivery week, with its deadhead and toll.
+ * Tolls follow the load's own week: a sheet toll cell is kept, and a counted TONU toll is
+ * added only when that week has no toll cell.
  */
 export function buildOwnerTruckWeek(input: {
   ledger: SheetGrid | null;
@@ -129,7 +150,9 @@ export function buildOwnerTruckWeek(input: {
   const pending: OwnerPendingLoad[] = [];
   const loads: OwnerWeekLoad[] = [];
   let heldTonuCents = 0;
-  let confirmedTonuCentsTotal = 0;
+  const confirmedThisWeek: TonuAmount[] = [];
+  const confirmedOtherWeeks: TonuAmount[] = [];
+  const unconfirmedTonuCents: number[] = [];
   const nextEnd = shiftDay(input.weekEnd, 7);
   for (const row of parsed?.rows ?? []) {
     const tonu = isTonu(row.status);
@@ -139,13 +162,17 @@ export function buildOwnerTruckWeek(input: {
     if (tonu) {
       const confirmed = confirmedTonuCents(input.confirmedCentsByLoadId, row.loadId);
       if (confirmed != null) {
+        const amount = { loadId: row.loadId, cents: confirmed };
         if (inThis) {
-          confirmedTonuCentsTotal += confirmed;
+          confirmedThisWeek.push(amount);
           counted.push({ ...row, rateCents: confirmed });
           loads.push(weekLoad({ ...row, rateCents: confirmed }, "TONU", null));
+        } else {
+          confirmedOtherWeeks.push(amount);
         }
         continue;
       }
+      if (row.rateCents != null && row.rateCents > 0) unconfirmedTonuCents.push(row.rateCents);
       const countWeek = row.deliveryDay ? tonuHoldWeekStart(row.deliveryDay) : null;
       if (countWeek === input.weekStart) {
         tonuCounted.push(row);
@@ -208,24 +235,27 @@ export function buildOwnerTruckWeek(input: {
   const reportGrid = reportApplies ? (input.weekReport ?? null) : null;
   const report = readWeekReportMoney(reportGrid);
   const earlyWarnings: string[] = [];
-  if (report.grossCents != null) {
-    const withConfirmed = grossCents;
-    const withoutConfirmed = withConfirmed - confirmedTonuCentsTotal;
-    const includesHeldTonu = heldTonuCents > 0 && report.grossCents === withConfirmed + heldTonuCents;
-    const reportIncludesConfirmed = confirmedTonuCentsTotal > 0 && report.grossCents === withConfirmed;
-    const reportOmitsConfirmed = confirmedTonuCentsTotal > 0 && report.grossCents === withoutConfirmed;
-    if (reportIncludesConfirmed) {
-      earlyWarnings.push("Week Report gross already includes the confirmed TONU.");
-    } else if (reportOmitsConfirmed || includesHeldTonu) {
-      if (reportOmitsConfirmed) {
-        earlyWarnings.push("Week Report gross left out the confirmed TONU, so it was kept.");
+  const tonuReportBlocks: TonuReportBlock[] = [];
+  const labeledForThisWeek = labeledWeekStart(input.weekReport) === input.weekStart;
+  if (report.grossCents != null && labeledForThisWeek) {
+    const reportGross = report.grossCents;
+    const omitted = reportGross < grossCents ? subsetMatching(confirmedThisWeek, grossCents - reportGross, []) : null;
+    const included =
+      reportGross > grossCents ? subsetMatching(confirmedOtherWeeks, reportGross - grossCents, unconfirmedTonuCents) : null;
+    if (omitted != null && omitted.length > 0) {
+      for (const row of omitted) {
+        tonuReportBlocks.push({ loadId: row.loadId, message: tonuReportOmittedMessage(row.loadId) });
       }
-    } else {
-      grossCents = report.grossCents;
-      if (confirmedTonuCentsTotal > 0 && grossCents < withConfirmed) {
-        grossCents += confirmedTonuCentsTotal;
-        earlyWarnings.push("Week Report gross left out the confirmed TONU, so it was kept.");
+    } else if (included != null && included.length > 0) {
+      for (const row of included) {
+        tonuReportBlocks.push({ loadId: row.loadId, message: tonuReportIncludedMessage(row.loadId) });
       }
+    } else if (
+      reportGross !== grossCents &&
+      reportGross !== grossCents + heldTonuCents &&
+      !subsetAddsTo(unconfirmedTonuCents, reportGross - grossCents)
+    ) {
+      grossCents = reportGross;
     }
   }
   if (report.milesHundredths != null) {
@@ -253,11 +283,11 @@ export function buildOwnerTruckWeek(input: {
   }
   if (report.fuelCents != null) replaceCategory(categories, "Fuel", report.fuelCents);
   if (report.tollCents != null) replaceCategory(categories, "Toll fees", report.tollCents);
-  const countedTollCents = counted.reduce((sum, row) => sum + row.tollCents, 0);
+  const confirmedTollCents = counted.reduce((sum, row) => sum + (isTonu(row.status) ? row.tollCents : 0), 0);
   const arrivingTollCents = tonuCounted.reduce((sum, row) => sum + row.tollCents, 0);
   const tollFromSheet = categories.some((row) => row.category === "Toll fees");
   const chosenTollCents = categories.find((row) => row.category === "Toll fees")?.cents ?? 0;
-  const tollCents = tollFromSheet ? chosenTollCents : addArriving(chosenTollCents, countedTollCents, arrivingTollCents);
+  const tollCents = tollFromSheet ? chosenTollCents : addMissing(chosenTollCents, confirmedTollCents + arrivingTollCents);
   if (tollCents !== chosenTollCents) replaceCategory(categories, "Toll fees", tollCents);
   miscCents = categories.find((row) => row.category === "Misc")?.cents ?? 0;
   const countedDeadhead = parsed?.allocatedDeadheadColumn ? allocatedMilesOnce(counted, "deadhead") : 0;
@@ -295,9 +325,8 @@ export function buildOwnerTruckWeek(input: {
     });
   const fees = feeSplitFromUnit(statement);
   const sheetFeeDiffers = sheetManagement != null && sheetManagement !== fees.managementFeeCents;
-  if (sheetManagement != null && sheetManagement !== fees.managementFeeCents) {
-    replaceCategory(categories, "Management fee", fees.managementFeeCents);
-  } else if (reportManagement != null && reportManagement !== fees.managementFeeCents) {
+  const reportFeeDiffers = !sheetFeeDiffers && reportManagement != null && reportManagement !== fees.managementFeeCents;
+  if (sheetFeeDiffers || reportFeeDiffers) {
     replaceCategory(categories, "Management fee", fees.managementFeeCents);
   }
   let legacyPart = weekly?.legacyFeeCents ?? null;
@@ -305,11 +334,9 @@ export function buildOwnerTruckWeek(input: {
   if (reportApplies && report.legacyFeeCents != null && !report.legacyUnreadable) legacyPart = report.legacyFeeCents;
   if (reportApplies && report.tolsonFeeCents != null && !report.tolsonUnreadable) tolsonPart = report.tolsonFeeCents;
   const warnings: string[] = [...(weekly?.warnings ?? []), ...earlyWarnings];
-  if (sheetManagement != null && sheetManagement !== fees.managementFeeCents) {
-    warnings.push(
-      `Sheet fee is ${formatStatementDollars(sheetManagement)}. The total uses the calculated fee.`,
-    );
-  } else if (reportManagement != null && reportManagement !== fees.managementFeeCents) {
+  if (sheetFeeDiffers && sheetManagement != null) {
+    warnings.push(`Sheet fee is ${formatStatementDollars(sheetManagement)}. The total uses the calculated fee.`);
+  } else if (reportFeeDiffers && reportManagement != null) {
     warnings.push(
       `Week Report management fee is ${formatStatementDollars(reportManagement)}. The total uses the calculated fee.`,
     );
@@ -347,9 +374,45 @@ export function buildOwnerTruckWeek(input: {
     sheetFeeDiffers,
     warnings,
     unreadExpenses: weekly?.unreadable ?? [],
+    tonuReportBlocks,
     feeSplit,
     appliedWeekReport: reportGrid,
   };
+}
+
+type TonuAmount = { loadId: string; cents: number };
+
+/** A non-empty subset of required amounts, plus any subset of the optional cents, that equals target. */
+function subsetMatching(required: readonly TonuAmount[], target: number, optional: readonly number[]): TonuAmount[] | null {
+  const count = required.length;
+  if (count === 0 || count > 12 || target <= 0) return null;
+  const limit = 1 << count;
+  for (let mask = 1; mask < limit; mask += 1) {
+    const picked: TonuAmount[] = [];
+    let sum = 0;
+    for (let index = 0; index < count; index += 1) {
+      if ((mask & (1 << index)) === 0) continue;
+      const row = required[index]!;
+      picked.push(row);
+      sum += row.cents;
+    }
+    if (sum === target || subsetAddsTo(optional, target - sum)) return picked;
+  }
+  return null;
+}
+
+function subsetAddsTo(amounts: readonly number[], target: number): boolean {
+  if (target === 0) return true;
+  if (target < 0 || amounts.length === 0 || amounts.length > 12) return false;
+  const limit = 1 << amounts.length;
+  for (let mask = 0; mask < limit; mask += 1) {
+    let sum = 0;
+    for (let index = 0; index < amounts.length; index += 1) {
+      if ((mask & (1 << index)) !== 0) sum += amounts[index]!;
+    }
+    if (sum === target) return true;
+  }
+  return false;
 }
 
 function confirmedTonuCents(
@@ -364,10 +427,10 @@ function confirmedTonuCents(
   return null;
 }
 
-/** A counted TONU's toll is added once when this week has no toll cell yet. */
-function addArriving(shown: number, counted: number, arriving: number): number {
-  if (arriving <= 0) return shown;
-  return shown >= counted + arriving ? shown : shown + arriving;
+/** A TONU toll is added once when this week has no toll cell yet. */
+function addMissing(shown: number, extra: number): number {
+  if (extra <= 0) return shown;
+  return shown >= extra ? shown : shown + extra;
 }
 
 /**

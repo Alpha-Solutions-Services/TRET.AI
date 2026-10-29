@@ -33,6 +33,7 @@ async function ManagementContent({
   const loaded = await loadManagement(params.week);
   if (!loaded.ok) return <PageLoadError message={loaded.message} />;
   const data = loaded.data;
+  if (data.insOutsError) return <PageLoadError message={data.insOutsError} />;
   const month = data.weekStart.slice(0, 7);
   let fees: Awaited<ReturnType<typeof loadLegacyFeeState>>;
   let cards: Awaited<ReturnType<typeof loadManagementCardSummary>>;

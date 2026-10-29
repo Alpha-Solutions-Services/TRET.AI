@@ -1,4 +1,5 @@
 import { inflateSync } from "node:zlib";
+import { TBH_1201 } from "@/lib/loads/tbh-1201";
 import { describe, expect, it, vi } from "vitest";
 import type { TruckClass } from "@/lib/fee-engine";
 import { ownerPaysManagementTotal } from "@/lib/fees/kinds";
@@ -71,7 +72,6 @@ const TRUCKS: Spec[] = [
     gallonsMilli: 269_857,
     defGallonsMilli: 12_353,
     fuelLogMilli: 254_757,
-    heldInSheet: { milesHundredths: 266_000, deadheadHundredths: 25_100, tollCents: 4_861 },
   },
 ];
 
@@ -87,6 +87,7 @@ function miles(hundredths: number): string {
 function header(): string[] {
   const cells = Array.from({ length: 48 }, () => "");
   cells[0] = "Delivery Date";
+  cells[6] = "Pickup Date";
   cells[1] = "Load ID";
   cells[2] = "Rate";
   cells[3] = "Status";
@@ -98,7 +99,6 @@ function header(): string[] {
 }
 
 function ledger(spec: Spec): string[][] {
-  const sheet = spec.heldInSheet ?? spec;
   const row = Array.from({ length: 48 }, () => "");
   row[0] = "10/06/2026";
   row[1] = `TBH--11${spec.unit}0`;
@@ -108,15 +108,16 @@ function ledger(spec: Spec): string[][] {
   row[44] = spec.tollCents === 0 ? "" : dollars(spec.tollCents);
   row[47] = spec.deadheadHundredths === 0 ? "" : miles(spec.deadheadHundredths);
   const rows = [header(), row];
-  if (spec.heldInSheet) {
+  if (spec.unit === "8") {
     const tonu = Array.from({ length: 48 }, () => "");
-    tonu[0] = "10/09/2026";
-    tonu[1] = "TBH--1201";
+    tonu[0] = TBH_1201.deliverySheet;
+    tonu[1] = TBH_1201.loadId;
     tonu[2] = "$2,000.00";
     tonu[3] = "TONU";
-    tonu[15] = miles(sheet.milesHundredths - spec.milesHundredths);
+    tonu[6] = TBH_1201.pickupSheet;
+    tonu[15] = "10.00";
     tonu[44] = "$50.00";
-    tonu[47] = miles(sheet.deadheadHundredths - spec.deadheadHundredths);
+    tonu[47] = "10.00";
     rows.push(tonu);
   }
   if (spec.tripOpen) {
@@ -371,9 +372,9 @@ describe("owner PDF and dashboard parity", () => {
     warn.mockRestore();
   });
 
-  it("counts the held TONU deadhead and toll in week 42, on the dashboard and the statement", () => {
+  it("counts the held TONU deadhead and toll the week after delivery, on the dashboard and the statement", () => {
     const spec = TRUCKS.find((item) => item.unit === "8")!;
-    const week = { weekStart: "2026-10-12", weekEnd: "2026-10-18" };
+    const week = { weekStart: "2026-10-19", weekEnd: "2026-10-25" };
     const row = buildTruckWeekInsOuts({
       unitNumber: spec.unit,
       truckName: "Truck 8",
@@ -381,7 +382,7 @@ describe("owner PDF and dashboard parity", () => {
       ...week,
       loadLedger: ledger(spec),
       mgmtExpenses: null,
-      weeklyExpenses: [["Week Start Date", "Driver Compensation", "Toll Fees"], ["10/12/2026", "$0.00", "$0.00"]],
+      weeklyExpenses: [["Week Start Date", "Driver Compensation", "Toll Fees"], ["10/19/2026", "$0.00", "$0.00"]],
       weekReport: null,
       fuelLog: null,
       note: null,

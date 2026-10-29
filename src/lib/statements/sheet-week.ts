@@ -145,6 +145,22 @@ function putLine(
   else lines.push(next);
 }
 
+/** Close and the PDF stay blocked while a labeled Week Report counts a confirmed TONU in the wrong week. */
+export function tonuReportBlockers(rows: readonly TruckWeekInsOuts[]): StatementBlocker[] {
+  const blockers: StatementBlocker[] = [];
+  for (const row of rows) {
+    if (!row.readable) continue;
+    for (const block of row.tonuReportBlocks) {
+      blockers.push({
+        rule: "tonu_week_mismatch",
+        message: `Truck ${row.unitNumber}: ${block.message}`,
+        ref: block.loadId,
+      });
+    }
+  }
+  return blockers;
+}
+
 /** Close and the PDF stay blocked while a filled Weekly Expenses cell cannot be read. */
 export function unreadExpenseBlockers(rows: readonly TruckWeekInsOuts[]): StatementBlocker[] {
   const blockers: StatementBlocker[] = [];

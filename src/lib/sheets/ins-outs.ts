@@ -98,6 +98,8 @@ export type TruckWeekInsOuts = {
   categories: ExpenseCategoryTotal[];
   /** Weekly Expenses labels that could not be read. Empty when every filled cell was read. */
   unreadExpenses: string[];
+  /** Labeled Week Report gross counted a confirmed TONU in the wrong week. Close and the PDF stay blocked. */
+  tonuReportBlocks: { loadId: string; message: string }[];
   /** The Legacy and Tolson lines for this week. Sheet AN and AO when they add up to H, otherwise the calculated split. */
   feeSplit: { legacyFeeCents: number; tolsonFeeCents: number };
   /** True when Outs came from the Weekly Expenses tab. */
@@ -422,6 +424,7 @@ export function buildTruckWeekInsOuts(input: {
     loadCount: 0,
     categories: [] as ExpenseCategoryTotal[],
     unreadExpenses: [] as string[],
+    tonuReportBlocks: [] as { loadId: string; message: string }[],
     feeSplit: { legacyFeeCents: 0, tolsonFeeCents: 0 },
     outsFromWeekly: false,
     ledgerLoads: [] as LedgerLoadRef[],
@@ -514,6 +517,7 @@ export function buildTruckWeekInsOuts(input: {
     feeSplit: owner.feeSplit,
     categories: owner.categories,
     unreadExpenses: owner.unreadExpenses,
+    tonuReportBlocks: owner.tonuReportBlocks,
     outsFromWeekly: useWeekly,
     ledgerLoads: ins?.loads ?? [],
     recentWeeks: recentWeeksFromGrids(

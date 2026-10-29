@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { centsPerLoadedMile } from "@/lib/reports/format";
-import { buildOwnerTruckWeek, readWeekReportMoney, SHEET_FEE_DIFFERS, TONU_RATE_NOTE, weekReportApplies, weekReportGallons } from "@/lib/reports/owner-week";
-import { unreadExpenseBlockers } from "@/lib/statements/sheet-week";
+import { TBH_1201 } from "@/lib/loads/tbh-1201";
+import { managementFeeSplit, seededFeeRates } from "@/lib/fees/two-lines";
+import { buildOwnerTruckWeek, readWeekReportMoney, SHEET_FEE_DIFFERS, TONU_RATE_NOTE, tonuReportIncludedMessage, tonuReportOmittedMessage, weekReportApplies, weekReportGallons } from "@/lib/reports/owner-week";
+import { tonuReportBlockers, unreadExpenseBlockers } from "@/lib/statements/sheet-week";
 import { lockPayload } from "@/lib/statements/engine";
 import { buildAssetReport } from "@/lib/asset-report/build";
 import { buildTruckWeekInsOuts, fuelLogGallons } from "@/lib/sheets/ins-outs";
@@ -23,14 +25,16 @@ function week41TollLedger(): string[][] {
   header[4] = "Trip Group";
   header[15] = "Allocated Miles";
   header[44] = "Toll Expense";
+  header[6] = "Pickup Date";
   header[47] = "Alloc Deadhead";
-  const row = (day: string, id: string, rate: string, status: string, trip: string, miles: string, toll: string, deadhead: string) => {
+  const row = (day: string, id: string, rate: string, status: string, trip: string, miles: string, toll: string, deadhead: string, pickup = "") => {
     const cells = Array.from({ length: 48 }, () => "");
     cells[0] = day;
     cells[1] = id;
     cells[2] = rate;
     cells[3] = status;
     cells[4] = trip;
+    cells[6] = pickup;
     cells[15] = miles;
     cells[44] = toll;
     cells[47] = deadhead;
@@ -43,7 +47,7 @@ function week41TollLedger(): string[][] {
     row("10/08/2026", "TBH--1188", "$1,800.00", "", "M-1195", "2650.00", "$18.55", "241.00"),
     row("10/08/2026", "TBH--1192", "$1,700.00", "", "M-1195", "", "$0.00", ""),
     row("10/08/2026", "TBH--1195", "$900.00", "", "M-1195", "", "$12.00", ""),
-    row("10/09/2026", "TBH--1201", "$2,000.00", "TONU", "", "10.00", "$50.00", "10.00"),
+    row(TBH_1201.deliverySheet, TBH_1201.loadId, "$2,000.00", "TONU", "", "10.00", "$50.00", "10.00", TBH_1201.pickupSheet),
   ];
 }
 
@@ -74,7 +78,7 @@ type TruckFixture = {
   /** Week Report C4 when it still includes a held TONU. */
   sheetGrossCents?: number;
   pending?: { loadId: string; delivery: string }[];
-  tonu?: { loadId: string; delivery: string };
+  tonu?: { loadId: string; delivery: string; pickup?: string };
 };
 
 const TRUCKS: TruckFixture[] = [
@@ -85,7 +89,7 @@ const TRUCKS: TruckFixture[] = [
   { unit: "5", loads: 5, grossCents: 720_000, milesHundredths: 258_839, miscCents: 0, driverCents: 192_600, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 129_600, managementCents: 129_600, fuelCents: 108_260, tollCents: 0, fixedCents: 76_762, expenseCents: 507_222, netCents: 212_778, mpg: "10.65", rpmLabel: "2.7817", legacyCents: 72_000, tolsonCents: 57_600, deadheadHundredths: 28_839, sheetFeeDiffers: false },
   { unit: "6", loads: 2, grossCents: 200_000, milesHundredths: 69_880, miscCents: 0, driverCents: 53_500, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 36_000, managementCents: 36_000, fuelCents: 116_586, tollCents: 0, fixedCents: 83_455, expenseCents: 289_541, netCents: -89_541, mpg: null, rpmLabel: "2.8621", legacyCents: 20_000, tolsonCents: 16_000, deadheadHundredths: 2_987, sheetFeeDiffers: false, pending: [{ loadId: "TBH--1181", delivery: "10/12/2026" }, { loadId: "TBH--1191", delivery: "10/12/2026" }] },
   { unit: "7", loads: 2, grossCents: 470_000, milesHundredths: 130_076, miscCents: 10_598, driverCents: 128_075, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 84_600, managementCents: 84_600, fuelCents: 158_464, tollCents: 3_647, fixedCents: 70_112, expenseCents: 455_496, netCents: 14_504, mpg: "7.42", rpmLabel: "3.6133", legacyCents: 47_000, tolsonCents: 37_600, deadheadHundredths: 2_734, sheetFeeDiffers: false, pending: [{ loadId: "TBH--1200", delivery: "10/12/2026" }, { loadId: "TBH--1202", delivery: "10/12/2026" }] },
-  { unit: "8", loads: 5, grossCents: 790_000, milesHundredths: 266_000, miscCents: 33_420, driverCents: 264_825, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 142_200, managementCents: 142_200, fuelCents: 158_816, tollCents: 4_861, fixedCents: 80_462, expenseCents: 684_584, netCents: 105_416, mpg: "7.04", rpmLabel: "3.7218", legacyCents: 79_000, tolsonCents: 63_200, deadheadHundredths: 25_100, sheetFeeDiffers: false, sheetGrossCents: 990_000, tonu: { loadId: "TBH--1201", delivery: "10/09/2026" } },
+  { unit: "8", loads: 5, grossCents: 790_000, milesHundredths: 265_000, miscCents: 33_420, driverCents: 264_825, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 142_200, managementCents: 142_200, fuelCents: 158_816, tollCents: 4_861, fixedCents: 80_462, expenseCents: 684_584, netCents: 105_416, mpg: "7.04", legacyCents: 79_000, tolsonCents: 63_200, deadheadHundredths: 24_100, sheetFeeDiffers: false, tonu: { loadId: TBH_1201.loadId, delivery: TBH_1201.deliverySheet, pickup: TBH_1201.pickupSheet } },
   { unit: "9", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, driverCents: 0, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 0, managementCents: 0, fuelCents: 0, tollCents: 0, fixedCents: 0, expenseCents: 0, netCents: 0, mpg: null, legacyCents: 0, tolsonCents: 0, deadheadHundredths: 0, sheetFeeDiffers: false },
   { unit: "10", loads: 0, grossCents: 0, milesHundredths: 0, miscCents: 0, driverCents: 0, dispatchCents: 0, factoringCents: 0, sheetManagementCents: 0, managementCents: 0, fuelCents: 0, tollCents: 0, fixedCents: 0, expenseCents: 0, netCents: 0, mpg: null, legacyCents: 0, tolsonCents: 0, deadheadHundredths: 0, sheetFeeDiffers: false },
 ];
@@ -93,6 +97,7 @@ const TRUCKS: TruckFixture[] = [
 function header(): string[] {
   const cells = Array.from({ length: 43 }, () => "");
   cells[0] = "Delivery Date";
+  cells[6] = "Pickup Date";
   cells[1] = "Load ID";
   cells[2] = "Rate";
   cells[3] = "Status";
@@ -139,6 +144,7 @@ function ledgerFor(truck: TruckFixture): string[][] {
   if (truck.tonu) {
     const row = Array.from({ length: 43 }, () => "");
     row[0] = truck.tonu.delivery;
+    row[6] = truck.tonu.pickup ?? "";
     row[1] = truck.tonu.loadId;
     row[2] = "$2,000.00";
     row[3] = "TONU";
@@ -243,7 +249,7 @@ describe("week 41 owner sheet", () => {
     const tolsonPayable = TRUCKS.reduce((sum, truck) => sum + truck.tolsonCents, 0);
     expect(legacyIncome).toBe(328_500);
     expect(tolsonPayable).toBe(194_400);
-    expect(TRUCKS.reduce((sum, truck) => sum + truck.deadheadHundredths, 0)).toBe(89_860);
+    expect(TRUCKS.reduce((sum, truck) => sum + truck.deadheadHundredths, 0)).toBe(88_860);
     const truck6 = buildOwnerTruckWeek({ ledger: ledgerFor(TRUCKS[5]!), weekly: weeklyFor(TRUCKS[5]!), unitNumber: "6", ...WEEK });
     expect(truck6.pending.map((row) => row.loadId)).toEqual(["TBH--1181", "TBH--1191"]);
     expect(truck6.loadIds).not.toContain("TBH--1181");
@@ -328,8 +334,9 @@ describe("week 41 owner sheet", () => {
     delivered[5] = "Yes";
     delivered[15] = "100.00";
     const tonu = Array.from({ length: 43 }, () => "");
-    tonu[0] = "10/09/2026";
-    tonu[1] = "TBH--1201";
+    tonu[0] = TBH_1201.deliverySheet;
+    tonu[1] = TBH_1201.loadId;
+    tonu[6] = TBH_1201.pickupSheet;
     tonu[2] = "$426.33";
     tonu[3] = "TONU";
     tonu[8] = "$2,000.00";
@@ -349,7 +356,7 @@ describe("week 41 owner sheet", () => {
   it("reads a TONU above the header, including Load Ledger row 11", () => {
     const cells = header();
     const grid: string[][] = Array.from({ length: 10 }, () => Array.from({ length: 4 }, () => ""));
-    grid[10] = ["TBH--1201", "TONU", "Oct 9, 2026", "$2,000.00"];
+    grid[10] = [TBH_1201.loadId, "TONU", "Oct 12, 2026", "$2,000.00"];
     grid.push(cells);
     const delivered = Array.from({ length: 43 }, () => "");
     delivered[0] = "10/06/2026";
@@ -421,7 +428,7 @@ describe("week 41 owner sheet", () => {
     ).toEqual({ dieselMilli: 100_000, defMilli: 4_250 });
   });
 
-  it("leaves a held TONU deadhead and toll out of week 41 and counts them in week 42", () => {
+  it("leaves a held TONU deadhead and toll out of week 41 and counts them the week after delivery", () => {
     const ledger = week41TollLedger();
     expect(ledger.find((row) => row[1] === "TBH--1195")?.[44]).toBe("$12.00");
     expect(ledger.some((row) => row[1] === "TBH--1178")).toBe(false);
@@ -456,21 +463,37 @@ describe("week 41 owner sheet", () => {
       weekStart: "2026-10-12",
       weekEnd: "2026-10-18",
     });
-    expect(week42.loadIds).not.toContain("TBH--1201");
+    expect(week42.loadIds).not.toContain(TBH_1201.loadId);
     expect(week42.grossCents).toBe(0);
-    expect(week42.pending).toEqual([{ loadId: "TBH--1201", reason: TONU_RATE_NOTE }]);
-    expect(week42.deadheadHundredths).toBe(1_000);
-    expect(week42.milesHundredths).toBe(1_000);
-    expect(week42.categories.find((row) => row.category === "Toll fees")?.cents).toBe(5_000);
-    expect(week42.netCents).toBe(-5_000);
+    expect(week42.pending).toEqual([{ loadId: TBH_1201.loadId, reason: TONU_RATE_NOTE }]);
+    expect(week42.loads.find((row) => row.loadId === TBH_1201.loadId)?.pickupDay).toBe(TBH_1201.pickupDay);
+    expect(week42.deadheadHundredths).toBe(0);
+    expect(week42.categories.find((row) => row.category === "Toll fees")?.cents ?? 0).toBe(0);
+    const week43 = buildOwnerTruckWeek({
+      ledger,
+      weekly: [["Week Start Date", "Driver Compensation"], ["10/19/2026", "$0.00"]],
+      weekReport: null,
+      unitNumber: "8",
+      weekStart: "2026-10-19",
+      weekEnd: "2026-10-25",
+    });
+    expect(week43.loadIds).not.toContain(TBH_1201.loadId);
+    expect(week43.grossCents).toBe(0);
+    expect(week43.deadheadHundredths).toBe(TBH_1201.deadheadHundredths);
+    expect(week43.milesHundredths).toBe(TBH_1201.deadheadHundredths);
+    expect(week43.categories.find((row) => row.category === "Toll fees")?.cents).toBe(TBH_1201.tollCents);
   });
 
   it("does not count the TONU miles twice when the count week already includes them", () => {
     const ledger = week41TollLedger();
+    const report = weekReport(TRUCKS[7]!);
+    report[17]![2] = "241.00";
+    report[18]![2] = "2650.00";
+    report[29]![14] = "$48.61";
     const week = buildOwnerTruckWeek({
       ledger,
       weekly: weeklyFor(TRUCKS[7]!),
-      weekReport: weekReport(TRUCKS[7]!),
+      weekReport: report,
       unitNumber: "8",
       ...WEEK,
     });
@@ -488,19 +511,19 @@ describe("week 41 owner sheet", () => {
     countedWeek[18]![2] = "10.00";
     countedWeek[29]![13] = "Toll Fees";
     countedWeek[29]![14] = "$50.00";
-    const week42 = buildOwnerTruckWeek({
+    const week43 = buildOwnerTruckWeek({
       ledger,
-      weekly: [["Week Start Date", "Driver Compensation", "Toll Fees"], ["10/12/2026", "$0.00", "$50.00"]],
+      weekly: [["Week Start Date", "Driver Compensation", "Toll Fees"], ["10/19/2026", "$0.00", "$50.00"]],
       weekReport: countedWeek,
       unitNumber: "8",
-      weekStart: "2026-10-12",
-      weekEnd: "2026-10-18",
+      weekStart: "2026-10-19",
+      weekEnd: "2026-10-25",
     });
-    expect(week42.grossCents).toBe(0);
-    expect(week42.deadheadHundredths).toBe(1_000);
-    expect(week42.milesHundredths).toBe(1_000);
-    expect(week42.categories.find((row) => row.category === "Toll fees")?.cents).toBe(5_000);
-    expect(week42.netCents).toBe(-5_000);
+    expect(week43.grossCents).toBe(0);
+    expect(week43.deadheadHundredths).toBe(TBH_1201.deadheadHundredths);
+    expect(week43.milesHundredths).toBe(TBH_1201.deadheadHundredths);
+    expect(week43.categories.find((row) => row.category === "Toll fees")?.cents).toBe(TBH_1201.tollCents);
+    expect(week43.netCents).toBe(-TBH_1201.tollCents);
   });
 });
 
@@ -599,14 +622,16 @@ describe("live weekly expense headers", () => {
   it("reads Truck 8 week 42 from the live column names and matches the sheet total", () => {
     const width = 55;
     const header = Array.from({ length: width }, () => "");
+    header[0] = "Pickup Date";
     header[1] = "Delivery Date";
     header[5] = "Load ID";
     header[16] = "Rate";
     header[44] = "Toll Expense";
     header[52] = "Status";
     header[54] = "Tarps";
-    const load = (day: string, id: string, rate: string, status: string, tarp: string, toll: string) => {
+    const load = (day: string, id: string, rate: string, status: string, tarp: string, toll: string, pickup = "") => {
       const row = Array.from({ length: width }, () => "");
+      row[0] = pickup;
       row[1] = day;
       row[5] = id;
       row[16] = rate;
@@ -621,7 +646,7 @@ describe("live weekly expense headers", () => {
       ["Truck ID", "T008", "Truck #", "8"],
       ["Primary Driver", "Brison"],
       header,
-      load("10/12/2026", "TBH--1201", "$250.00", "TONU", "", "$50.00"),
+      load(TBH_1201.deliverySheet, TBH_1201.loadId, "$250.00", "TONU", "", "$50.00", TBH_1201.pickupSheet),
       load("10/12/2026", "TBH--1203", "$1,600.00", "Delivered", "$50.00", "$32.36"),
       load("10/14/2026", "TBH--1207", "$1,750.00", "Delivered", "", "$21.21"),
       load("10/14/2026", "TBH--1212", "$2,000.00", "Delivered", "$50.00", ""),
@@ -1014,12 +1039,12 @@ describe("live weekly expense headers", () => {
     expect(deliveredFleet + confirmedTonu + unconfirmedTonu).toBe(3_565_000);
   });
 
-  it("counts confirmed TBH--1201 once, in week 41, on the statement and the asset report", () => {
-    const confirmed = { "TBH--1201": 25_000 };
+  it("counts confirmed TBH--1201 once, in week 42, with its toll and deadhead", () => {
+    const confirmed = { [TBH_1201.loadId]: TBH_1201.rateCents };
     const ledger = [
-      ["Delivery Date", "Load ID", "Rate", "Status"],
-      ["10/06/2026", "TBH--1178", "$1,000.00", "Delivered"],
-      ["10/09/2026", "TBH--1201", "$2,000.00", "TONU"],
+      ["Delivery Date", "Pickup Date", "Load ID", "Rate", "Status", "Toll Expense", "Alloc Deadhead"],
+      ["10/06/2026", "", "TBH--1178", "$1,000.00", "Delivered", "", ""],
+      [TBH_1201.deliverySheet, TBH_1201.pickupSheet, TBH_1201.loadId, "$2,000.00", "TONU", "$50.00", "10.00"],
     ];
     const weekly41 = [
       ["Week Start Date", "Driver Compensation", "Total Fees (Legacy+Tolson)"],
@@ -1060,9 +1085,10 @@ describe("live weekly expense headers", () => {
       confirmedCentsByLoadId: confirmed,
     });
     const fee41 = owner41.categories.find((row) => row.category === "Management fee")?.cents;
-    expect(owner41.grossCents).toBe(125_000);
-    expect(owner41.loadIds).toEqual(["TBH--1178", "TBH--1201"]);
-    expect(fee41).toBe(22_500);
+    expect(owner41.grossCents).toBe(100_000);
+    expect(owner41.loadIds).toEqual(["TBH--1178"]);
+    expect(owner41.loadIds).not.toContain(TBH_1201.loadId);
+    expect(fee41).toBe(18_000);
     expect(row41.insCents).toBe(owner41.grossCents);
     expect(statement41.grossCents).toBe(owner41.grossCents);
     expect(statement41.managementFeeCents).toBe(fee41);
@@ -1088,37 +1114,81 @@ describe("live weekly expense headers", () => {
       note: null,
       confirmedCentsByLoadId: confirmed,
     });
-    expect(owner42.grossCents).toBe(0);
-    expect(owner42.loadIds).not.toContain("TBH--1201");
-    expect(row42.insCents).toBe(0);
+    expect(owner42.grossCents).toBe(TBH_1201.rateCents);
+    expect(owner42.loadIds).toEqual([TBH_1201.loadId]);
+    expect(owner42.deadheadHundredths).toBe(TBH_1201.deadheadHundredths);
+    expect(owner42.categories.find((row) => row.category === "Toll fees")?.cents).toBe(TBH_1201.tollCents);
+    expect(row42.insCents).toBe(TBH_1201.rateCents);
+    const statement42 = applySheetWeek(
+      percentFeeStatement({ unitNumber: "8", grossCents: row42.insCents, weekStart: week42.weekStart }),
+      row42,
+    );
+    const asset42 = buildAssetReport({
+      ...week42,
+      unitNumber: "8",
+      ownerName: null,
+      ledger,
+      weekly: [["Week Start Date", "Driver Compensation"], ["10/12/2026", "$0.00"]],
+      fuelLog: null,
+      fleet: null,
+      sheetNote: null,
+      confirmedCentsByLoadId: confirmed,
+    });
+    expect(statement42.grossCents).toBe(owner42.grossCents);
+    expect(asset42.grossCents).toBe(owner42.grossCents);
+    expect(owner42.fees.managementFeeCents).toBe(4_500);
+    expect(statement42.netCents).toBe(owner42.netCents);
+    expect(asset42.netCents).toBe(owner42.netCents);
+    expect(asset42.deadheadMilesHundredths).toBe(TBH_1201.deadheadHundredths);
+    const counted =
+      (owner41.loadIds.includes(TBH_1201.loadId) ? TBH_1201.rateCents : 0) +
+      (owner42.loadIds.includes(TBH_1201.loadId) ? TBH_1201.rateCents : 0);
+    expect(counted).toBe(TBH_1201.rateCents);
 
     const included = buildOwnerTruckWeek({
       ledger,
-      weekly: weekly41,
+      weekly: [["Week Start Date", "Driver Compensation"], ["10/12/2026", "$0.00"]],
       weekReport: [
-        ["Week start", "10/05/2026"],
-        ["Total Revenue", "$1,250.00"],
+        ["Week start", "10/12/2026"],
+        ["Total Revenue", "$250.00"],
       ],
       unitNumber: "8",
-      ...week41,
+      ...week42,
       confirmedCentsByLoadId: confirmed,
     });
-    expect(included.grossCents).toBe(125_000);
-    expect(included.warnings.join(" ")).toContain("already includes the confirmed TONU");
+    expect(included.grossCents).toBe(TBH_1201.rateCents);
+    expect(included.tonuReportBlocks).toEqual([]);
     const omitted = buildOwnerTruckWeek({
       ledger,
-      weekly: weekly41,
+      weekly: [["Week Start Date", "Driver Compensation"], ["10/12/2026", "$0.00"]],
       weekReport: [
-        ["Week start", "10/05/2026"],
-        ["Total Revenue", "$1,000.00"],
+        ["Week start", "10/12/2026"],
+        ["Total Revenue", "$0.00"],
       ],
       unitNumber: "8",
-      ...week41,
+      ...week42,
       confirmedCentsByLoadId: confirmed,
     });
-    expect(omitted.grossCents).toBe(125_000);
-    expect(omitted.warnings.join(" ")).toContain("left out the confirmed TONU, so it was kept");
-    expect(omitted.categories.find((row) => row.category === "Management fee")?.cents).toBe(fee41);
+    expect(omitted.grossCents).toBe(TBH_1201.rateCents);
+    expect(omitted.tonuReportBlocks).toEqual([
+      { loadId: TBH_1201.loadId, message: tonuReportOmittedMessage(TBH_1201.loadId) },
+    ]);
+    expect(tonuReportBlockers([
+      buildTruckWeekInsOuts({
+        unitNumber: "8",
+        truckName: "Truck 8",
+        ...week42,
+        loadLedger: ledger,
+        mgmtExpenses: null,
+        weeklyExpenses: [["Week Start Date", "Driver Compensation"], ["10/12/2026", "$0.00"]],
+        weekReport: [
+          ["Week start", "10/12/2026"],
+          ["Total Revenue", "$0.00"],
+        ],
+        note: null,
+        confirmedCentsByLoadId: confirmed,
+      }),
+    ])[0]?.message).toContain(TBH_1201.loadId);
   });
 
   it("does not warn that Legacy plus Tolson misses H when H is absent", () => {
@@ -1160,6 +1230,28 @@ describe("live weekly expense headers", () => {
     expect(week.warnings.join(" ")).toContain("Week Report management fee is $50.00");
   });
 
+  it("warns when a Week Report Tolson Fee cell cannot be read", () => {
+    const week = buildOwnerTruckWeek({
+      ledger: [
+        ["Delivery Date", "Load ID", "Rate"],
+        ["10/06/2026", "TBH--1", "$1,000.00"],
+      ],
+      weekly: [
+        ["Week Start Date", "Driver Compensation", "Total Fees (Legacy+Tolson)", "Tolson Fee"],
+        ["10/05/2026", "$0.00", "$180.00", "$80.00"],
+      ],
+      weekReport: [
+        ["Week start", "10/05/2026"],
+        ["Total Revenue", "$1,000.00"],
+        ["Tolson Fee", "bad-fee"],
+      ],
+      unitNumber: "8",
+      ...WEEK,
+    });
+    expect(week.warnings.join(" ")).toContain("Week Report Tolson Fee could not be read");
+    expect(week.feeSplit.tolsonFeeCents).toBe(8_000);
+  });
+
   it("warns when a Week Report Legacy Fee cell cannot be read", () => {
     const week = buildOwnerTruckWeek({
       ledger: [
@@ -1182,54 +1274,150 @@ describe("live weekly expense headers", () => {
     expect(week.feeSplit.legacyFeeCents).toBe(10_000);
   });
 
+  it("blocks a labeled Week Report that counts confirmed TBH--1201 in the wrong week", () => {
+    const confirmed = { [TBH_1201.loadId]: TBH_1201.rateCents, "TBH--1221": 25_000 };
+    const weekly = (start: string) => [
+      ["Week Start Date", "Driver Compensation"],
+      [start, "$0.00"],
+    ];
+    const report = (start: string, revenue: string) => [
+      ["Week start", start],
+      ["Total Revenue", revenue],
+    ];
+    const ledger42 = [
+      ["Delivery Date", "Pickup Date", "Load ID", "Rate", "Status"],
+      ["10/13/2026", "", "TBH--1203", "$35,000.00", ""],
+      [TBH_1201.deliverySheet, TBH_1201.pickupSheet, TBH_1201.loadId, "$250.00", "TONU"],
+      ["10/14/2026", "10/14/2026", "TBH--1221", "$250.00", "TONU"],
+      ["10/15/2026", "10/14/2026", "TBH--1217", "$150.00", "TONU"],
+    ];
+    const week42 = buildOwnerTruckWeek({
+      ledger: ledger42,
+      weekly: weekly("10/12/2026"),
+      weekReport: report("10/12/2026", "$35,650.00"),
+      unitNumber: "8",
+      weekStart: "2026-10-12",
+      weekEnd: "2026-10-18",
+      confirmedCentsByLoadId: confirmed,
+    });
+    expect(week42.grossCents).toBe(3_550_000);
+    expect(week42.loadIds).toContain(TBH_1201.loadId);
+    expect(week42.loadIds).not.toContain("TBH--1217");
+    expect(week42.tonuReportBlocks).toEqual([]);
+
+    const ledger41 = [
+      ["Delivery Date", "Pickup Date", "Load ID", "Rate", "Status"],
+      ["10/08/2026", "", "TBH--1195", "$35,250.00", ""],
+      [TBH_1201.deliverySheet, TBH_1201.pickupSheet, TBH_1201.loadId, "$250.00", "TONU"],
+      ["10/15/2026", "10/14/2026", "TBH--1217", "$150.00", "TONU"],
+    ];
+    const week41 = buildOwnerTruckWeek({
+      ledger: ledger41,
+      weekly: weekly("10/05/2026"),
+      weekReport: report("10/05/2026", "$35,650.00"),
+      unitNumber: "8",
+      ...WEEK,
+      confirmedCentsByLoadId: confirmed,
+    });
+    expect(week41.grossCents).toBe(3_525_000);
+    expect(week41.loadIds).not.toContain(TBH_1201.loadId);
+    expect(week41.tonuReportBlocks).toEqual([
+      { loadId: TBH_1201.loadId, message: tonuReportIncludedMessage(TBH_1201.loadId) },
+    ]);
+    const once =
+      (week41.loadIds.includes(TBH_1201.loadId) ? TBH_1201.rateCents : 0) +
+      (week42.loadIds.includes(TBH_1201.loadId) ? TBH_1201.rateCents : 0);
+    expect(once).toBe(TBH_1201.rateCents);
+  });
+
   it("keeps the live week 41, 42, and 43 gross and net", () => {
-    const sum = (rows: Array<[number, number]>) =>
-      rows.reduce((total, [gross, expenses]) => ({ gross: total.gross + gross, expenses: total.expenses + expenses }), {
-        gross: 0,
-        expenses: 0,
+    const confirmed = { [TBH_1201.loadId]: TBH_1201.rateCents, "TBH--1221": 25_000 };
+    const sheetDate = (iso: string) => {
+      const [year, month, day] = iso.split("-");
+      return `${month}/${day}/${year}`;
+    };
+    const deliveryFor = (weekStart: string) =>
+      weekStart === "2026-10-05" ? "2026-10-06" : weekStart === "2026-10-12" ? "2026-10-13" : "2026-10-20";
+    const engine = (
+      unit: string,
+      weekStart: string,
+      weekEnd: string,
+      grossCents: number,
+      expenseCents: number,
+      tonus: { id: string; cents: number; day: string }[] = [],
+      sheetFeeCents?: number,
+    ) => {
+      const tonuCents = tonus.reduce((sum, row) => sum + row.cents, 0);
+      const delivered = grossCents - tonuCents;
+      const fee = managementFeeSplit(grossCents, seededFeeRates(unit)).managementFeeCents;
+      const fuel = expenseCents - fee;
+      const ledger: string[][] = [["Delivery Date", "Load ID", "Rate", "Status"]];
+      if (delivered > 0) ledger.push([sheetDate(deliveryFor(weekStart)), `TBH--${unit}0`, dollars(delivered), ""]);
+      for (const tonu of tonus) ledger.push([tonu.day, tonu.id, dollars(tonu.cents), "TONU"]);
+      const week = buildOwnerTruckWeek({
+        ledger,
+        weekly: [
+          ["Week Start Date", "Driver Compensation", "Total Fees (Legacy+Tolson)", "Fuel"],
+          [sheetDate(weekStart), "$0.00", dollars(sheetFeeCents ?? fee), dollars(fuel)],
+        ],
+        weekReport: null,
+        unitNumber: unit,
+        weekStart,
+        weekEnd,
+        confirmedCentsByLoadId: confirmed,
       });
+      return { gross: week.grossCents, expenses: week.expenseCents, net: week.netCents };
+    };
+    const sum = (rows: Array<{ gross: number; expenses: number; net: number }>) =>
+      rows.reduce(
+        (total, row) => ({
+          gross: total.gross + row.gross,
+          expenses: total.expenses + row.expenses,
+          net: total.net + row.net,
+        }),
+        { gross: 0, expenses: 0, net: 0 },
+      );
     const week41 = sum([
-      [0, 72_945],
-      [0, 78_292],
-      [855_000, 699_385],
-      [250_000, 537_110],
-      [860_000, 569_872],
-      [200_000, 345_543],
-      [470_000, 496_942],
-      [790_000, 631_084],
-      [0, 0],
-      [0, 0],
+      engine("1", "2026-10-05", "2026-10-11", 0, 72_945),
+      engine("2", "2026-10-05", "2026-10-11", 0, 78_292),
+      engine("3", "2026-10-05", "2026-10-11", 855_000, 699_385),
+      engine("4", "2026-10-05", "2026-10-11", 250_000, 537_110),
+      engine("5", "2026-10-05", "2026-10-11", 860_000, 569_872),
+      engine("6", "2026-10-05", "2026-10-11", 200_000, 345_543),
+      engine("7", "2026-10-05", "2026-10-11", 470_000, 496_942),
+      engine("8", "2026-10-05", "2026-10-11", 790_000, 631_084),
+      engine("9", "2026-10-05", "2026-10-11", 0, 0),
+      engine("10", "2026-10-05", "2026-10-11", 0, 0),
     ]);
     const week42 = sum([
-      [0, 72_945],
-      [0, 88_841],
-      [725_000, 565_329],
-      [175_000, 394_789],
-      [0, 233_758],
-      [875_000, 740_109],
-      [715_000, 668_196],
-      [1_060_000, 829_686],
-      [0, 0],
-      [0, 0],
+      engine("1", "2026-10-12", "2026-10-18", 0, 72_945),
+      engine("2", "2026-10-12", "2026-10-18", 0, 88_841),
+      engine("3", "2026-10-12", "2026-10-18", 725_000, 565_329),
+      engine("4", "2026-10-12", "2026-10-18", 175_000, 394_789),
+      engine("5", "2026-10-12", "2026-10-18", 0, 233_758),
+      engine("6", "2026-10-12", "2026-10-18", 875_000, 740_109, [{ id: "TBH--1221", cents: 25_000, day: "10/15/2026" }]),
+      engine("7", "2026-10-12", "2026-10-18", 715_000, 668_196),
+      engine("8", "2026-10-12", "2026-10-18", 1_060_000, 829_686, [
+        { id: TBH_1201.loadId, cents: TBH_1201.rateCents, day: TBH_1201.deliverySheet },
+      ], 193_500),
+      engine("9", "2026-10-12", "2026-10-18", 0, 0),
+      engine("10", "2026-10-12", "2026-10-18", 0, 0),
     ]);
     const week43 = sum([
-      [0, 0],
-      [0, 97_470],
-      [707_000, 544_661],
-      [925_000, 745_555],
-      [1_007_500, 804_023],
-      [805_000, 690_723],
-      [300_000, 289_155],
-      [765_000, 668_439],
-      [0, 0],
-      [0, 0],
+      engine("1", "2026-10-19", "2026-10-25", 0, 0),
+      engine("2", "2026-10-19", "2026-10-25", 0, 97_470),
+      engine("3", "2026-10-19", "2026-10-25", 707_000, 544_661),
+      engine("4", "2026-10-19", "2026-10-25", 925_000, 745_555),
+      engine("5", "2026-10-19", "2026-10-25", 1_007_500, 804_023),
+      engine("6", "2026-10-19", "2026-10-25", 805_000, 690_723),
+      engine("7", "2026-10-19", "2026-10-25", 300_000, 289_155),
+      engine("8", "2026-10-19", "2026-10-25", 765_000, 668_439),
+      engine("9", "2026-10-19", "2026-10-25", 0, 0),
+      engine("10", "2026-10-19", "2026-10-25", 0, 0),
     ]);
-    expect(week41).toEqual({ gross: 3_425_000, expenses: 3_431_173 });
-    expect(week41.gross - week41.expenses).toBe(-6_173);
-    expect(week42).toEqual({ gross: 3_550_000, expenses: 3_593_653 });
-    expect(week42.gross - week42.expenses).toBe(-43_653);
-    expect(week43).toEqual({ gross: 4_509_500, expenses: 3_840_026 });
-    expect(week43.gross - week43.expenses).toBe(669_474);
+    expect(week41).toEqual({ gross: 3_425_000, expenses: 3_431_173, net: -6_173 });
+    expect(week42).toEqual({ gross: 3_550_000, expenses: 3_593_653, net: -43_653 });
+    expect(week43).toEqual({ gross: 4_509_500, expenses: 3_840_026, net: 669_474 });
   });
 
   it("blocks Close and the PDF while a Weekly Expenses cell cannot be read", () => {

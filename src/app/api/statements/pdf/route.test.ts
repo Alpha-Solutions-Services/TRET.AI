@@ -7,14 +7,17 @@ import type { TruckClass } from "@/lib/fee-engine";
 import type { TruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import { buildWeekStatements } from "@/lib/statements/engine";
 import type { StatementsPageData } from "@/lib/statements/queries";
-import { overlaySheetStatements, unreadExpenseBlockers } from "@/lib/statements/sheet-week";
+import { overlaySheetStatements } from "@/lib/statements/sheet-week";
 import { buildTruckWeekInsOuts } from "@/lib/sheets/ins-outs";
 import type { UnitStatement, WeekStatementInput, WeekStatements } from "@/lib/statements/types";
 
-const { loadStatementsMock, sheetsMock, clientMock } = vi.hoisted(() => ({
+const { loadStatementsMock, sheetsMock, clientMock, realLoadStatements } = vi.hoisted(() => ({
   loadStatementsMock: vi.fn(),
   sheetsMock: vi.fn(),
   clientMock: vi.fn(),
+  realLoadStatements: {
+    fn: null as null | ((weekStart: string) => Promise<StatementsPageData>),
+  },
 }));
 
 vi.mock("@/lib/auth/access", () => ({
@@ -23,9 +26,10 @@ vi.mock("@/lib/auth/access", () => ({
 
 vi.mock("@/lib/statements/queries", async () => {
   const actual = await vi.importActual<typeof import("@/lib/statements/queries")>("@/lib/statements/queries");
+  realLoadStatements.fn = actual.loadStatements;
   return {
     ...actual,
-    loadStatements: (...args: unknown[]) => loadStatementsMock(...args),
+    loadStatements: (weekStart: string) => loadStatementsMock(weekStart),
   };
 });
 
@@ -93,6 +97,15 @@ function chain(data: unknown) {
     },
     order() {
       return builder;
+    },
+    in() {
+      return builder;
+    },
+    limit() {
+      return builder;
+    },
+    maybeSingle() {
+      return Promise.resolve({ data: null, error: null });
     },
     then(onFulfilled: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) {
       return Promise.resolve({ data, error: null }).then(onFulfilled, onRejected);
@@ -197,15 +210,14 @@ describe("GET /api/statements/pdf", () => {
       ],
       note: null,
     });
-    const blockers = unreadExpenseBlockers([row]);
-    expect(blockers[0]?.message).toContain("Fuel");
-    loadStatementsMock.mockResolvedValue(
-      pageFrom(input, {
-        warnings: [],
-        blockers,
-        closeAllowed: false,
-      }),
-    );
+    expect(row.unreadExpenses).toEqual(["Fuel"]);
+    sheetsMock.mockResolvedValue({ rows: [row], error: null, confirmationError: null });
+    clientMock.mockResolvedValue({
+      from() {
+        return chain([]);
+      },
+    });
+    loadStatementsMock.mockImplementation((week: string) => realLoadStatements.fn!(week));
     const response = await GET(new Request(`http://localhost/api/statements/pdf?week=${WEEK}`));
     expect(response.status).toBe(409);
     const body = (await response.json()) as { error: string };
@@ -452,6 +464,7 @@ function week41Row(truck: Week41Truck): TruckWeekInsOuts {
     miscCents: truck.miscCents,
     feeSplit: { legacyFeeCents: truck.legacyCents, tolsonFeeCents: truck.tolsonCents },
     unreadExpenses: [],
+    tonuReportBlocks: [],
     outsFromWeekly: true,
     note: null,
     noteDetail: null,

@@ -24,7 +24,11 @@ async function DailyCheckContent({ week }: { week: string | undefined }) {
     supabase.from("toll_transactions").select("unit_number, amount_cents").eq("week_start", weekStart),
     supabase.from("issues").select("rule, message, status").eq("status", "open"),
     supabase.from("issues").select("id").eq("rule", "daily_check").eq("ref", weekStart).limit(1),
-    loadActiveTruckInsOuts(weekStart, weekEnd).catch(() => ({ rows: [], error: "Sheets were not read." })),
+    loadActiveTruckInsOuts(weekStart, weekEnd).catch((err: unknown) => ({
+      rows: [],
+      error: null as string | null,
+      confirmationError: err instanceof Error ? err.message : "TONU confirmations could not be loaded.",
+    })),
   ]);
   const summary = compareDailyCheck({
     sheet: (sheets.rows ?? [])
@@ -55,7 +59,8 @@ async function DailyCheckContent({ week }: { week: string | undefined }) {
     })),
     receiptsFound: (issues.data ?? []).filter((row) => row.rule === "receipt").length,
   });
-  if (sheets.error) summary.truckMismatches.unshift(sheets.error);
+  const sheetError = sheets.confirmationError ?? sheets.error;
+  if (sheetError) summary.truckMismatches.unshift(sheetError);
   const error = loads.error?.message ?? fuel.error?.message ?? tolls.error?.message ?? null;
   return (
     <DailyCheckClient
